@@ -41,7 +41,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 #include "sim-io.h"
 #include "sim-assert.h"
 
-
 /* Debugging support.
    If digits is -1, then print all digits.  */
 
@@ -834,6 +833,7 @@ do_normal_round (sim_fpu *f,
   unsigned64 guardmask = LSMASK64 (nr_guards - 1, 0);
   unsigned64 guardmsb = LSBIT64 (nr_guards - 1);
   unsigned64 fraclsb = guardmsb << 1;
+  /* If there are decimal values do the round.  */
   if ((f->fraction & guardmask))
     {
       int status = sim_fpu_status_inexact;
@@ -865,6 +865,7 @@ do_normal_round (sim_fpu *f,
 	case sim_fpu_round_zero:
 	  break;
 	}
+      /* Actually do the rounding by masking out the decimals.  */
       f->fraction &= ~guardmask;
       /* Round if needed, handle resulting overflow.  */
       if ((status & sim_fpu_status_rounded))
@@ -1384,7 +1385,6 @@ sim_fpu_mul (sim_fpu *f,
        up in the high 64 bit word.  In the source the decimal point
        was at NR_FRAC_GUARD. */
     f->normal_exp += NR_FRAC_GUARD + 64 - (NR_FRAC_GUARD * 2);
-
     /* The high word is bounded according to the above.  Consequently
        it has never overflowed into IMPLICIT_2. */
     ASSERT (high < LSBIT64 (((NR_FRAC_GUARD + 1) * 2) - 64));
@@ -1546,6 +1546,89 @@ sim_fpu_div (sim_fpu *f,
       }
     else
       return 0;
+  }
+}
+
+
+INLINE_SIM_FPU (int)
+sim_fpu_rem (sim_fpu *f,
+	     const sim_fpu *l,
+	     const sim_fpu *r)
+{
+  if (sim_fpu_is_snan (l))
+    {
+      *f = *l;
+      f->class = sim_fpu_class_qnan;
+      return sim_fpu_status_invalid_snan;
+    }
+  if (sim_fpu_is_snan (r))
+    {
+      *f = *r;
+      f->class = sim_fpu_class_qnan;
+      return sim_fpu_status_invalid_snan;
+    }
+  if (sim_fpu_is_qnan (l))
+    {
+      *f = *l;
+      f->class = sim_fpu_class_qnan;
+      return 0;
+    }
+  if (sim_fpu_is_qnan (r))
+    {
+      *f = *r;
+      f->class = sim_fpu_class_qnan;
+      return 0;
+    }
+  if (sim_fpu_is_infinity (l))
+    {
+      *f = sim_fpu_qnan;
+      return sim_fpu_status_invalid_irx;
+    }
+  if (sim_fpu_is_zero (r))
+    {
+      *f = sim_fpu_qnan;
+      return sim_fpu_status_invalid_div0;
+    }
+  if (sim_fpu_is_zero (l))
+    {
+      *f = *l;
+      return 0;
+    }
+  if (sim_fpu_is_infinity (r))
+    {
+      *f = *l;
+      return 0;
+    }
+  {
+    sim_fpu n, tmp;
+
+    /* Remainder is calculated as l-n*r, where n is l/r rounded to the
+       nearest integer.  The variable n is rounded half even.  */
+
+    sim_fpu_div (&n, l, r);
+    sim_fpu_round_64 (&n, 0, 0);
+
+    if (n.normal_exp < -1) /* If n looks like zero just return l.  */
+      {
+	*f = *l;
+	return 0;
+      }
+    else if (n.class == sim_fpu_class_number
+	&& n.normal_exp <= (NR_FRAC_GUARD)) /* If not too large round.  */
+      do_normal_round (&n, (NR_FRAC_GUARD) - n.normal_exp, sim_fpu_round_near);
+
+    /* Mark 0's as zero so multiply can detect zero.  */
+    if (n.fraction == 0)
+      n.class = sim_fpu_class_zero;
+
+    /* Calculate n*r.  */
+    sim_fpu_mul (&tmp, &n, r);
+    sim_fpu_round_64 (&tmp, 0, 0);
+
+    /* Finally calculate l-n*r.  */
+    sim_fpu_sub (f, l, &tmp);
+
+    return 0;
   }
 }
 
@@ -2532,6 +2615,9 @@ sim_fpu_print_status (int status,
 	  break;
 	case sim_fpu_status_invalid_sqrt:
 	  print (arg, "%sSQRT", prefix);
+	  break;
+	case sim_fpu_status_invalid_irx:
+	  print (arg, "%sIRX", prefix);
 	  break;
 	case sim_fpu_status_inexact:
 	  print (arg, "%sX", prefix);
