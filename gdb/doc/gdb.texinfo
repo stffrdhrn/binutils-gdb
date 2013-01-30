@@ -546,6 +546,11 @@ was developed by SRI International and the University of Cambridge
 Computer Laboratory under DARPA/AFRL contract FA8750-10-C-0237
 ("CTSRD"), as part of the DARPA CRASH research programme.
 
+The original port to the OpenRISC 1000 is believed to be due to
+Alessandro Forin and Per Bothner.  More recent ports have been the work
+of Jeremy Bennett, Franck Jullien, Stefan Wallentowitz and
+Stafford Horne.
+
 @node Sample Session
 @chapter A Sample @value{GDBN} Session
 
@@ -22048,6 +22053,7 @@ acceptable commands.
 * M68K::                        Motorola M68K
 * MicroBlaze::			Xilinx MicroBlaze
 * MIPS Embedded::               MIPS Embedded
+* OpenRISC 1000::               OpenRISC 1000 (or1k)
 * PowerPC Embedded::            PowerPC Embedded
 * AVR::                         Atmel AVR
 * CRIS::                        CRIS
@@ -22253,6 +22259,70 @@ and @samp{set mipsfpu off} will select no floating point.
 As usual, you can inquire about the @code{mipsfpu} variable with
 @samp{show mipsfpu}.
 @end table
+
+@node OpenRISC 1000
+@subsection OpenRISC 1000
+@cindex OpenRISC 1000
+
+Previous development versions of @value{GDBN} supported remote connection
+via a proprietary JTAG protocol using the @samp{target jtag} command.
+Support for this has now been dropped.
+
+Also, previous verions had support for a @samp{spr} command to access
+OpenRISC's numberous special purpose registers.  These are now available
+via the normal @samp{info registers} command.
+
+@table @code
+
+@kindex target remote
+@item target remote
+
+Connects to remote JTAG server.
+This is now the only way to connect to a remote OpenRISC 1000
+target.  This is supported by @dfn{Or1ksim}, the OpenRISC 1000
+architectural simulator as well as Verilator and Icarus Verilog
+simulators.  @dfn{Remote serial protocol} servers, such as OpenOCD, are also
+available to drive various hardware implementations via JTAG.
+
+Example: @code{target remote :51000}
+
+@kindex target sim
+@item target sim
+
+Runs the builtin CPU simulator which can run very basic
+programs but does not support most hardware functions like MMU.
+For more complex use cases the user is advised to run an external
+target, and connect using @samp{target remote}.
+
+Example: @code{target sim}
+
+@end table
+
+There are some known problems with the current implementation
+@cindex OpenRISC 1000 known problems
+
+@enumerate
+
+@item
+@cindex OpenRISC 1000 known problems, hardware breakpoints and watchpoints
+Some OpenRISC 1000 targets support hardware breakpoints and watchpoints.
+Consult the target documentation for details.  @value{GDBN} is not
+perfect in handling of watchpoints.  It is possible to allocate hardware
+watchpoints and not discover until running that sufficient watchpoints
+are not available.  It is also possible that GDB will report watchpoints
+being hit spuriously.  This can be down to the assembly code having
+additional memory accesses that are not obviously reflected in the
+source code.
+
+@item
+@cindex OpenRISC 1000 known problems, architectural compatibility
+The OpenRISC 1000 architecture has evolved since the first port for
+@value{GDBN}.  In particular the structure of the Unit Present register has
+changed and the CPU Configuration register has been added.  The port of
+@value{GDBN} version @value{GDBVN} uses the @emph{current}
+specification of the OpenRISC 1000.
+
+@end enumerate
 
 @node PowerPC Embedded
 @subsection PowerPC Embedded
