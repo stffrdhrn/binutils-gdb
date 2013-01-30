@@ -862,6 +862,40 @@ tdesc_numbered_register (const struct tdesc_feature *feature,
   return 1;
 }
 
+/* Search FEATURE for a register REGNO and return its name. */
+char *
+tdesc_find_register_name (const struct tdesc_feature *feature,
+			   int regno)
+{
+  int ixr;
+  struct tdesc_reg *reg;
+
+  for (ixr = 0;
+       VEC_iterate (tdesc_reg_p, feature->registers, ixr, reg);
+       ixr++)
+    if (ixr == regno)
+      return reg->name;
+
+  return NULL;
+}
+
+/* Search FEATURE for a register REGNO and return its group name. */
+char *
+tdesc_find_register_group_name (const struct tdesc_feature *feature,
+			   int regno)
+{
+  int ixr;
+  struct tdesc_reg *reg;
+
+  for (ixr = 0;
+       VEC_iterate (tdesc_reg_p, feature->registers, ixr, reg);
+       ixr++)
+    if (ixr == regno)
+      return reg->group;
+
+  return NULL;
+}
+
 /* Search FEATURE for a register named NAME, but do not assign a fixed
    register number to it.  */
 
@@ -1046,12 +1080,8 @@ tdesc_remote_register_number (struct gdbarch *gdbarch, int regno)
    return -1 if it does not know; the caller should handle registers
    with no specified group.
 
-   Arbitrary strings (other than "general", "float", and "vector")
-   from the description are not used; they cause the register to be
-   displayed in "info all-registers" but excluded from "info
-   registers" et al.  The names of containing features are also not
-   used.  This might be extended to display registers in some more
-   useful groupings.
+   The names of containing features are also not used.  This might be
+   extended to display registers in some more useful groupings.
 
    The save-restore flag is also implemented here.  */
 
@@ -1080,6 +1110,10 @@ tdesc_register_in_reggroup_p (struct gdbarch *gdbarch, int regno,
 
       if (reggroup == general_reggroup)
 	return general_p;
+
+      if (strcmp (reg->group, reggroup_name (reggroup)) == 0)
+	return 1;
+
     }
 
   if (reg != NULL
