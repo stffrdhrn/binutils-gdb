@@ -1,3 +1,10 @@
+2013-01-30  Franck Jullien  <franck.jullien@gmail.com>
+
+	* or1k-tdesc.c  : Add file for or1k support
+	* or1k-tdesc.h  : Add file for or1k support
+	* configure.tgt : Add or1k targets
+	* gdb.texinfo   : Add OpenRISC documentation
+
 2016-11-14  Markus Metzger  <markus.t.metzger@intel.com>
 
 	* nat/linux-btrace.c (perf_event_read): Allow data_head < size.
