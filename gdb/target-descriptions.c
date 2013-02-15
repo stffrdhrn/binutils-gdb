@@ -1,5 +1,6 @@
 /* Target description support for GDB.
 
+
    Copyright (C) 2006-2017 Free Software Foundation, Inc.
 
    Contributed by CodeSourcery.
@@ -64,11 +65,11 @@ typedef struct tdesc_reg
 
   /* The name of the register group containing this register, or NULL
      if the group should be automatically determined from the
-     register's type.  If this is "general", "float", or "vector", the
-     corresponding "info" command should display this register's
-     value.  It can be an arbitrary string, but should be limited to
-     alphanumeric characters and internal hyphens.  Currently other
-     strings are ignored (treated as NULL).  */
+     register's type.  If this is "general", "float", "vector" or an
+     arbitrary string the corresponding "info" command should display this
+     register's value.  It can be an arbitrary string, but should be
+     limited to alphanumeric characters and internal hyphens.  Currently
+     other strings are ignored (treated as NULL).  */
   char *group;
 
   /* The size of the register, in bits.  */
@@ -1081,17 +1082,13 @@ tdesc_remote_register_number (struct gdbarch *gdbarch, int regno)
 }
 
 /* Check whether REGNUM is a member of REGGROUP.  Registers from the
-   target description may be classified as general, float, or vector.
-   Unlike a gdbarch register_reggroup_p method, this function will
-   return -1 if it does not know; the caller should handle registers
-   with no specified group.
+   target description may be classified as general, float, vector or other
+   register groups registerd with reggroup_add().  Unlike a gdbarch
+   register_reggroup_p method, this function will return -1 if it does not
+   know; the caller should handle registers with no specified group.
 
-   Arbitrary strings (other than "general", "float", and "vector")
-   from the description are not used; they cause the register to be
-   displayed in "info all-registers" but excluded from "info
-   registers" et al.  The names of containing features are also not
-   used.  This might be extended to display registers in some more
-   useful groupings.
+   The names of containing features are not used.  This might be extended
+   to display registers in some more useful groupings.
 
    The save-restore flag is also implemented here.  */
 
@@ -1101,26 +1098,9 @@ tdesc_register_in_reggroup_p (struct gdbarch *gdbarch, int regno,
 {
   struct tdesc_reg *reg = tdesc_find_register (gdbarch, regno);
 
-  if (reg != NULL && reg->group != NULL)
-    {
-      int general_p = 0, float_p = 0, vector_p = 0;
-
-      if (strcmp (reg->group, "general") == 0)
-	general_p = 1;
-      else if (strcmp (reg->group, "float") == 0)
-	float_p = 1;
-      else if (strcmp (reg->group, "vector") == 0)
-	vector_p = 1;
-
-      if (reggroup == float_reggroup)
-	return float_p;
-
-      if (reggroup == vector_reggroup)
-	return vector_p;
-
-      if (reggroup == general_reggroup)
-	return general_p;
-    }
+  if (reg != NULL && reg->group != NULL
+      && (strcmp (reg->group, reggroup_name (reggroup)) == 0))
+	return 1;
 
   if (reg != NULL
       && (reggroup == save_reggroup || reggroup == restore_reggroup))
@@ -1231,6 +1211,26 @@ tdesc_use_registers (struct gdbarch *gdbarch,
 	void **slot = htab_find_slot (reg_hash, reg, INSERT);
 
 	*slot = reg;
+	if (reg->group != NULL)
+	  {
+	    struct reggroup *group;
+	    bool group_exists = false;
+
+	    for (group = reggroup_next (gdbarch, NULL);
+		 group != NULL;
+		 group = reggroup_next (gdbarch, group))
+	      {
+		if (strcmp (reg->group, reggroup_name (group)) == 0)
+		  {
+		    group_exists = true;
+		    break;
+		  }
+	      }
+
+	      if (!group_exists)
+		reggroup_add (gdbarch, reggroup_new (reg->group,
+						     USER_REGGROUP));
+	  }
       }
 
   /* Remove any registers which were assigned numbers by the
