@@ -572,10 +572,17 @@ or1k_cgen_insert_operand (CGEN_CPU_DESC cd,
 
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      {
+        long value = fields->f_disp21;
+        value = ((((DI) (value) >> (13))) - (((DI) (pc) >> (13))));
+        errmsg = insert_normal (cd, value, 0|(1<<CGEN_IFLD_SIGNED)|(1<<CGEN_IFLD_ABS_ADDR), 0, 20, 21, 32, total_length, buffer);
+      }
+      break;
     case OR1K_OPERAND_DISP26 :
       {
         long value = fields->f_disp26;
-        value = ((SI) (((value) - (pc))) >> (2));
+        value = ((DI) (((value) - (pc))) >> (2));
         errmsg = insert_normal (cd, value, 0|(1<<CGEN_IFLD_SIGNED)|(1<<CGEN_IFLD_PCREL_ADDR), 0, 25, 26, 32, total_length, buffer);
       }
       break;
@@ -686,6 +693,14 @@ or1k_cgen_extract_operand (CGEN_CPU_DESC cd,
 
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      {
+        long value;
+        length = extract_normal (cd, ex_info, insn_value, 0|(1<<CGEN_IFLD_SIGNED)|(1<<CGEN_IFLD_ABS_ADDR), 0, 20, 21, 32, total_length, pc, & value);
+        value = ((((value) + (((DI) (pc) >> (13))))) << (13));
+        fields->f_disp21 = value;
+      }
+      break;
     case OR1K_OPERAND_DISP26 :
       {
         long value;
@@ -786,6 +801,9 @@ or1k_cgen_get_int_operand (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
 
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      value = fields->f_disp21;
+      break;
     case OR1K_OPERAND_DISP26 :
       value = fields->f_disp26;
       break;
@@ -851,6 +869,9 @@ or1k_cgen_get_vma_operand (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
 
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      value = fields->f_disp21;
+      break;
     case OR1K_OPERAND_DISP26 :
       value = fields->f_disp26;
       break;
@@ -923,6 +944,9 @@ or1k_cgen_set_int_operand (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
 {
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      fields->f_disp21 = value;
+      break;
     case OR1K_OPERAND_DISP26 :
       fields->f_disp26 = value;
       break;
@@ -985,6 +1009,9 @@ or1k_cgen_set_vma_operand (CGEN_CPU_DESC cd ATTRIBUTE_UNUSED,
 {
   switch (opindex)
     {
+    case OR1K_OPERAND_DISP21 :
+      fields->f_disp21 = value;
+      break;
     case OR1K_OPERAND_DISP26 :
       fields->f_disp26 = value;
       break;
