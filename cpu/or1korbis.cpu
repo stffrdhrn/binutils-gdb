@@ -191,6 +191,8 @@
    ("SH"           #x37)
    ("ALU"          #x38)
    ("SF"           #x39)
+   ("LDA"          #x3a)
+   ("SDA"          #x3b)
    ("CUST5"        #x3c)
    ("CUST6"        #x3d)
    ("CUST7"        #x3e)
@@ -628,6 +630,14 @@
 (define-pmacro (load-store-addr base offset size)
   (c-call AI "@cpu@_make_load_store_addr" base (ext SI offset) size))
 
+(dni l-ld "l.ld reg/simm16(reg)"
+     ((MACH OR64-MACHS))
+     "l.ld $rD,${simm16}($rA)"
+     (+ OPC_LD rD rA simm16)
+     (set DI rD (mem DI (load-store-addr rA simm16 8)))
+     ()
+)
+
 (dni l-lwz "l.lwz reg/simm16(reg)"
      ((MACH ORBIS-MACHS))
      "l.lwz $rD,${simm16}($rA)"
@@ -636,12 +646,23 @@
      ()
 )
 
-
 (dni l-lws "l.lws reg/simm16(reg)"
      ((MACH ORBIS-MACHS))
      "l.lws $rD,${simm16}($rA)"
      (+ OPC_LWS rD rA simm16)
      (set WI rD (ext WI (mem SI (load-store-addr rA simm16 4))))
+     ()
+)
+
+(dni l-lda "l.lda reg/simm16(reg)"
+     ((MACH OR64-MACHS))
+     "l.lda $rD,${simm16}($rA)"
+     (+ OPC_LDA rD rA simm16)
+     (sequence ()
+               (set DI rD (mem DI (load-store-addr rA simm16 8)))
+               (set atomic-reserve (const 1))
+               (set atomic-address (load-store-addr rA simm16 8))
+               )
      ()
 )
 
@@ -692,17 +713,17 @@
 
 ; Store instructions
 
-(define-pmacro (store-insn mnemonic opc-op mode size)
+(define-pmacro (store-insn mnemonic mode size machs)
   (begin
      (dni (.sym l- mnemonic)
           (.str "l." mnemonic " simm16(reg)/reg")
-          ((MACH ORBIS-MACHS))
+          ((MACH machs))
           (.str "l." mnemonic " ${simm16-split}($rA),$rB")
-          (+ opc-op rA rB simm16-split)
+	  (+ (.sym OPC_ (.upcase mnemonic)) rA rB simm16-split)
           (sequence ((SI addr))
 		    (set addr (load-store-addr rA simm16-split size))
 		    (set mode (mem mode addr) (trunc mode rB))
-		    (if (eq (and addr #xffffffc) atomic-address)
+		    (if (eq (and addr #xffffff8) atomic-address)
 			(set atomic-reserve (const 0))
 			)
                     )
@@ -711,24 +732,33 @@
    )
 )
 
-(store-insn sw OPC_SW USI 4)
-(store-insn sb OPC_SB UQI 1)
-(store-insn sh OPC_SH UHI 2)
+(store-insn sd DI  8 OR64-MACHS)
+(store-insn sw USI 4 ORBIS-MACHS)
+(store-insn sb UQI 1 ORBIS-MACHS)
+(store-insn sh UHI 2 ORBIS-MACHS)
 
-(dni l-swa "l.swa simm16(reg)/reg"
-     ((MACH ORBIS-MACHS))
-     "l.swa ${simm16-split}($rA),$rB"
-     (+ OPC_SWA rA rB simm16)
-     (sequence ((SI addr) (BI flag))
-	       (set addr (load-store-addr rA simm16-split 4))
-	       (set sys-sr-f (and atomic-reserve (eq addr atomic-address)))
-	       (if sys-sr-f
-		   (set USI (mem USI addr) (trunc USI rB))
-		   )
-	       (set atomic-reserve (const 0))
-	       )
-     ()
+(define-pmacro (store-insn-atomic mnemonic mode size machs)
+  (begin
+    (dni (.sym l- mnemonic)
+	 (.str "l." mnemonic " simm16(reg)/reg")
+	 ((MACH machs))
+         (.str "l." mnemonic " ${simm16-split}($rA),$rB")
+         (+ (.sym OPC_ (.upcase mnemonic)) rA rB simm16-split)
+	 (sequence ((WI addr) (BI flag))
+	   (set addr (load-store-addr rA simm16-split size))
+	   (set sys-sr-f (and atomic-reserve (eq addr atomic-address)))
+	   (if sys-sr-f
+	       (set mode (mem mode addr) (trunc mode rB))
+	   )
+	   (set atomic-reserve (const 0))
+	 )
+	 ()
+    )
+  )
 )
+
+(store-insn-atomic sda DI 8 OR64-MACHS)
+(store-insn-atomic swa SI 4 ORBIS-MACHS)
 
 
 ; Shift and rotate instructions
