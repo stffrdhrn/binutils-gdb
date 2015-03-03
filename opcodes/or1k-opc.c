@@ -91,16 +91,12 @@ static const CGEN_IFMT ifmt_l_mtspr ATTRIBUTE_UNUSED = {
   32, 32, 0xfc000000, { { F (F_OPCODE) }, { F (F_R2) }, { F (F_R3) }, { F (F_UIMM16_SPLIT) }, { 0 } }
 };
 
-static const CGEN_IFMT ifmt_l_lwz ATTRIBUTE_UNUSED = {
+static const CGEN_IFMT ifmt_l_ld ATTRIBUTE_UNUSED = {
   32, 32, 0xfc000000, { { F (F_OPCODE) }, { F (F_R1) }, { F (F_R2) }, { F (F_SIMM16) }, { 0 } }
 };
 
-static const CGEN_IFMT ifmt_l_sw ATTRIBUTE_UNUSED = {
+static const CGEN_IFMT ifmt_l_sd ATTRIBUTE_UNUSED = {
   32, 32, 0xfc000000, { { F (F_OPCODE) }, { F (F_R2) }, { F (F_R3) }, { F (F_SIMM16_SPLIT) }, { 0 } }
-};
-
-static const CGEN_IFMT ifmt_l_swa ATTRIBUTE_UNUSED = {
-  32, 32, 0xfc000000, { { F (F_OPCODE) }, { F (F_R2) }, { F (F_R3) }, { F (F_SIMM16) }, { 0 } }
 };
 
 static const CGEN_IFMT ifmt_l_sll ATTRIBUTE_UNUSED = {
@@ -304,71 +300,95 @@ static const CGEN_OPCODE or1k_cgen_insn_opcode_table[MAX_INSNS] =
     { { MNEM, ' ', OP (RA), ',', OP (RB), ',', OP (UIMM16_SPLIT), 0 } },
     & ifmt_l_mtspr, { 0xc0000000 }
   },
+/* l.ld $rD,${simm16}($rA) */
+  {
+    { 0, 0, 0, 0 },
+    { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
+    & ifmt_l_ld, { 0x80000000 }
+  },
 /* l.lwz $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x84000000 }
+    & ifmt_l_ld, { 0x84000000 }
   },
 /* l.lws $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x88000000 }
+    & ifmt_l_ld, { 0x88000000 }
+  },
+/* l.lda $rD,${simm16}($rA) */
+  {
+    { 0, 0, 0, 0 },
+    { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
+    & ifmt_l_ld, { 0xe8000000 }
   },
 /* l.lwa $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x6c000000 }
+    & ifmt_l_ld, { 0x6c000000 }
   },
 /* l.lbz $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x8c000000 }
+    & ifmt_l_ld, { 0x8c000000 }
   },
 /* l.lbs $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x90000000 }
+    & ifmt_l_ld, { 0x90000000 }
   },
 /* l.lhz $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x94000000 }
+    & ifmt_l_ld, { 0x94000000 }
   },
 /* l.lhs $rD,${simm16}($rA) */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (SIMM16), '(', OP (RA), ')', 0 } },
-    & ifmt_l_lwz, { 0x98000000 }
+    & ifmt_l_ld, { 0x98000000 }
+  },
+/* l.sd ${simm16-split}($rA),$rB */
+  {
+    { 0, 0, 0, 0 },
+    { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
+    & ifmt_l_sd, { 0xd0000000 }
   },
 /* l.sw ${simm16-split}($rA),$rB */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
-    & ifmt_l_sw, { 0xd4000000 }
+    & ifmt_l_sd, { 0xd4000000 }
   },
 /* l.sb ${simm16-split}($rA),$rB */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
-    & ifmt_l_sw, { 0xd8000000 }
+    & ifmt_l_sd, { 0xd8000000 }
   },
 /* l.sh ${simm16-split}($rA),$rB */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
-    & ifmt_l_sw, { 0xdc000000 }
+    & ifmt_l_sd, { 0xdc000000 }
+  },
+/* l.sda ${simm16-split}($rA),$rB */
+  {
+    { 0, 0, 0, 0 },
+    { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
+    & ifmt_l_sd, { 0xec000000 }
   },
 /* l.swa ${simm16-split}($rA),$rB */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (SIMM16_SPLIT), '(', OP (RA), ')', ',', OP (RB), 0 } },
-    & ifmt_l_swa, { 0xcc000000 }
+    & ifmt_l_sd, { 0xcc000000 }
   },
 /* l.sll $rD,$rA,$rB */
   {
@@ -518,25 +538,25 @@ static const CGEN_OPCODE or1k_cgen_insn_opcode_table[MAX_INSNS] =
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (RA), ',', OP (SIMM16), 0 } },
-    & ifmt_l_lwz, { 0xac000000 }
+    & ifmt_l_ld, { 0xac000000 }
   },
 /* l.addi $rD,$rA,$simm16 */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (RA), ',', OP (SIMM16), 0 } },
-    & ifmt_l_lwz, { 0x9c000000 }
+    & ifmt_l_ld, { 0x9c000000 }
   },
 /* l.addic $rD,$rA,$simm16 */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (RA), ',', OP (SIMM16), 0 } },
-    & ifmt_l_lwz, { 0xa0000000 }
+    & ifmt_l_ld, { 0xa0000000 }
   },
 /* l.muli $rD,$rA,$simm16 */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RD), ',', OP (RA), ',', OP (SIMM16), 0 } },
-    & ifmt_l_lwz, { 0xb0000000 }
+    & ifmt_l_ld, { 0xb0000000 }
   },
 /* l.exths $rD,$rA */
   {

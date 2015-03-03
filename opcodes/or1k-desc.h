@@ -289,7 +289,8 @@ typedef enum insn_opcode {
  , OPC_SHROTI = 46, OPC_SFI = 47, OPC_MTSPR = 48, OPC_MAC = 49
  , OPC_FLOAT = 50, OPC_SWA = 51, OPC_SD = 52, OPC_SW = 53
  , OPC_SB = 54, OPC_SH = 55, OPC_ALU = 56, OPC_SF = 57
- , OPC_CUST5 = 60, OPC_CUST6 = 61, OPC_CUST7 = 62, OPC_CUST8 = 63
+ , OPC_LDA = 58, OPC_SDA = 59, OPC_CUST5 = 60, OPC_CUST6 = 61
+ , OPC_CUST7 = 62, OPC_CUST8 = 63
 } INSN_OPCODE;
 
 /* Enum declaration for systrapsync insn opcode enums.  */

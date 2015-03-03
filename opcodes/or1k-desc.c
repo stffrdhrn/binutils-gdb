@@ -1250,6 +1250,11 @@ static const CGEN_IBASE or1k_cgen_insn_table[MAX_INSNS] =
     OR1K_INSN_L_MTSPR, "l-mtspr", "l.mtspr", 32,
     { 0, { { { (1<<MACH_OR32)|(1<<MACH_OR32ND)|(1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
   },
+/* l.ld $rD,${simm16}($rA) */
+  {
+    OR1K_INSN_L_LD, "l-ld", "l.ld", 32,
+    { 0, { { { (1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
+  },
 /* l.lwz $rD,${simm16}($rA) */
   {
     OR1K_INSN_L_LWZ, "l-lwz", "l.lwz", 32,
@@ -1259,6 +1264,11 @@ static const CGEN_IBASE or1k_cgen_insn_table[MAX_INSNS] =
   {
     OR1K_INSN_L_LWS, "l-lws", "l.lws", 32,
     { 0, { { { (1<<MACH_OR32)|(1<<MACH_OR32ND)|(1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
+  },
+/* l.lda $rD,${simm16}($rA) */
+  {
+    OR1K_INSN_L_LDA, "l-lda", "l.lda", 32,
+    { 0, { { { (1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
   },
 /* l.lwa $rD,${simm16}($rA) */
   {
@@ -1285,6 +1295,11 @@ static const CGEN_IBASE or1k_cgen_insn_table[MAX_INSNS] =
     OR1K_INSN_L_LHS, "l-lhs", "l.lhs", 32,
     { 0, { { { (1<<MACH_OR32)|(1<<MACH_OR32ND)|(1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
   },
+/* l.sd ${simm16-split}($rA),$rB */
+  {
+    OR1K_INSN_L_SD, "l-sd", "l.sd", 32,
+    { 0, { { { (1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
+  },
 /* l.sw ${simm16-split}($rA),$rB */
   {
     OR1K_INSN_L_SW, "l-sw", "l.sw", 32,
@@ -1299,6 +1314,11 @@ static const CGEN_IBASE or1k_cgen_insn_table[MAX_INSNS] =
   {
     OR1K_INSN_L_SH, "l-sh", "l.sh", 32,
     { 0, { { { (1<<MACH_OR32)|(1<<MACH_OR32ND)|(1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
+  },
+/* l.sda ${simm16-split}($rA),$rB */
+  {
+    OR1K_INSN_L_SDA, "l-sda", "l.sda", 32,
+    { 0, { { { (1<<MACH_OR64)|(1<<MACH_OR64ND), 0 } } } }
   },
 /* l.swa ${simm16-split}($rA),$rB */
   {
