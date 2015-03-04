@@ -808,6 +808,34 @@ static reloc_howto_type or1k_elf_howto_table[] =
          0,                     /* Source Mask.  */
          0x03ffffff,            /* Dest Mask.  */
          TRUE),                 /* PC relative offset?  */
+
+  HOWTO (R_OR1K_64,
+         0,                     /* rightshift */
+         3,                     /* size (0 = byte, 1 = short, 2 = long) */
+         64,                    /* bitsize */
+         FALSE,                 /* pc_relative */
+         0,                     /* bitpos */
+         complain_overflow_unsigned, /* complain_on_overflow */
+         bfd_elf_generic_reloc, /* special_function */
+         "R_OR1K_64",           /* name */
+         FALSE,                 /* partial_inplace */
+         0,                     /* src_mask */
+         -1,			/* dst_mask */
+         FALSE),                /* pcrel_offset */
+
+  HOWTO (R_OR1K_64_PCREL,
+         0,                     /* rightshift */
+         3,                     /* size (0 = byte, 1 = short, 2 = long) */
+         64,                    /* bitsize */
+         TRUE,                  /* pc_relative */
+         0,                     /* bitpos */
+         complain_overflow_signed, /* complain_on_overflow */
+         bfd_elf_generic_reloc, /* special_function */
+         "R_OR1K_64_PCREL",     /* name */
+         FALSE,                 /* partial_inplace */
+         0,                     /* src_mask */
+         -1,                    /* dst_mask */
+         TRUE),                 /* pcrel_offset */
 };
 
 /* Map BFD reloc types to Or1k ELF reloc types.  */
@@ -871,6 +899,8 @@ static const struct or1k_reloc_map or1k_reloc_map[] =
   { BFD_RELOC_OR1K_TLS_IE_LO13,	R_OR1K_TLS_IE_LO13 },
   { BFD_RELOC_OR1K_SLO13,	R_OR1K_SLO13 },
   { BFD_RELOC_OR1K_PLTA26,	R_OR1K_PLTA26 },
+  { BFD_RELOC_64,               R_OR1K_64 },
+  { BFD_RELOC_64_PCREL,         R_OR1K_64_PCREL },
 };
 
 /* The linker needs to keep track of the number of relocs that it
@@ -1534,11 +1564,11 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	  break;
 
 	case R_OR1K_32:
-	  /* R_OR1K_16? */
+        case R_OR1K_64:
 	  {
-	    /* r_symndx will be STN_UNDEF (zero) only for relocs against symbols
-	       from removed linkonce sections, or sections discarded by
-	       a linker script.  */
+	    /* r_symndx will be STN_UNDEF (zero) only for relocs against
+	       symbols from removed linkonce sections, or sections discarded
+	       by a linker script.  */
 	    if (r_symndx == STN_UNDEF
 		|| (input_section->flags & SEC_ALLOC) == 0)
 	      break;
@@ -1580,6 +1610,13 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		      {
 			outrel.r_info = ELF32_R_INFO (0, R_OR1K_RELATIVE);
 			outrel.r_addend = relocation + rel->r_addend;
+
+		    /* ??? When embedding 64-bit binaries in an elf32 file,
+		       assume that we'll also map them info the low 32 bits
+		       of the address space.  Thus the reloc should apply
+		       to the low 32 bits of the value.  */
+		    if (r_type == R_OR1K_64)
+		      outrel.r_offset += 4;
 		      }
 		    else
 		      {
