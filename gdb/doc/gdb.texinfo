@@ -22026,6 +22026,7 @@ acceptable commands.
 * M68K::                        Motorola M68K
 * MicroBlaze::			Xilinx MicroBlaze
 * MIPS Embedded::               MIPS Embedded
+* OpenRISC 1000::               OpenRISC 1000 (or1k)
 * PowerPC Embedded::            PowerPC Embedded
 * AVR::                         Atmel AVR
 * CRIS::                        CRIS
