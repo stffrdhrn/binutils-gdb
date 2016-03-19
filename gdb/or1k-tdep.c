@@ -87,7 +87,6 @@
    been removed.                                                             */
 /*---------------------------------------------------------------------------*/
 
-#include "demangle.h"
 #include "defs.h"
 #include <string.h>
 #include "frame.h"
