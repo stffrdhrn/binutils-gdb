@@ -423,7 +423,7 @@ nios2*-*-*)
 
 or1k-*-linux*)
 	# Target: OpenCores OpenRISC 1000 32-bit implementation for Linux
-	gdb_target_obs="or1k-tdep.o corelow.o"
+	gdb_target_obs="or1k-tdep.o"
         gdb_sim=../sim/or1k/libsim.a
 	build_gdbserver=yes
 	;;
@@ -436,7 +436,7 @@ or1k-*-*)
 
 or1knd-*-linux*)
 	# Target: OpenCores OpenRISC 1000 32-bit implementation for Linux, without delay slot
-	gdb_target_obs="or1k-tdep.o corelow.o"
+	gdb_target_obs="or1k-tdep.o"
         gdb_sim=../sim/or1k/libsim.a
 	build_gdbserver=yes
 	;;
