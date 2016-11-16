@@ -87,9 +87,7 @@
    been removed.                                                             */
 /*---------------------------------------------------------------------------*/
 
-#include "demangle.h"
 #include "defs.h"
-#include <string.h>
 #include "frame.h"
 #include "inferior.h"
 #include "symtab.h"
@@ -165,13 +163,10 @@ or1k_fetch_instruction (struct gdbarch *gdbarch,
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   gdb_byte        buf[OR1K_INSTLEN];
-  int             status;
 
-  status = target_read_memory (addr, buf, OR1K_INSTLEN);
-
-  if (status)
+  if (target_read_memory (addr, buf, OR1K_INSTLEN))
     {
-      memory_error (status, addr);
+      memory_error (TARGET_XFER_E_IO, addr);
     }
 
   return  extract_unsigned_integer (buf, OR1K_INSTLEN, byte_order);
@@ -638,7 +633,7 @@ or1k_pseudo_register_read (struct gdbarch  *gdbarch,
 			   int              regnum,
 			   gdb_byte        *buf)
 {
-  return 0;
+  return REG_UNKNOWN;
 }	/* or1k_pseudo_register_read() */
 
 
@@ -1545,7 +1540,7 @@ or1k_frame_cache (struct frame_info  *this_frame,
   /* Nothing to do if we already have this info */
   if (NULL != *prologue_cache)
     {
-      return *prologue_cache;
+      return (struct trad_frame_cache *) *prologue_cache;
     }
 
   /* Get a new prologue cache and populate it with default values */
@@ -2037,7 +2032,7 @@ or1k_gdbarch_init (struct gdbarch_info  info,
      know which target we are talking to, but put in some defaults for now. */
 
   binfo                   = info.bfd_arch_info;
-  tdep                    = xmalloc (sizeof *tdep);
+  tdep                    = XNEW (struct gdbarch_tdep);
   tdep->num_matchpoints   = OR1K_MAX_MATCHPOINTS;
   tdep->num_gpr_regs      = OR1K_MAX_GPR_REGS;
   tdep->bytes_per_word    = binfo->bits_per_word    / binfo->bits_per_byte;
