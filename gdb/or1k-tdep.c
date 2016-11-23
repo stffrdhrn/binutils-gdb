@@ -124,6 +124,14 @@
 
 
 
+/* Enum describing different kinds of breakpoints for or1k */
+
+enum or1k_breakpoint_kind
+{
+  /* 32-bit standard OpenRISC breakpoint */
+  OR1K_BP_KIND_OR1K = 2,
+};
+
 /* The gdbarch_tdep structure.  */
 
 /*! OR1K specific per-architecture information. Replaces
@@ -526,6 +534,25 @@ or1k_return_value (struct gdbarch  *gdbarch,
 }	/* or1k_return_value() */
 
 
+
+/*----------------------------------------------------------------------------*/
+/*!Determine the kind of breakpoint based on the current pc
+
+   Given the pc address, return the type of breapoint that should be used.
+   For or1k we only use one type which is a 32-bit trap instruction.
+
+   @param[in]  gdbarch  The GDB architecture being used
+   @param[in]  pcptr    The program counter address in question
+
+   @return  The breakpoint type */
+/*----------------------------------------------------------------------------*/
+
+static int
+or1k_breakpoint_kind_from_pc (struct gdbarch *gdbarch, CORE_ADDR *pcptr)
+{
+  return OR1K_BP_KIND_OR1K;
+}	/* or1k_breakpoint_kind_from_pc() */
+
 /*----------------------------------------------------------------------------*/
 /*!Determine the instruction to use for a breakpoint.
 
@@ -543,16 +570,22 @@ or1k_return_value (struct gdbarch  *gdbarch,
 /*---------------------------------------------------------------------------*/
 
 static const gdb_byte *
-or1k_breakpoint_from_pc (struct gdbarch *gdbarch,
-			 CORE_ADDR      *bp_addr,
-			 int            *bp_size)
+or1k_sw_breakpoint_from_kind (struct gdbarch *gdbarch, int kind, int *size)
 {
-  static const gdb_byte breakpoint[] = OR1K_BRK_INSTR_STRUCT;
 
-  *bp_size = OR1K_INSTLEN;
-  return breakpoint;
-
-}	/* or1k_breakpoint_from_pc() */
+  switch (kind)
+    {
+    case OR1K_BP_KIND_OR1K:
+      {
+        static const gdb_byte breakpoint[] = OR1K_BRK_INSTR_STRUCT;
+        
+        *size = OR1K_INSTLEN;
+        return breakpoint;
+      }
+    default:
+      gdb_assert_not_reached ("unexpected or1k breakpoint kind");
+    };
+}	/* or1k_sw_breakpoint_from_kind() */
 
 
 /*----------------------------------------------------------------------------*/
@@ -2056,7 +2089,8 @@ or1k_gdbarch_init (struct gdbarch_info  info,
 
   /* Information about the target architecture */
   set_gdbarch_return_value          (gdbarch, or1k_return_value);
-  set_gdbarch_breakpoint_from_pc    (gdbarch, or1k_breakpoint_from_pc);
+  set_gdbarch_breakpoint_kind_from_pc (gdbarch, or1k_breakpoint_kind_from_pc);
+  set_gdbarch_sw_breakpoint_from_kind (gdbarch, or1k_sw_breakpoint_from_kind);
   set_gdbarch_have_nonsteppable_watchpoint
                                     (gdbarch, 1);
 
