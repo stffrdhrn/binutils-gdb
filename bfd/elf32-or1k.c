@@ -2119,6 +2119,7 @@ or1k_elf_check_relocs (bfd *abfd,
         case R_OR1K_AHI16:
         case R_OR1K_SLO16:
 	case R_OR1K_32:
+        case R_OR1K_64:
         case R_OR1K_PCREL_PG21:
         case R_OR1K_LO13:
         case R_OR1K_SLO13:
