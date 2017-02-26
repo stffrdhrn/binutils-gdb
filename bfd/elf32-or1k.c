@@ -1302,7 +1302,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
   asection *sreloc;
   bfd_vma *local_got_offsets;
   asection *sgot, *splt;
-  bfd_vma plt_base, got_base;
+  bfd_vma plt_base, got_base, got_sym_value;
   bfd_boolean ret_val = TRUE;
 
   if (htab == NULL)
@@ -1319,9 +1319,15 @@ or1k_elf_relocate_section (bfd *output_bfd,
     plt_base = splt->output_section->vma + splt->output_offset;
 
   sgot = htab->root.sgot;
-  got_base = 0;
+  got_sym_value = got_base = 0;
   if (sgot != NULL)
+    {
+      struct elf_link_hash_entry *hgot = htab->root.hgot;
+      got_sym_value = (hgot->root.u.def.value
+		       + hgot->root.u.def.section->output_section->vma
+		       + hgot->root.u.def.section->output_offset);
     got_base = sgot->output_section->vma + sgot->output_offset;
+    }
 
   symtab_hdr = &elf_tdata (input_bfd)->symtab_hdr;
   sym_hashes = elf_sym_hashes (input_bfd);
@@ -1497,12 +1503,11 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		}
 	    }
 
-	    /* The GOT_PG21 and GOT_LO13 relocs are pc-relative, while
-	       the GOT16 reloc is GOT relative.  */
-	    if (r_type == R_OR1K_GOT16)
-	      relocation = sgot->output_offset + off;
-	    else
+	    /* The GOT_PG21 and GOT_LO13 relocs are pc-relative,
+	       while the GOT16 reloc is GOT relative.  */
 	      relocation = got_base + off;
+	    if (r_type == R_OR1K_GOT16)
+	      relocation -= got_sym_value;
 
 	  /* Addend should be zero.  */
 	  if (rel->r_addend != 0)
@@ -1530,7 +1535,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	      ret_val = FALSE;
 	      bfd_set_error (bfd_error_bad_value);
 	    }
-	  relocation -= got_base;
+	  relocation -= got_sym_value;
 	  break;
 
 	case R_OR1K_INSN_REL_26:
@@ -1576,11 +1581,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    /* Emit a direct relocation if the symbol is dynamic,
 	       or a RELATIVE reloc for shared objects.  We can omit
 	       RELATIVE relocs to local undefweak symbols.  */
-	    if (bfd_link_pic (info)
-		? (h == NULL
-		     || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
-		     || h->root.type != bfd_link_hash_undefweak)
-		: _bfd_elf_dynamic_symbol_p (h, info, 0))
+	    if (bfd_link_pic (info) && h->non_got_ref)
 	      {
 		Elf_Internal_Rela outrel;
 		bfd_byte *loc;
@@ -1769,14 +1770,13 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	      }
 
 	    /* The PG21 and LO13 relocs are pc-relative, while the
-	       reset are GOT relative.  */
-	    if (r_type == R_OR1K_TLS_GD_PG21
+	       rest are GOT relative.  */
+	    relocation = got_base + gotoff;
+	    if (!(r_type == R_OR1K_TLS_GD_PG21
 		|| r_type == R_OR1K_TLS_GD_LO13
 		|| r_type == R_OR1K_TLS_IE_PG21
-		|| r_type == R_OR1K_TLS_IE_LO13)
-	      relocation = got_base + gotoff;
-	    else
-	    relocation = sgot->output_offset + gotoff;
+		  || r_type == R_OR1K_TLS_IE_LO13))
+	      relocation -= got_sym_value;
 	  }
           break;
 
