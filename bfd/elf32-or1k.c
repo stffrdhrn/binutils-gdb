@@ -1581,7 +1581,16 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    /* Emit a direct relocation if the symbol is dynamic,
 	       or a RELATIVE reloc for shared objects.  We can omit
 	       RELATIVE relocs to local undefweak symbols.  */
-	    if (bfd_link_pic (info) && h->non_got_ref)
+	    if (bfd_link_pic (info)
+		? (h == NULL
+		   || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
+		   || h->root.type != bfd_link_hash_undefweak)
+		: (h != NULL
+		   && h->dynindx != -1
+		   && !h->non_got_ref
+		   && ((h->def_dynamic && !h->def_regular)
+		       || h->root.type == bfd_link_hash_undefweak
+		       || h->root.type == bfd_link_hash_undefined)))
 	      {
 		Elf_Internal_Rela outrel;
 		bfd_byte *loc;
