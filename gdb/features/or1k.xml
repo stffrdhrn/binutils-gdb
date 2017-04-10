@@ -18,7 +18,7 @@
    <reg name="r6" bitsize="32" type="int"/>
    <reg name="r7" bitsize="32" type="int"/>
    <reg name="r8" bitsize="32" type="int"/>
-   <reg name="r9" bitsize="32" type="int"/>
+   <reg name="r9" bitsize="32" type="code_ptr"/>
    <reg name="r10" bitsize="32" type="int"/>
    <reg name="r11" bitsize="32" type="int"/>
    <reg name="r12" bitsize="32" type="int"/>
