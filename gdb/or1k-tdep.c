@@ -49,6 +49,18 @@
 #include "features/or1k.c"
 
 
+/* Global debug flag.  */
+
+static unsigned int or1k_debug = 0;
+
+static void
+show_or1k_debug (struct ui_file *file, int from_tty,
+		  struct cmd_list_element *c, const char *value)
+{
+  fprintf_filtered (file, _("OpenRISC debugging is %s.\n"), value);
+}
+
+
 /* The target-dependent structure for gdbarch.  */
 
 struct gdbarch_tdep
@@ -522,13 +534,13 @@ or1k_unwind_pc (struct gdbarch *gdbarch, struct frame_info *next_frame)
 {
   CORE_ADDR pc;
 
-  if (frame_debug)
+  if (or1k_debug)
     fprintf_unfiltered (gdb_stdlog, "or1k_unwind_pc, next_frame=%d\n",
 			frame_relative_level (next_frame));
 
   pc = frame_unwind_register_unsigned (next_frame, OR1K_NPC_REGNUM);
 
-  if (frame_debug)
+  if (or1k_debug)
     fprintf_unfiltered (gdb_stdlog, "or1k_unwind_pc, pc=0x%p\n",
 			(void *) pc);
 
@@ -542,13 +554,13 @@ or1k_unwind_sp (struct gdbarch *gdbarch, struct frame_info *next_frame)
 {
   CORE_ADDR sp;
 
-  if (frame_debug)
+  if (or1k_debug)
     fprintf_unfiltered (gdb_stdlog, "or1k_unwind_sp, next_frame=%d\n",
 			frame_relative_level (next_frame));
 
   sp = frame_unwind_register_unsigned (next_frame, OR1K_SP_REGNUM);
 
-  if (frame_debug)
+  if (or1k_debug)
     fprintf_unfiltered (gdb_stdlog, "or1k_unwind_sp, sp=0x%p\n",
 			(void *) sp);
 
@@ -620,7 +632,7 @@ or1k_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
       struct value *arg = args[argnum];
       struct type *arg_type = check_typedef (value_type (arg));
-      int len = arg_type->length;
+      int len = TYPE_LENGTH (arg_type);
       enum type_code typecode = TYPE_CODE (arg_type);
 
       if (TYPE_VARARGS (func_type) && argnum >= TYPE_NFIELDS (func_type))
@@ -710,7 +722,7 @@ or1k_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
     {
       struct value *arg = args[argnum];
       struct type *arg_type = check_typedef (value_type (arg));
-      int len = arg_type->length;
+      int len = TYPE_LENGTH (arg_type);
       enum type_code typecode = TYPE_CODE (arg_type);
 
       if ((TYPE_CODE_STRUCT == typecode) || (TYPE_CODE_UNION == typecode)
@@ -742,7 +754,7 @@ or1k_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
       struct value *arg = args[argnum];
       struct type *arg_type = check_typedef (value_type (arg));
-      int len = arg_type->length;
+      int len = TYPE_LENGTH (arg_type);
       enum type_code typecode = TYPE_CODE (arg_type);
       /* The EABI passes structures that do not fit in a register by
          reference.  In all other cases, pass the structure by value.  */
@@ -868,7 +880,7 @@ or1k_frame_cache (struct frame_info *this_frame, void **prologue_cache)
   CORE_ADDR start_addr;
   CORE_ADDR end_addr;
 
-  if (frame_debug)
+  if (or1k_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"or1k_frame_cache, prologue_cache = 0x%p\n",
 			*prologue_cache);
@@ -894,7 +906,7 @@ or1k_frame_cache (struct frame_info *this_frame, void **prologue_cache)
   /* Return early if GDB couldn't find the function.  */
   if (start_addr == 0)
     {
-      if (frame_debug)
+      if (or1k_debug)
 	fprintf_unfiltered (gdb_stdlog, "  couldn't find function\n");
 
       /* JPB: 28-Apr-11.  This is a temporary patch, to get round GDB
@@ -1054,7 +1066,7 @@ or1k_frame_cache (struct frame_info *this_frame, void **prologue_cache)
   /* Build the frame ID */
   trad_frame_set_id (info, frame_id_build (this_sp_for_id, start_addr));
 
-  if (frame_debug)
+  if (or1k_debug)
     {
       fprintf_unfiltered (gdb_stdlog, "  this_sp_for_id = 0x%p\n",
 			  (void *) this_sp_for_id);
@@ -1283,4 +1295,13 @@ _initialize_or1k_tdep (void)
   gdbarch_register (bfd_arch_or1k, or1k_gdbarch_init, or1k_dump_tdep);
 
   initialize_tdesc_or1k ();
+
+  /* Debugging flag.  */
+  add_setshow_zuinteger_cmd ("or1k", class_maintenance, &or1k_debug,
+			     _("Set OpenRISC debugging."),
+			     _("Show OpenRISC debugging."),
+			     _("When on, OpenRISC specific debugging is enabled."),
+			     NULL,
+			     show_or1k_debug,
+			     &setdebuglist, &showdebuglist);
 }
