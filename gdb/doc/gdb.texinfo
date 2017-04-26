@@ -22297,9 +22297,9 @@ As usual, you can inquire about the @code{mipsfpu} variable with
 @cindex OpenRISC 1000
 
 @noindent
-The OpenRISC 1000 provides a free and open RISC instruction set
-architecture.  It is mainly provided as a soft-core which can run on
-Xilinx, Altera and other FPGA's.
+The OpenRISC 1000 provides a free RISC instruction set architecture.  It is
+mainly provided as a soft-core which can run on Xilinx, Altera and other
+FPGA's.
 
 @value{GDBN} for OpenRISC supports the below commands when connecting to
 a target:
