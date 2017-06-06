@@ -1,0 +1,71 @@
+# This testcase is part of GDB, the GNU debugger.
+
+# Copyright 2014-2017 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Test listing reggroups and the registers in each group.
+
+standard_testfile
+
+if {[prepare_for_testing "failed to prepare" $testfile $srcfile debug]} {
+    return -1
+}
+
+if ![runto_main] then {
+    fail "can't run to main"
+    return 0
+}
+
+proc fetch_reggroups {test} {
+    global gdb_prompt
+    global expect_out
+
+    set reggroups {}
+    set bad -1
+    gdb_test_multiple "maint print reggroups" "get reggroups" {
+	-re "maint print reggroups\r\n" {
+	    exp_continue
+	}
+	-re "^ Group\[ \t\]+Type\[ \t\]+\r\n" {
+	    exp_continue
+	}
+	-re "^ (\[0-9a-zA-Z\-\]+)\[ \t\]+(user|internal)\[ \t\]+\r\n" {
+	    lappend reggroups $expect_out(1,string)
+	    exp_continue
+	}
+	-re ".*$gdb_prompt $" {
+	    if { [llength $reggroups] != 0 } {
+		incr bad
+	    } else {
+		set bad 1
+	    }
+	}
+    }
+
+    if {$bad} {
+	fail $test
+	return {}
+    }
+
+    pass $test
+    return $reggroups
+}
+
+set reggroups [fetch_reggroups "fetch reggroups"]
+set reggroup ""
+
+foreach reggroup [lrange $reggroups 0 end] {
+    gdb_test "info reg $reggroup" ".*" "info reg $reggroup"
+}
