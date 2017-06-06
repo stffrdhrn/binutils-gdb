@@ -3423,13 +3423,17 @@ interrupt all running threads in non-stop mode, use the -a option."));
 
   c = add_info ("registers", nofp_registers_info, _("\
 List of integer registers and their contents, for selected stack frame.\n\
-Register name as argument means describe only that register."));
+Register name as argument means describe only that register.\n\
+Register group name as argument means describe the registers in the\n\
+named register group."));
   add_info_alias ("r", "registers", 1);
   set_cmd_completer (c, reg_or_group_completer);
 
   c = add_info ("all-registers", all_registers_info, _("\
 List of all registers and their contents, for selected stack frame.\n\
-Register name as argument means describe only that register."));
+Register name as argument means describe only that register.\n\
+Register group name as argument means describe the registers in the\n\
+named register group."));
   set_cmd_completer (c, reg_or_group_completer);
 
   add_info ("program", program_info,
