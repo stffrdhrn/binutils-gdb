@@ -3,6 +3,10 @@
 
 *** Changes since GDB 8.0
 
+* GDB now supports dynamically creating arbitrary register groups specified
+  in xml target descriptors.  This allows for finer grain grouping of
+  registers on systems with a large amount of registers.
+
 *** Changes in GDB 8.0
 
 * GDB now supports access to the PKU register on GNU/Linux. The register is
