@@ -46,6 +46,18 @@ reggroup_new (const char *name, enum reggroup_type type)
   return group;
 }
 
+struct reggroup *
+reggroup_gdbarch_new (struct gdbarch *gdbarch, const char *name,
+		      enum reggroup_type type)
+{
+  struct reggroup *group = GDBARCH_OBSTACK_ZALLOC (gdbarch,
+						   struct reggroup);
+
+  group->name = gdbarch_obstack_strdup (gdbarch, name);
+  group->type = type;
+  return group;
+}
+
 /* Register group attributes.  */
 
 const char *
