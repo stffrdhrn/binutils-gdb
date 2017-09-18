@@ -1,3 +1,11 @@
+#define WITH_TARGET_WORD_BITSIZE 64
+#define WITH_TARGET_ADDRESS_BITSIZE 64
+#define WITH_TARGET_CELL_BITSIZE 64
+#define WITH_TARGET_WORD_MSB 0
+#define WITH_HOST_WORD_BITSIZE 32
+#define WITH_TARGET_BYTE_ORDER BFD_ENDIAN_BIG
+#define DEFAULT_INLINE 0
+
 #define ASSERT(EXPRESSION) \
 do { \
   if (!(EXPRESSION)) { \
@@ -7,21 +15,22 @@ do { \
   } \
 } while (0)
 
-#define SIM_BITS_INLINE (INCLUDE_MODULE | INCLUDED_BY_MODULE)
+#include "config.h"
+#include <stdlib.h>
 
+/* From SoftFloat and TestFloat.  */
 #include "milieu.h"
 #include "softfloat.h"
 #include "systfloat.h"
 #include "systmodes.h"
 
-/* #define SIM_FPU_INLINE (INCLUDE_MODULE | INCLUDED_BY_MODULE) */
-
-
+#include "sim-types.h"
+#include "sim-inline.h"
 #include "sim-bits.h"
 #include "sim-fpu.h"
+
 #include "sim-fpu.c"
-
-
+#include "sim-bits.c"
 
 static int flags;
 
@@ -45,6 +54,7 @@ syst_float_flags_clear ()
 	case sim_fpu_status_invalid_cvi:
 	case sim_fpu_status_invalid_cmp:
 	case sim_fpu_status_invalid_sqrt:
+	case sim_fpu_status_invalid_irx:
 	  old_flags |= float_flag_invalid; /* v */
 	  break;
 	case sim_fpu_status_inexact:
@@ -91,6 +101,10 @@ syst_float_set_rounding_mode(int8 mode)
     }
 }
 
+void
+syst_float_set_rounding_precision (int8 precision)
+{
+}
 
 float32
 syst_int32_to_float32(int32 a)
@@ -113,6 +127,26 @@ syst_int32_to_float64( int32 a )
   return z;
 }
 
+float64
+syst_int64_to_float64 (int64 a)
+{
+  float64 z;
+  sim_fpu s;
+  flags |= sim_fpu_i64to (&s, a, rounding_mode);
+  sim_fpu_to64 (&z, &s);
+  return z;
+}
+
+float32
+syst_int64_to_float32 (int64 a)
+{
+  float32 z;
+  sim_fpu s;
+  flags |= sim_fpu_i64to (&s, a, rounding_mode);
+  sim_fpu_to32 (&z, &s);
+  return z;
+}
+
 int32
 syst_float32_to_int32_round_to_zero( float32 a )
 {
@@ -120,6 +154,26 @@ syst_float32_to_int32_round_to_zero( float32 a )
   sim_fpu s;
   sim_fpu_32to (&s, a);
   flags |= sim_fpu_to32i (&z, &s, sim_fpu_round_zero);
+  return z;
+}
+
+int64
+syst_float64_to_int64_round_to_zero (float64 a)
+{
+  int64 z;
+  sim_fpu s;
+  sim_fpu_64to (&s, a);
+  flags |= sim_fpu_to64i (&z, &s, sim_fpu_round_zero);
+  return z;
+}
+
+int64
+syst_float32_to_int64_round_to_zero (float32 a)
+{
+  int64 z;
+  sim_fpu s;
+  sim_fpu_32to (&s, a);
+  flags |= sim_fpu_to64i (&z, &s, sim_fpu_round_zero);
   return z;
 }
 
@@ -221,6 +275,34 @@ float32 syst_float32_div( float32 a, float32 b )
   flags |= sim_fpu_div (&ans, &A, &B);
   flags |= sim_fpu_round_32 (&ans, rounding_mode, 0);
   sim_fpu_to32 (&z, &ans);
+  return z;
+}
+
+float32
+syst_float32_rem (float32 a, float32 b)
+{
+  float32 z;
+  sim_fpu A;
+  sim_fpu B;
+  sim_fpu ans;
+  sim_fpu_32to (&A, a);
+  sim_fpu_32to (&B, b);
+  flags |= sim_fpu_rem (&ans, &A, &B);
+  sim_fpu_to32 (&z, &ans);
+  return z;
+}
+
+float64
+syst_float64_rem (float64 a, float64 b)
+{
+  float64 z;
+  sim_fpu A;
+  sim_fpu B;
+  sim_fpu ans;
+  sim_fpu_64to (&A, a);
+  sim_fpu_64to (&B, b);
+  flags |= sim_fpu_rem (&ans, &A, &B);
+  sim_fpu_to64 (&z, &ans);
   return z;
 }
 

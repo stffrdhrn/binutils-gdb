@@ -14,10 +14,12 @@
 
 #define SIM_BITS_INLINE (INCLUDE_MODULE | INCLUDED_BY_MODULE)
 
+#include "config.h"
+
 #include <string.h>
+#include <stdlib.h>
 
 #include "sim-basics.h"
-
 #include "sim-alu.h"
 
 #include <stdio.h>

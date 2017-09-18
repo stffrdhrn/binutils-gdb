@@ -18,7 +18,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 
+#include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 
 void
@@ -56,7 +59,7 @@ gen_bit (int bitsize,
   for (i = 0; i < nr_bits; i++)
     {
       /* compute what we think the value is */
-      unsigned long long bit = 1;
+      uint64_t bit = 1;
       if (msb == 0)
 	bit <<= nr_bits - i - 1;
       else
@@ -67,8 +70,8 @@ gen_bit (int bitsize,
       printf ("  { __LINE__, ");
       printf ("%d, %2d, ", -1, i);
       printf ("%s (%2d), ", macro, i);
-      printf ("UNSIGNED64 (0x%08lx%08lx), ",
-	      (long) (bit >> 32), (long) bit);
+      printf ("UNSIGNED64 (0x%08x%08x), ",
+	      (int32_t) (bit >> 32), (int32_t) bit);
       printf ("},\n");
     }
   printf ("};\n");
@@ -117,11 +120,11 @@ gen_mask (int bitsize,
 	      || (strcmp (macro, "") == 0))
 	    {
 	      /* compute the mask */
-	      unsigned long long mask = 0;
+	      uint64_t mask = 0;
 	      int b;
 	      for (b = 0; b < nr_bits; b++)
 		{
-		  unsigned long long bit = 1;
+		  uint64_t bit = 1;
 		  if (strcmp (msb, "MS") == 0)
 		    {
 		      if ((l <= b && b <= h)
@@ -141,11 +144,11 @@ gen_mask (int bitsize,
 		  mask |= bit;
 		}
 	      if (bitsize == 32)
-		mask = (unsigned long) mask;
+		mask = (uint32_t) mask;
 	      printf ("%d, %d, ", l, h);
 	      printf ("%s%s (%2d, %2d), ", msb, macro, l, h);
-	      printf ("UNSIGNED64 (0x%08lx%08lx), ",
-		      (long) (mask >> 32), (long) mask);
+	      printf ("UNSIGNED64 (0x%08x%08x), ",
+		      (int32_t) (mask >> 32), (int32_t) mask);
 	    }
 	  else
 	    printf ("-1, -1, ");
@@ -185,6 +188,7 @@ usage (int reason)
       fprintf (stderr, "Invalid <byte-order> argument\n");
       break;
     default:
+      break;
     }
 
   exit (1);
@@ -231,14 +235,19 @@ main (int argc, char *argv[])
     usage (4);
 
   printf ("#define WITH_TARGET_WORD_BITSIZE %d\n", bitsize);
+  printf ("#define WITH_TARGET_ADDRESS_BITSIZE %d\n", bitsize);
+  printf ("#define WITH_TARGET_CELL_BITSIZE %d\n", bitsize);
   printf ("#define WITH_TARGET_WORD_MSB %d\n", msb);
-  printf ("#define WITH_HOST_WORD_BITSIZE %d\n", sizeof (int) * 8);
+  printf ("#define WITH_HOST_WORD_BITSIZE %ld\n", sizeof (int) * 8);
   printf ("#define WITH_TARGET_BYTE_ORDER %s\n", big_endian ? "BFD_ENDIAN_BIG" : "BFD_ENDIAN_LITTLE");
   printf ("\n");
   printf ("#define SIM_BITS_INLINE (ALL_H_INLINE)\n");
   printf ("\n");
   printf ("#define ASSERT(X) do { if (!(X)) abort(); } while (0)\n");
   printf ("\n");
+  printf ("#include \"config.h\"\n");
+  printf ("#include <stdlib.h>\n");
+  printf ("#include <string.h>\n");
   printf ("#include \"sim-basics.h\"\n");
 
   gen_struct ();
