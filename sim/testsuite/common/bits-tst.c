@@ -1,5 +1,8 @@
 # 2 "bits-tst.c"
 
+#include <stdlib.h>
+#include <string.h>
+
 /* Drive the bit test routines */
 
 
