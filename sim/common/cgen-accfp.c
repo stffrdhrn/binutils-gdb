@@ -345,7 +345,7 @@ static SI
 fixsfsi (CGEN_FPU* fpu, int how UNUSED, SF x)
 {
   sim_fpu op1;
-  unsigned32 res;
+  signed32 res;
 
   sim_fpu_32to (&op1, x);
   sim_fpu_to32i (&res, &op1, sim_fpu_round_near);
@@ -356,7 +356,7 @@ static SI
 fixdfsi (CGEN_FPU* fpu, int how UNUSED, DF x)
 {
   sim_fpu op1;
-  unsigned32 res;
+  signed32 res;
 
   sim_fpu_64to (&op1, x);
   sim_fpu_to32i (&res, &op1, sim_fpu_round_near);
