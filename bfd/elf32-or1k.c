@@ -3303,7 +3303,6 @@ elf32_or1k_merge_private_bfd_data (bfd *ibfd, struct bfd_link_info *info)
 #define elf_info_to_howto               or1k_info_to_howto_rela
 #define elf_backend_relocate_section    or1k_elf_relocate_section
 #define elf_backend_gc_mark_hook        or1k_elf_gc_mark_hook
-#define elf_backend_gc_sweep_hook       or1k_elf_gc_sweep_hook
 #define elf_backend_check_relocs        or1k_elf_check_relocs
 #define elf_backend_reloc_type_class    or1k_elf_reloc_type_class
 #define elf_backend_can_gc_sections     1
