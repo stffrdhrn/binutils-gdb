@@ -828,6 +828,7 @@ extern const bfd_target s390_elf32_vec;
 extern const bfd_target s390_elf64_vec;
 extern const bfd_target score_elf32_be_vec;
 extern const bfd_target score_elf32_le_vec;
+extern const bfd_target smh_elf32_vec;
 extern const bfd_target sh64_elf32_vec;
 extern const bfd_target sh64_elf32_le_vec;
 extern const bfd_target sh64_elf32_linux_vec;
@@ -1350,6 +1351,8 @@ static const bfd_target * const _bfd_target_vector[] =
 	&score_elf32_be_vec,
 	&score_elf32_le_vec,
 #endif
+
+	&smh_elf32_vec,
 
 #ifdef BFD64
 	&sh64_elf32_vec,

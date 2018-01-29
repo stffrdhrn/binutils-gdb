@@ -1576,6 +1576,10 @@ case "${targ}" in
     ;;
 #endif
 
+  smh-*-elf)
+    targ_defvec=smh_elf32_vec
+    ;;
+
   sh*-*-netbsdelf*)
     targ_defvec=sh_elf32_nbsd_vec
     targ_selvecs="sh_elf32_nbsd_le_vec sh_coff_vec sh_coff_le_vec"

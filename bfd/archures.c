@@ -307,6 +307,8 @@ DESCRIPTION
 .  bfd_arch_z8k,       {* Zilog Z8000.  *}
 .#define bfd_mach_z8001		1
 .#define bfd_mach_z8002		2
+.  bfd_arch_smh,       {* The Stafford Horne dummy architecture.  *}
+.#define bfd_mach_smh		1
 .  bfd_arch_h8500,     {* Renesas H8/500 (formerly Hitachi H8/500).  *}
 .  bfd_arch_sh,	       {* Renesas / SuperH SH (formerly Hitachi SH).  *}
 .#define bfd_mach_sh				1
@@ -647,6 +649,7 @@ extern const bfd_arch_info_type bfd_rl78_arch;
 extern const bfd_arch_info_type bfd_rx_arch;
 extern const bfd_arch_info_type bfd_s390_arch;
 extern const bfd_arch_info_type bfd_score_arch;
+extern const bfd_arch_info_type bfd_smh_arch;
 extern const bfd_arch_info_type bfd_sh_arch;
 extern const bfd_arch_info_type bfd_sparc_arch;
 extern const bfd_arch_info_type bfd_spu_arch;
@@ -739,6 +742,7 @@ static const bfd_arch_info_type * const bfd_archures_list[] =
     &bfd_rx_arch,
     &bfd_s390_arch,
     &bfd_score_arch,
+    &bfd_smh_arch,
     &bfd_sh_arch,
     &bfd_sparc_arch,
     &bfd_spu_arch,

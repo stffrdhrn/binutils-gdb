@@ -155,6 +155,7 @@ ALL_MACHINES = \
 	cpu-s390.lo \
 	cpu-score.lo \
 	cpu-sh.lo \
+	cpu-smh.lo \
 	cpu-sparc.lo \
 	cpu-spu.lo \
 	cpu-tic30.lo \
@@ -245,6 +246,7 @@ ALL_MACHINES_CFILES = \
 	cpu-s390.c \
 	cpu-score.c \
 	cpu-sh.c \
+	cpu-smh.c \
 	cpu-sparc.c \
 	cpu-spu.c \
 	cpu-tic30.c \
@@ -377,6 +379,7 @@ BFD32_BACKENDS = \
 	elf32-s390.lo \
 	elf32-sh-symbian.lo \
 	elf32-sh.lo \
+	elf32-smh.lo \
 	elf32-sh64-com.lo \
 	elf32-sh64.lo \
 	elf32-sparc.lo \
@@ -572,6 +575,7 @@ BFD32_BACKENDS_CFILES = \
 	elf32-rl78.c \
 	elf32-rx.c \
 	elf32-s390.c \
+	elf32-smh.c \
 	elf32-sh-symbian.c \
 	elf32-sh.c \
 	elf32-sh64-com.c \

@@ -423,6 +423,8 @@
 /* Old, unofficial value for Moxie.  */
 #define EM_MOXIE_OLD            0xFEED
 
+#define EM_SMH			0xDEFF
+
 #define EM_MICROBLAZE_OLD	0xbaab	/* Old MicroBlaze */
 
 #define EM_ADAPTEVA_EPIPHANY	0x1223  /* Adapteva's Epiphany architecture.  */
