@@ -12692,6 +12692,7 @@ if test x${all_targets} = xfalse ; then
 	bfd_rx_arch)		ta="$ta rx-dis.lo rx-decode.lo";;
 	bfd_s390_arch)		ta="$ta s390-dis.lo s390-opc.lo" ;;
 	bfd_score_arch)		ta="$ta score-dis.lo score7-dis.lo" ;;
+	bfd_smh_arch)		ta="$ta smh-dis.lo smh-opc.lo" ;;
 	bfd_sh_arch)
 	  # We can't decide what we want just from the CPU family.
 	  # We want SH5 support unless a specific version of sh is

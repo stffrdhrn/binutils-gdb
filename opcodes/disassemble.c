@@ -81,6 +81,7 @@
 #define ARCH_rx
 #define ARCH_s390
 #define ARCH_score
+#define ARCH_smh
 #define ARCH_sh
 #define ARCH_sparc
 #define ARCH_spu
@@ -420,6 +421,11 @@ disassembler (enum bfd_architecture a,
       else
 	disassemble = print_insn_little_score;
      break;
+#endif
+#ifdef ARCH_smh
+    case bfd_arch_smh:
+      disassemble = print_insn_smh;
+      break;
 #endif
 #ifdef ARCH_sh
     case bfd_arch_sh:

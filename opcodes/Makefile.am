@@ -235,6 +235,8 @@ TARGET_LIBOPCODES_CFILES = \
 	s390-opc.c \
 	score-dis.c \
 	score7-dis.c \
+	smh-dis.c \
+	smh-opc.c \
 	sh-dis.c \
 	sh64-dis.c \
 	sh64-opc.c \
