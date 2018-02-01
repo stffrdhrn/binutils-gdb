@@ -183,6 +183,7 @@ TARGET_CPU_CFILES = \
 	config/tc-rx.c \
 	config/tc-s390.c \
 	config/tc-score.c \
+	config/tc-smh.c \
 	config/tc-sh.c \
 	config/tc-sh64.c \
 	config/tc-sparc.c \
@@ -259,6 +260,7 @@ TARGET_CPU_HFILES = \
 	config/tc-rx.h \
 	config/tc-s390.h \
 	config/tc-score.h \
+	config/tc-smh.h \
 	config/tc-sh.h \
 	config/tc-sh64.h \
 	config/tc-sparc.h \

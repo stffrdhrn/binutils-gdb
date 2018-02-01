@@ -408,6 +408,8 @@ case ${generic_target} in
 
   score-*-elf)				fmt=elf ;;
 
+  smh-*-*)				fmt=elf ;;
+
   sh*-*-linux*)				fmt=elf em=linux
     case ${cpu} in
       sh*eb)	endian=big ;;

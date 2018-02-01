@@ -479,6 +479,7 @@ TARGET_CPU_CFILES = \
 	config/tc-rx.c \
 	config/tc-s390.c \
 	config/tc-score.c \
+	config/tc-smh.c \
 	config/tc-sh.c \
 	config/tc-sh64.c \
 	config/tc-sparc.c \
@@ -555,6 +556,7 @@ TARGET_CPU_HFILES = \
 	config/tc-rx.h \
 	config/tc-s390.h \
 	config/tc-score.h \
+	config/tc-smh.h \
 	config/tc-sh.h \
 	config/tc-sh64.h \
 	config/tc-sparc.h \
@@ -918,6 +920,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-score.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-sh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-sh64.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-smh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-sparc.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-spu.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tc-tic30.Po@am__quote@
@@ -1716,6 +1719,20 @@ tc-score.obj: config/tc-score.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-score.c' object='tc-score.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-score.obj `if test -f 'config/tc-score.c'; then $(CYGPATH_W) 'config/tc-score.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-score.c'; fi`
+
+tc-smh.o: config/tc-smh.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-smh.o -MD -MP -MF $(DEPDIR)/tc-smh.Tpo -c -o tc-smh.o `test -f 'config/tc-smh.c' || echo '$(srcdir)/'`config/tc-smh.c
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-smh.Tpo $(DEPDIR)/tc-smh.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-smh.c' object='tc-smh.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-smh.o `test -f 'config/tc-smh.c' || echo '$(srcdir)/'`config/tc-smh.c
+
+tc-smh.obj: config/tc-smh.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-smh.obj -MD -MP -MF $(DEPDIR)/tc-smh.Tpo -c -o tc-smh.obj `if test -f 'config/tc-smh.c'; then $(CYGPATH_W) 'config/tc-smh.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-smh.c'; fi`
+@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/tc-smh.Tpo $(DEPDIR)/tc-smh.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='config/tc-smh.c' object='tc-smh.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o tc-smh.obj `if test -f 'config/tc-smh.c'; then $(CYGPATH_W) 'config/tc-smh.c'; else $(CYGPATH_W) '$(srcdir)/config/tc-smh.c'; fi`
 
 tc-sh.o: config/tc-sh.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT tc-sh.o -MD -MP -MF $(DEPDIR)/tc-sh.Tpo -c -o tc-sh.o `test -f 'config/tc-sh.c' || echo '$(srcdir)/'`config/tc-sh.c
