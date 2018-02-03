@@ -1,5 +1,7 @@
 ## Binutils with SMH Dummy Patches
 
+[![Build Status](https://travis-ci.org/stffrdhrn/binutils-gdb.svg?branch=smh-port)](https://travis-ci.org/stffrdhrn/binutils-gdb)
+
 This is the port of the dummy architecture smh.  This is done following the
 21 patches series for ggx which became moxie.
 
