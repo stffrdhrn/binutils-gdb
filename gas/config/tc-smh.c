@@ -36,7 +36,10 @@ md_begin (void)
   const smh_opc_info_t *opcode;
   opcode_hash_control = hash_new ();
 
-  for (opcode = smh_opc_info; opcode->name; opcode++)
+  for (opcode = smh_form1_opc_info; opcode->name; opcode++)
+    hash_insert (opcode_hash_control, opcode->name, (void *) opcode);
+
+  for (opcode = smh_form2_opc_info; opcode->name; opcode++)
     hash_insert (opcode_hash_control, opcode->name, (void *) opcode);
 
   bfd_set_arch_mach (stdoutput, TARGET_ARCH, 0);

@@ -36,3 +36,7 @@ In file included from ../../binutils-gdb/opcodes/sysdep.h:34:0,
  #  error config.h must be #included before system headers
     ^~~~~
 ```
+
+### P7 differences
+
+ - Used Arrays with `NULL` terminator instead of fixed size.

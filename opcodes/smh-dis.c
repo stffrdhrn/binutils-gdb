@@ -17,17 +17,40 @@ int
 print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 {
   int status;
-  unsigned char opcode;
+  const smh_opc_info_t *opcode;
+  unsigned short iword;
 
   stream = info->stream;
   fpr = info->fprintf_func;
 
-  if ((status = info->read_memory_func (addr, &opcode, 1, info)))
+  if ((status = info->read_memory_func (addr, (unsigned char*) &iword, 2, info)))
     goto fail;
 
-  fpr (stream, "%s", smh_opc_info[opcode].name);
-
-  return 1;
+  if ((iword & (1<<15)) == 0)
+    {
+      opcode = &smh_form1_opc_info[iword >> 9];
+      switch (opcode->itype)
+	{
+	case SMH_F1_NARG:
+	  fpr (stream, "%s", opcode->name);
+	  break;
+	default:
+	  abort();
+	}
+    }
+  else
+    {
+      opcode = &smh_form2_opc_info[(iword >> 12) & 7];
+      switch (opcode->itype)
+	{
+	case SMH_F2_NARG:
+	  fpr (stream, "%s", opcode->name);
+	  break;
+	default:
+	  abort();
+	}
+    }
+  return 2;
 
   fail:
     info->memory_error_func (status, addr, info);
