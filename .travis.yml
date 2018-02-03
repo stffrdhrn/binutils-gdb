@@ -1,0 +1,19 @@
+# Run in container-based environment
+sudo: false
+
+# Install the build requirements
+addons:
+  apt:
+    packages:
+    - build-essential
+    - zlib1g-dev
+    - texinfo
+    - flex
+    - bison
+
+# Execute the build
+script:
+  - ./configure --target=smh-elf --prefix=/tmp
+  - make
+  - make install
+  - /tmp/bin/smh-elf-objdump --version
