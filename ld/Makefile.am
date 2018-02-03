@@ -277,6 +277,7 @@ ALL_EMULATION_SOURCES = \
 	eelf32lriscv.c \
 	eelf32rl78.c \
 	eelf32rx.c \
+	eelf32smh.c \
 	eelf32tilegx.c \
 	eelf32tilegx_be.c \
 	eelf32tilepro.c \
@@ -1300,6 +1301,9 @@ eelf32rl78.c: $(srcdir)/emulparams/elf32rl78.sh \
   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 
 eelf32rx.c: $(srcdir)/emulparams/elf32rx.sh \
+  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
+
+eelf32smh.c: $(srcdir)/emulparams/elf32smh.sh \
   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 
 eelf32tilegx.c: $(srcdir)/emulparams/elf32tilegx.sh \

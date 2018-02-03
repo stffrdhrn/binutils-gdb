@@ -725,6 +725,7 @@ s390-*-linux*)		targ_emul=elf_s390
 			;;
 score-*-elf)		targ_emul=score7_elf
 			targ_extra_emuls=score3_elf ;;
+smh-*-*)		targ_emul=elf32smh ;;
 sh-*-linux*)		targ_emul=shlelf_linux
 			targ_extra_emuls="shelf_linux shlelf_fd shelf_fd"
 			targ_extra_libpath=shelf_linux ;;
