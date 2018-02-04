@@ -45,6 +45,20 @@ md_begin (void)
   bfd_set_arch_mach (stdoutput, TARGET_ARCH, 0);
 }
 
+static char *
+parse_exp_save_ilp (char *s, expressionS *op)
+{
+  char *save = input_line_pointer;
+
+  input_line_pointer = s;
+  expression (op);
+  s = input_line_pointer;
+
+  input_line_pointer = save;
+  return s;
+}
+
+/* Parse str and emit the machine bytes */
 void
 md_assemble (char *str)
 {
@@ -52,9 +66,10 @@ md_assemble (char *str)
   char *op_end;
 
   smh_opc_info_t *opcode;
-  char *output;
-  int idx = 0;
+  char *p;
   char pend;
+
+  unsigned short iword = 0;
 
   int nlen = 0;
 
@@ -82,8 +97,90 @@ md_assemble (char *str)
       return;
     }
 
-  output = frag_more (1);
-  output[idx++] = opcode->opcode;
+  /* Allocate some bytes into the assembler output */
+  p = frag_more (2);
+
+  switch (opcode->itype)
+    {
+    case SMH_F1_NARG:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      if (*op_end != 0)
+	as_warn ("extra stuff on line ignored");
+      break;
+    case SMH_F1_A:
+      iword = opcode->opcode << 9;
+      break;
+    case SMH_F1_AB:
+      iword = opcode->opcode << 9;
+      break;
+    case SMH_F1_ABC:
+      iword = opcode->opcode << 9;
+      break;
+    case SMH_F1_A4:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	expressionS arg;
+	char *where;
+	int regnum;
+
+	/* parse registers */
+	if ((*op_end != '$') || (*(op_end+1) != 'r'))
+	  {
+	    as_bad ("expecting register");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	regnum = op_end[2] - '0';
+	if ((regnum < 1) || (regnum > 7))
+	  {
+	    as_bad ("illegal register number");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+
+	op_end += 3;
+	while (ISSPACE (*op_end))
+	  op_end++;
+
+	iword += (regnum << 6);
+
+	if (*op_end != ',')
+	  {
+	    as_bad ("expecting comma delimited operands");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	op_end++;
+
+	op_end = parse_exp_save_ilp (op_end, &arg);
+	where = frag_more (4);
+	fix_new_exp (frag_now,
+		     (where - frag_now->fr_literal),
+		     4,
+		     &arg,
+		     0,
+		     BFD_RELOC_32);
+      }
+      break;
+    case SMH_F2_NARG:
+      iword = opcode->opcode << 12;
+      while (ISSPACE (*op_end))
+	op_end++;
+      if (*op_end != 0)
+	as_warn ("extra stuff on line ignored");
+      break;
+    case SMH_F2_12V:
+      iword = opcode->opcode << 12;
+      break;
+    default:
+      abort();
+    }
+
+  md_number_to_chars (p, iword, 2);
 
   while (ISSPACE (*op_end))
     op_end++;
@@ -154,10 +251,32 @@ md_show_usage (FILE *stram ATTRIBUTE_UNUSED)
 }
 
 void
-md_apply_fix (fixS *fixP ATTRIBUTE_UNUSED, valueT *valP ATTRIBUTE_UNUSED,
-	     segT seg ATTRIBUTE_UNUSED)
+md_apply_fix (fixS *fixP, valueT *valP, segT seg ATTRIBUTE_UNUSED)
 {
+  char *buf = fixP->fx_where + fixP->fx_frag->fr_literal;
+  long val = *valP;
+  long max, min;
 
+  max = min = 0;
+
+  switch (fixP->fx_r_type)
+    {
+    case BFD_RELOC_32:
+      *buf++ = val >> 24;
+      *buf++ = val >> 16;
+      *buf++ = val >> 8;
+      *buf++ = val >> 0;
+      break;
+
+    default:
+      abort ();
+    }
+
+  if (max != 0 && (val < min || val > max))
+    as_bad_where (fixP->fx_file, fixP->fx_line, _("offset out of reange"));
+
+  if (fixP->fx_addsy == NULL && fixP->fx_pcrel == 0)
+    fixP->fx_done = 1;
 }
 
 void
@@ -192,4 +311,21 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
     }
 
   return rel;
+}
+
+long
+md_pcrel_from (fixS *fixP)
+{
+  valueT addr = fixP->fx_where + fixP->fx_frag->fr_address;
+
+  fprintf (stderr, "md_pcrel_from 0x%d\n", fixP->fx_r_type);
+
+  switch (fixP->fx_r_type)
+    {
+    case BFD_RELOC_32:
+      return addr + 4;
+    default:
+      abort();
+      return addr;
+    }
 }

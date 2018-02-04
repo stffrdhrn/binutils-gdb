@@ -40,3 +40,8 @@ In file included from ../../binutils-gdb/opcodes/sysdep.h:34:0,
 ### P7 differences
 
  - Used Arrays with `NULL` terminator instead of fixed size.
+
+### P8 differences
+
+ - make `md_apply_fix` args used
+ - remove unused `shift` var from `md_apply_fix`

@@ -11,7 +11,7 @@
 #define md_estimate_size_before_relax(A, B) (as_fatal (_("estimate size\n")),0)
 #define md_convert_frag(B, S, F)            as_fatal (_("convert_frag\n"))
 
-#define md_pcrel_from(FIX) \
-  ((FIX)->fx_where + (FIX)->fx_frag->fr_address - 1)
+#define MD_PCREL_FROM_SECTION(fix, sec) md_pcrel_from (fix)
+extern long md_pcrel_from (struct fix *);
 
 #define md_section_align(SEGMENT, SIZE)     (SIZE)
