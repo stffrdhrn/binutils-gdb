@@ -41,6 +41,10 @@ print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 	case SMH_F1_NARG:
 	  fpr (stream, "%s", opcode->name);
 	  break;
+	case SMH_F1_AB:
+	  fpr (stream, "%s\t$r%d, $r%d", opcode->name,
+	       OP_A (iword), OP_B (iword));
+	  break;
 	case SMH_F1_A4:
 	  {
 	    unsigned imm;

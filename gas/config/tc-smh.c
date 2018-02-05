@@ -58,6 +58,30 @@ parse_exp_save_ilp (char *s, expressionS *op)
   return s;
 }
 
+static int parse_register_operand (char **ptr)
+{
+  int regnum;
+  char *s = *ptr;
+
+  if ((*s != '$') || (*(s+1) != 'r'))
+    {
+      as_bad ("expecting register");
+      ignore_rest_of_line ();
+      return -1;
+    }
+  regnum = s[2] - '0';
+  if ((regnum < 1) || (regnum > 7))
+    {
+      as_bad ("illegal register number");
+      ignore_rest_of_line ();
+      return -1;
+    }
+
+    *ptr += 3;
+
+    return regnum;
+}
+
 /* Parse str and emit the machine bytes */
 void
 md_assemble (char *str)
@@ -114,6 +138,21 @@ md_assemble (char *str)
       break;
     case SMH_F1_AB:
       iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	int dest, src;;
+	dest = parse_register_operand (&op_end);
+	if (*op_end != ',')
+	  as_warn ("expected command delimeted register ops");
+	op_end++;
+	src = parse_register_operand (&op_end);
+	iword += (dest << 6) + (src << 3);
+	while (ISSPACE (*op_end))
+	  op_end++;
+	if (*op_end != 0)
+	  as_warn ("extra stuff on line ignored");
+      }
       break;
     case SMH_F1_ABC:
       iword = opcode->opcode << 9;
@@ -127,22 +166,7 @@ md_assemble (char *str)
 	char *where;
 	int regnum;
 
-	/* parse registers */
-	if ((*op_end != '$') || (*(op_end+1) != 'r'))
-	  {
-	    as_bad ("expecting register");
-	    ignore_rest_of_line ();
-	    return;
-	  }
-	regnum = op_end[2] - '0';
-	if ((regnum < 1) || (regnum > 7))
-	  {
-	    as_bad ("illegal register number");
-	    ignore_rest_of_line ();
-	    return;
-	  }
-
-	op_end += 3;
+	regnum = parse_register_operand (&op_end);
 	while (ISSPACE (*op_end))
 	  op_end++;
 
