@@ -45,3 +45,7 @@ In file included from ../../binutils-gdb/opcodes/sysdep.h:34:0,
 
  - make `md_apply_fix` args used
  - remove unused `shift` var from `md_apply_fix`
+
+### P10 differences
+
+ - Mostly a rewrite of sim to use the common infra
