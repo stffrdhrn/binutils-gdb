@@ -657,6 +657,7 @@ or1k
 msp430
 rl78
 rx
+smh
 sh64
 sh
 erc32
@@ -3790,6 +3791,13 @@ subdirs="$subdirs aarch64"
 
   sim_arch=rx
   subdirs="$subdirs rx"
+
+
+       ;;
+   smh-*-*)
+
+  sim_arch=smh
+  subdirs="$subdirs smh"
 
 
        ;;

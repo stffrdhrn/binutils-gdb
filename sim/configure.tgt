@@ -88,6 +88,9 @@ case "${target}" in
    sh64*-*-*)
        SIM_ARCH(sh64)
        ;;
+   smh-*-*)
+       SIM_ARCH(smh)
+       ;;
    sh*-*-*)
        SIM_ARCH(sh)
        ;;

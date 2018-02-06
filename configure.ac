@@ -1175,7 +1175,7 @@ case "${target}" in
     esac
     ;;
   smh-*-*)
-    noconfigdirs="$noconfigdirs gdb sim"
+    noconfigdirs="$noconfigdirs gdb"
     noconfigdirs="$noconfigdirs gprof"
     ;;
   sparc-*-sunos4*)
