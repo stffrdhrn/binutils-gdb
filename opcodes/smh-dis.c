@@ -17,6 +17,9 @@ static void *stream;
 #define OP_B(i) ((i >> 3) & 0x7)
 #define OP_C(i) ((i >> 0) & 0x7)
 
+static const char *reg_names[8] =
+  { "$fp", "$sp", "$r0", "$r1", "$r2", "$r3", "$r4", "$r5" };
+
 int
 print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 {
@@ -42,8 +45,9 @@ print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 	  fpr (stream, "%s", opcode->name);
 	  break;
 	case SMH_F1_AB:
-	  fpr (stream, "%s\t$r%d, $r%d", opcode->name,
-	       OP_A (iword), OP_B (iword));
+	  fpr (stream, "%s\t%s, %s", opcode->name,
+	       reg_names[OP_A (iword)],
+	       reg_names[OP_B (iword)]);
 	  break;
 	case SMH_F1_A4:
 	  {
@@ -52,7 +56,18 @@ print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 	    if ((status = info->read_memory_func (addr+2, buffer, 4, info)))
 	      goto fail;
 	    imm = bfd_getb32 (buffer);
-	    fpr (stream, "%s\t$r%d, 0x%x", opcode->name, OP_A(iword), imm);
+	    fpr (stream, "%s\t%s, 0x%x", opcode->name,
+		 reg_names[OP_A(iword)], imm);
+	    length = 6;
+	  }
+	  break;
+	case SMH_F1_4:
+	  {
+	    unsigned imm;
+	    if ((status = info->read_memory_func (addr+2, buffer, 4, info)))
+	      goto fail;
+	    imm = bfd_getb32 (buffer);
+	    fpr (stream, "%s\t0x%x", opcode->name, imm);
 	    length = 6;
 	  }
 	  break;

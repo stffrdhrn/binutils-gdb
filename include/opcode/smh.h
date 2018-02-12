@@ -5,6 +5,7 @@
 #define SMH_F1_AB	0x102
 #define SMH_F1_ABC	0x103
 #define SMH_F1_A4	0x104
+#define SMH_F1_4	0x105
 
 #define SMH_F2_NARG	0x200
 #define SMH_F2_12V	0x201

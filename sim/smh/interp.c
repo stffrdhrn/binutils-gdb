@@ -11,6 +11,10 @@
 #include "gdb/remote-sim.h"
 
 typedef int word;
+typedef unsigned int uword;
+
+static const char *reg_names[8] =
+  { "$fp", "$sp", "$r0", "$r1", "$r2", "$r3", "$r4", "$r5" };
 
 #define EXTRACT_WORD(addr) \
   ((sim_core_read_aligned_1 (cpu, cia, read_map, addr) << 24) \
@@ -18,10 +22,24 @@ typedef int word;
    + (sim_core_read_aligned_1 (cpu, cia, read_map, addr+2) << 8) \
    + (sim_core_read_aligned_1 (cpu, cia, read_map, addr+3)))
 
-unsigned long
-smh_extract_unsigned_integer (addr, len)
-     unsigned char * addr;
-     int len;
+static INLINE void
+wlat (sim_cpu *scpu, word pc, word x, word v)
+{
+  address_word cia = CPU_PC_GET (scpu);
+
+  sim_core_write_aligned_4 (scpu, cia, write_map, x, v);
+}
+
+static INLINE int
+rlat (sim_cpu *scpu, word pc, word x)
+{
+  address_word cia = CPU_PC_GET (scpu);
+
+  return (sim_core_read_aligned_4 (scpu, cia, read_map, x));
+}
+
+static unsigned long
+smh_extract_unsigned_integer (unsigned char * addr, int len)
 {
   unsigned long retval;
   unsigned char * p;
@@ -42,11 +60,8 @@ smh_extract_unsigned_integer (addr, len)
   return retval;
 }
 
-void
-smh_store_unsigned_integer (addr, len, val)
-     unsigned char * addr;
-     int len;
-     unsigned long val;
+static void
+smh_store_unsigned_integer (unsigned char * addr, int len, unsigned long val)
 {
   unsigned char * p;
   unsigned char * startaddr = (unsigned char *)addr;
@@ -127,7 +142,8 @@ sim_engine_run (SIM_DESC sd,
 		cpu->regset.regs[reg] = val;
 		pc += 4;
 
-		TRACE_INSN (cpu, "# 0x%08x: $r%d = 0x%x", opc, reg, val);
+		TRACE_INSN (cpu, "# 0x%08x: %s = 0x%x", opc,
+			    reg_names[reg], val);
 	      }
 	      break;
 	    case 0x01: /* mov (register-to-register) */
@@ -136,8 +152,46 @@ sim_engine_run (SIM_DESC sd,
 		int src = (inst >> 3) & 0x7;
 		cpu->regset.regs[dest] = cpu->regset.regs[src];
 
-		TRACE_INSN (cpu, "# 0x%08x: $r%d = $r%d (0x%x)",
-			    opc, dest, src, cpu->regset.regs[src]);
+		TRACE_INSN (cpu, "# 0x%08x: %s = %s (0x%x)",
+			    opc,
+			    reg_names[dest],
+			    reg_names[src], cpu->regset.regs[src]);
+	      }
+	      break;
+	    case 0x02: /* jsra */
+	      {
+		unsigned int fn = EXTRACT_WORD (pc + 2);
+		unsigned int sp = cpu->regset.regs[1];
+
+		/* Push return address and decrement stack.  */
+		wlat (cpu, opc, sp, pc + 6);
+		sp -= 4;
+
+		/* Push frame pointer.  */
+		wlat (cpu, opc, sp, cpu->regset.regs[0]);
+		sp -= 4;
+
+		cpu->regset.regs[1] = sp;
+		pc = fn - 2;
+		TRACE_INSN (cpu, "# 0x%08x: jsra 0x%x", opc, pc + 2);
+	      }
+	      break;
+	    case 0x03: /* ret */
+	      {
+		unsigned int sp = cpu->regset.regs[1];
+
+		/* Pop frame pointer.  */
+		sp += 4;
+		cpu->regset.regs[0] = rlat (cpu, opc, sp);
+
+		/* Pop return address.  */
+		sp += 4;
+		pc = rlat (cpu, opc, sp) - 2;
+
+		/* Update the sp register.  */
+		cpu->regset.regs[1] = sp;
+
+		TRACE_INSN (cpu, "# 0x%08x: ret (to 0x%x", opc, pc + 2);
 	      }
 	      break;
 	    default:
@@ -210,11 +264,8 @@ smh_pc_set (sim_cpu *cpu, sim_cia pc)
 }
 
 SIM_DESC
-sim_open (kind, cb, abfd, argv)
-     SIM_OPEN_KIND kind;
-     host_callback * cb;
-     struct bfd * abfd;
-     char * const *argv;
+sim_open (SIM_OPEN_KIND kind, host_callback * cb, struct bfd * abfd,
+	  char * const *argv)
 {
   int i;
   SIM_DESC sd = sim_state_alloc (kind, cb);
@@ -284,11 +335,8 @@ sim_open (kind, cb, abfd, argv)
 }
 
 SIM_RC
-sim_create_inferior (sd, prog_bfd, argv, env)
-     SIM_DESC sd;
-     struct bfd * prog_bfd;
-     char * const *argv;
-     char * const *env;
+sim_create_inferior (SIM_DESC sd, struct bfd * prog_bfd, char * const *argv,
+		     char * const *env)
 {
   SIM_CPU *cpu = STATE_CPU (sd, 0);
 

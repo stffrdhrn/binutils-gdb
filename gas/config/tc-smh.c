@@ -63,14 +63,33 @@ static int parse_register_operand (char **ptr)
   int regnum;
   char *s = *ptr;
 
-  if ((*s != '$') || (*(s+1) != 'r'))
+  if ((s[0] != '$'))
     {
       as_bad ("expecting register");
       ignore_rest_of_line ();
       return -1;
     }
-  regnum = s[2] - '0';
-  if ((regnum < 1) || (regnum > 7))
+  if (s[1] == 'f' && s[2] == 'p')
+    {
+      *ptr += 3;
+      return 0;
+    }
+  if (s[1] == 'f' && s[2] == 'p')
+    {
+      *ptr += 3;
+      return 0;
+    }
+  if (s[1] == 'r')
+    {
+      regnum = s[2] - '0';
+      if ((regnum < 0) || (regnum > 5))
+	{
+	  as_bad ("illegal register number");
+	  ignore_rest_of_line ();
+	  return -1;
+	}
+    }
+  else
     {
       as_bad ("illegal register number");
       ignore_rest_of_line ();
@@ -79,7 +98,8 @@ static int parse_register_operand (char **ptr)
 
     *ptr += 3;
 
-    return regnum;
+    /* Add 2 because $r0 index is 2 ($fp,$sp are 0,1) */
+    return regnum + 2;
 }
 
 /* Parse str and emit the machine bytes */
@@ -179,6 +199,24 @@ md_assemble (char *str)
 	    return;
 	  }
 	op_end++;
+
+	op_end = parse_exp_save_ilp (op_end, &arg);
+	where = frag_more (4);
+	fix_new_exp (frag_now,
+		     (where - frag_now->fr_literal),
+		     4,
+		     &arg,
+		     0,
+		     BFD_RELOC_32);
+      }
+      break;
+    case SMH_F1_4:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	expressionS arg;
+	char *where;
 
 	op_end = parse_exp_save_ilp (op_end, &arg);
 	where = frag_more (4);

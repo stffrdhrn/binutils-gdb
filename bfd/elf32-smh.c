@@ -41,9 +41,8 @@ smh_elf_reloc (bfd *abfd,
 
   switch (r_type)
     {
-    case R_SMH_DIR32:
-      insn = bfd_get_32 (abfd, hit_data);
-      insn += sym_value + reloc_entry->addend;
+    case R_SMH_DATA_DIR32:
+      insn = sym_value + reloc_entry->addend;
       bfd_put_32 (abfd, (bfd_vma) insn, hit_data);
       break;
 
@@ -69,7 +68,7 @@ static reloc_howto_type smh_elf_howto_table[] =
 	 0,
 	 0,
 	 FALSE),
-  HOWTO (R_SMH_DIR32,
+  HOWTO (R_SMH_DATA_DIR32,
 	 0,
 	 2,		/* 0 - byte, 1 - short, 2 - long) */
 	 32,
@@ -93,7 +92,7 @@ struct elf_reloc_map
 static const struct elf_reloc_map smh_reloc_map[] =
 {
   { BFD_RELOC_NONE,	R_SMH_NONE },
-  { BFD_RELOC_32,	R_SMH_DIR32 },
+  { BFD_RELOC_32,	R_SMH_DATA_DIR32 },
 };
 
 static reloc_howto_type *
