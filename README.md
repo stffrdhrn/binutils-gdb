@@ -48,4 +48,10 @@ In file included from ../../binutils-gdb/opcodes/sysdep.h:34:0,
 
 ### P10 differences
 
- - Mostly a rewrite of sim to use the common infra
+ - Use `AC_PREREQ(2.64)` in `configure.ac`
+ - Use `SIM_AC_COMMON` in `configure.ac`
+ - Use `SIM_NEW_COMMON_OBJS` in `Makefile.in`
+ - Create `sim-main.h`
+ - Define `sim_state` in `sim-main.h`
+ - Define `_sim_cpu` in `sim-main.h`
+ - ... mostly a rewrite of sim to use the common infra, no globals
