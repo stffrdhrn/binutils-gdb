@@ -69,10 +69,10 @@ static int parse_register_operand (char **ptr)
       ignore_rest_of_line ();
       return -1;
     }
-  if (s[1] == 'f' && s[2] == 'p')
+  if (s[1] == 's' && s[2] == 'p')
     {
       *ptr += 3;
-      return 0;
+      return 1;
     }
   if (s[1] == 'f' && s[2] == 'p')
     {
@@ -84,14 +84,14 @@ static int parse_register_operand (char **ptr)
       regnum = s[2] - '0';
       if ((regnum < 0) || (regnum > 5))
 	{
-	  as_bad ("illegal register number");
+	  as_bad ("illegal register number %d", regnum);
 	  ignore_rest_of_line ();
 	  return -1;
 	}
     }
   else
     {
-      as_bad ("illegal register number");
+      as_bad ("illegal register number %s", s);
       ignore_rest_of_line ();
       return -1;
     }

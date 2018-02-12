@@ -191,9 +191,12 @@ sim_engine_run (SIM_DESC sd,
 		/* Update the sp register.  */
 		cpu->regset.regs[1] = sp;
 
-		TRACE_INSN (cpu, "# 0x%08x: ret (to 0x%x", opc, pc + 2);
+		TRACE_INSN (cpu, "# 0x%08x: ret (to 0x%x)", opc, pc + 2);
 	      }
 	      break;
+	    case 0x04: /* nop */
+		TRACE_INSN (cpu, "# 0x%08x: nop", opc);
+		break;
 	    default:
 	      TRACE_INSN (cpu, "SIGILL1");
 	      sim_engine_halt (sd, cpu, NULL, pc, sim_stopped, SIM_SIGILL);
