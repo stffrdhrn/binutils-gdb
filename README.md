@@ -7,6 +7,7 @@ This is the port of the dummy architecture smh.  This is done following the
 
  - See: http://atgreen.github.io/ggx/
  - See: http://stffrdhrn.github.io/software/embedded/openrisc/2018/02/03/openrisc_gcc_rewrite.html
+ - See: https://github.com/stffrdhrn/gcc/tree/smh-port
 
 Here I used the latest binutils so the patches are quite a bit different in
 places.  I will try to keep notes of the differences below.
@@ -55,3 +56,4 @@ In file included from ../../binutils-gdb/opcodes/sysdep.h:34:0,
  - Define `sim_state` in `sim-main.h`
  - Define `_sim_cpu` in `sim-main.h`
  - ... mostly a rewrite of sim to use the common infra, no globals
+

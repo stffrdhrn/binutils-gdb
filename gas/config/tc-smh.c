@@ -155,13 +155,24 @@ md_assemble (char *str)
       break;
     case SMH_F1_A:
       iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	int a;
+	a = parse_register_operand (&op_end);
+	iword += (a << 6);
+	while (ISSPACE (*op_end))
+	  op_end++;
+	if (*op_end != 0)
+	  as_warn ("extra stuff on line ignored");
+      }
       break;
     case SMH_F1_AB:
       iword = opcode->opcode << 9;
       while (ISSPACE (*op_end))
 	op_end++;
       {
-	int dest, src;;
+	int dest, src;
 	dest = parse_register_operand (&op_end);
 	if (*op_end != ',')
 	  as_warn ("expected command delimeted register ops");
@@ -176,6 +187,25 @@ md_assemble (char *str)
       break;
     case SMH_F1_ABC:
       iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	int a, b, c;
+	a = parse_register_operand (&op_end);
+	if (*op_end != ',')
+	  as_warn ("expecting comma delimeted register operands");
+	op_end++;
+	b = parse_register_operand (&op_end);
+	if (*op_end != ',')
+	  as_warn ("expecting comma delimeted register operands");
+	op_end++;
+	c = parse_register_operand (&op_end);
+	iword += (a << 6) + (b << 3) + c;
+	while (ISSPACE (*op_end))
+	  op_end++;
+	if (*op_end != 0)
+	  as_warn ("extra stuff on line ignored");
+      }
       break;
     case SMH_F1_A4:
       iword = opcode->opcode << 9;

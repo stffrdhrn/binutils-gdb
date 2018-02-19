@@ -10,7 +10,10 @@ const smh_opc_info_t smh_form1_opc_info[] =
   { 0x02, SMH_F1_4,	"jsra" },
   { 0x03, SMH_F1_NARG,	"ret" },
   { 0x04, SMH_F1_NARG,	"nop" },
-  { 0x05, SMH_F1_NARG,	"bad" },
+  { 0x05, SMH_F1_ABC,	"add.l" },
+  { 0x06, SMH_F1_AB,	"push" },
+  { 0x07, SMH_F1_AB,	"pop" },
+  { 0x08, SMH_F1_NARG,	"bad" },
   { -1, SMH_F1_NARG, NULL }
 };
 

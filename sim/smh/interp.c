@@ -134,7 +134,7 @@ sim_engine_run (SIM_DESC sd,
 	  int opcode = inst >> 9;
 	  switch (opcode)
 	    {
-	    case 0x00: /* ld.w (immediate) */
+	    case 0x00: /* ldi.l (immediate) */
 	      {
 		int reg = (inst >> 6) & 0x7;
 
@@ -197,6 +197,53 @@ sim_engine_run (SIM_DESC sd,
 	    case 0x04: /* nop */
 		TRACE_INSN (cpu, "# 0x%08x: nop", opc);
 		break;
+	    case 0x05: /* add.l */
+	      {
+		int a = (inst >> 6) & 0x7;
+		int b = (inst >> 3) & 0x7;
+		int c = (inst >> 0) & 0x7;
+		unsigned bv = cpu->regset.regs[b];
+		unsigned cv = cpu->regset.regs[c];
+
+		cpu->regset.regs[a] = bv + cv;
+
+		TRACE_INSN (cpu, "# 0x%08x: %s (0x%x) = %s (0x%x) + %s (0x%x)",
+			    opc,
+			    reg_names[a], cpu->regset.regs[a],
+			    reg_names[b], cpu->regset.regs[b],
+			    reg_names[c], cpu->regset.regs[c]);
+	      }
+	      break;
+	    case 0x06: /* push */
+	      {
+		int a = (inst >> 6) & 0x7;
+		int b = (inst >> 3) & 0x7;
+
+		int sp = cpu->regset.regs[a] - 4;
+		wlat (cpu, opc, sp, cpu->regset.regs[b]);
+		cpu->regset.regs[a] = sp;
+
+		TRACE_INSN (cpu, "# 0x%08x: push %s (0x%x) to %s (0x%x)",
+			    opc,
+			    reg_names[b], cpu->regset.regs[b],
+			    reg_names[a], sp);
+	      }
+	      break;
+	    case 0x07: /* pop */
+	      {
+		int a = (inst >> 6) & 0x7;
+		int b = (inst >> 3) & 0x7;
+
+		int sp = cpu->regset.regs[a];
+		cpu->regset.regs[b] = rlat (cpu, opc, sp);
+		cpu->regset.regs[a] = sp + 4;
+
+		TRACE_INSN (cpu, "# 0x%08x: pop %s (0x%x) to %s (0x%x)",
+			    opc,
+			    reg_names[b], cpu->regset.regs[b],
+			    reg_names[a], sp);
+	      }
+	      break;
 	    default:
 	      TRACE_INSN (cpu, "SIGILL1");
 	      sim_engine_halt (sd, cpu, NULL, pc, sim_stopped, SIM_SIGILL);
