@@ -231,6 +231,62 @@ md_assemble (char *str)
 	op_end++;
 
 	op_end = parse_exp_save_ilp (op_end, &arg);
+
+	/* Skip Space */
+	while (ISSPACE (*op_end))
+	  op_end++;
+
+	if (*op_end != 0)
+	  as_warn ("extra stuff at ehnd of line");
+
+	where = frag_more (4);
+	fix_new_exp (frag_now,
+		     (where - frag_now->fr_literal),
+		     4,
+		     &arg,
+		     0,
+		     BFD_RELOC_32);
+      }
+      break;
+    case SMH_F1_4A:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	expressionS arg;
+	char *where;
+	int regnum;
+
+	/* Immediate */
+	op_end = parse_exp_save_ilp (op_end, &arg);
+
+	/* Skip Space */
+	while (ISSPACE (*op_end))
+	  op_end++;
+
+	/* Comma */
+	if (*op_end != ',')
+	  {
+	    as_bad ("expecting comma delimited operands");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+
+	/* Skip Space */
+	while (ISSPACE (*op_end))
+	  op_end++;
+
+	/* Register */
+	regnum = parse_register_operand (&op_end);
+	iword += (regnum << 6);
+
+	/* Skip Space */
+	while (ISSPACE (*op_end))
+	  op_end++;
+
+	if (*op_end != 0)
+	  as_warn ("extra stuff at ehnd of line");
+
 	where = frag_more (4);
 	fix_new_exp (frag_now,
 		     (where - frag_now->fr_literal),
@@ -256,6 +312,70 @@ md_assemble (char *str)
 		     &arg,
 		     0,
 		     BFD_RELOC_32);
+      }
+      break;
+    case SMH_F1_ABi:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	int a, b;
+	a = parse_register_operand (&op_end);
+	if (*op_end != ',')
+	  as_warn ("expected command delimeted register ops");
+	op_end++;
+	if (*op_end != '(')
+	  {
+	    as_bad ("expected indirect reg i.e. `($rA)`");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	op_end++;
+	b = parse_register_operand (&op_end);
+	if (*op_end != ')')
+	  {
+	    as_bad ("expected closing paren`");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	op_end++;
+	iword += (a << 6) + (b << 3);
+	while (ISSPACE (*op_end))
+	  op_end++;
+	if (*op_end != 0)
+	  as_warn ("extra stuff on line ignored");
+      }
+      break;
+    case SMH_F1_AiB:
+      iword = opcode->opcode << 9;
+      while (ISSPACE (*op_end))
+	op_end++;
+      {
+	int a, b;
+	if (*op_end != '(')
+	  {
+	    as_bad ("expected indirect reg i.e. `($rA)`");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	op_end++;
+	a = parse_register_operand (&op_end);
+	if (*op_end != ')')
+	  {
+	    as_bad ("expected closing paren`");
+	    ignore_rest_of_line ();
+	    return;
+	  }
+	op_end++;
+	if (*op_end != ',')
+	  as_warn ("expected command delimeted register ops");
+	op_end++;
+	b = parse_register_operand (&op_end);
+	iword += (a << 6) + (b << 3);
+	while (ISSPACE (*op_end))
+	  op_end++;
+	if (*op_end != 0)
+	  as_warn ("extra stuff on line ignored");
       }
       break;
     case SMH_F2_NARG:

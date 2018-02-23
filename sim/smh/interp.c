@@ -164,29 +164,29 @@ sim_engine_run (SIM_DESC sd,
 		unsigned int sp = cpu->regset.regs[1];
 
 		/* Push return address and decrement stack.  */
-		wlat (cpu, opc, sp, pc + 6);
 		sp -= 4;
+		wlat (cpu, opc, sp, pc + 6);
 
 		/* Push frame pointer.  */
-		wlat (cpu, opc, sp, cpu->regset.regs[0]);
 		sp -= 4;
+		wlat (cpu, opc, sp, cpu->regset.regs[0]);
 
-		cpu->regset.regs[1] = sp;
+		cpu->regset.regs[0] = sp;
 		pc = fn - 2;
 		TRACE_INSN (cpu, "# 0x%08x: jsra 0x%x", opc, pc + 2);
 	      }
 	      break;
 	    case 0x03: /* ret */
 	      {
-		unsigned int sp = cpu->regset.regs[1];
+		unsigned int sp = cpu->regset.regs[0];
 
 		/* Pop frame pointer.  */
-		sp += 4;
 		cpu->regset.regs[0] = rlat (cpu, opc, sp);
+		sp += 4;
 
 		/* Pop return address.  */
-		sp += 4;
 		pc = rlat (cpu, opc, sp) - 2;
+		sp += 4;
 
 		/* Update the sp register.  */
 		cpu->regset.regs[1] = sp;
@@ -242,6 +242,60 @@ sim_engine_run (SIM_DESC sd,
 			    opc,
 			    reg_names[b], cpu->regset.regs[b],
 			    reg_names[a], sp);
+	      }
+	      break;
+	    case 0x08: /* ld.l $rD, ($rS)*/
+	      {
+		int reg = (inst >> 6) & 0x7;
+		int src = (inst >> 3) & 0x7;
+
+		int addr = cpu->regset.regs[src];
+		cpu->regset.regs[reg] = rlat (cpu, opc, addr);
+
+		TRACE_INSN (cpu, "# 0x%08x: ld.l %s <- %s [0x%x] (0x%x)",
+			    opc,
+			    reg_names[reg], reg_names[src],
+			    cpu->regset.regs[src],
+			    cpu->regset.regs[reg]);
+	      }
+	      break;
+	    case 0x09: /* st.l ($rD), $rS*/
+	      {
+		int dest = (inst >> 6) & 0x7;
+		int reg = (inst >> 3) & 0x7;
+
+		wlat (cpu, opc, cpu->regset.regs[dest], cpu->regset.regs[reg]);
+
+		TRACE_INSN (cpu, "# 0x%08x: st.l %s [0x%x] <- %s (0x%x)",
+			    opc,
+			    reg_names[dest], cpu->regset.regs[dest],
+			    reg_names[reg], cpu->regset.regs[reg]);
+	      }
+	      break;
+	    case 0x0a: /* lda.l $rD, ADDR */
+	      {
+		int reg = (inst >> 6) & 0x7;
+		unsigned int addr = EXTRACT_WORD (pc + 2);
+
+		cpu->regset.regs[reg] = rlat (cpu, opc, addr);
+
+		TRACE_INSN (cpu, "# 0x%08x: lda.l %s <- [0x%x] (0x%x)",
+			    opc,
+			    reg_names[reg],
+			    addr,
+			    cpu->regset.regs[reg]);
+	      }
+	      break;
+	    case 0x0b: /* sta.l ADDR, $rS */
+	      {
+		int reg = (inst >> 6) & 0x7;
+		unsigned int addr = EXTRACT_WORD (pc + 2);
+		wlat (cpu, opc, addr, cpu->regset.regs[reg]);
+
+		TRACE_INSN (cpu, "# 0x%08x: sta.l [0x%x] <- %s (0x%x)",
+			    opc,
+			    addr,
+			    reg_names[reg], cpu->regset.regs[reg]);
 	      }
 	      break;
 	    default:

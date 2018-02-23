@@ -13,7 +13,11 @@ const smh_opc_info_t smh_form1_opc_info[] =
   { 0x05, SMH_F1_ABC,	"add.l" },
   { 0x06, SMH_F1_AB,	"push" },
   { 0x07, SMH_F1_AB,	"pop" },
-  { 0x08, SMH_F1_NARG,	"bad" },
+  { 0x08, SMH_F1_ABi,	"ld.l" },
+  { 0x09, SMH_F1_AiB,	"st.l" },
+  { 0x0a, SMH_F1_A4,	"lda.l" },
+  { 0x0b, SMH_F1_4A,	"sta.l" },
+  { 0x0c, SMH_F1_NARG,	"bad" },
   { -1, SMH_F1_NARG, NULL }
 };
 
