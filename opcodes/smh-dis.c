@@ -88,6 +88,36 @@ print_insn_smh (bfd_vma addr, struct disassemble_info *info)
 	       reg_names[OP_A (iword)],
 	       reg_names[OP_B (iword)]);
 	  break;
+	case SMH_F1_AiB4:
+	  {
+	    unsigned int imm;
+
+	    if ((status = info->read_memory_func (addr+2, buffer, 4, info)))
+	      goto fail;
+	    imm = bfd_getb32 (buffer);
+
+	    fpr (stream, "%s\t0x%x(%s), %s", opcode->name,
+		 imm,
+	  	 reg_names[OP_A (iword)],
+		 reg_names[OP_B (iword)]);
+	    length = 6;
+	  }
+	  break;
+	case SMH_F1_ABi4:
+	  {
+	    unsigned int imm;
+
+	    if ((status = info->read_memory_func (addr+2, buffer, 4, info)))
+	      goto fail;
+	    imm = bfd_getb32 (buffer);
+
+	    fpr (stream, "%s\t%s, 0x%x(%s)", opcode->name,
+		 reg_names[OP_A (iword)],
+		 imm,
+		 reg_names[OP_B (iword)]);
+	    length = 6;
+	  }
+	  break;
 	default:
 	  abort();
 	}

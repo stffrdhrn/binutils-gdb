@@ -298,6 +298,39 @@ sim_engine_run (SIM_DESC sd,
 			    reg_names[reg], cpu->regset.regs[reg]);
 	      }
 	      break;
+	    case 0x0c: /* ldo.l $rD, imm($rS)*/
+	      {
+		unsigned int addr = EXTRACT_WORD (pc + 2);
+		int reg = (inst >> 6) & 0x7;
+		int src = (inst >> 3) & 0x7;
+
+		addr += cpu->regset.regs[src];
+		cpu->regset.regs[reg] = rlat (cpu, opc, addr);
+
+		TRACE_INSN (cpu, "# 0x%08x: ldo.l %s <- %s [0x%x]+0x%x (0x%x)",
+			    opc,
+			    reg_names[reg], reg_names[src],
+			    cpu->regset.regs[src],
+			    addr - cpu->regset.regs[src],
+			    cpu->regset.regs[reg]);
+	      }
+	      break;
+	    case 0x0d: /* sto.l imm($rD), $rS*/
+	      {
+		unsigned int addr = EXTRACT_WORD (pc + 2);
+		int dest = (inst >> 6) & 0x7;
+		int reg = (inst >> 3) & 0x7;
+
+		addr += cpu->regset.regs[dest];
+		wlat (cpu, opc, addr, cpu->regset.regs[reg]);
+
+		TRACE_INSN (cpu, "# 0x%08x: sto.l %s [0x%x]+0x%x <- %s (0x%x)",
+			    opc,
+			    reg_names[dest], cpu->regset.regs[dest],
+			    addr - cpu->regset.regs[dest],
+			    reg_names[reg], cpu->regset.regs[reg]);
+	      }
+	      break;
 	    default:
 	      TRACE_INSN (cpu, "SIGILL1");
 	      sim_engine_halt (sd, cpu, NULL, pc, sim_stopped, SIM_SIGILL);

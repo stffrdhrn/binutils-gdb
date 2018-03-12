@@ -9,6 +9,8 @@
 #define SMH_F1_AiB	0x106
 #define SMH_F1_ABi	0x107
 #define SMH_F1_4A	0x108
+#define SMH_F1_AiB4	0x109
+#define SMH_F1_ABi4	0x10a
 
 #define SMH_F2_NARG	0x200
 #define SMH_F2_12V	0x201

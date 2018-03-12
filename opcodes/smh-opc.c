@@ -17,7 +17,9 @@ const smh_opc_info_t smh_form1_opc_info[] =
   { 0x09, SMH_F1_AiB,	"st.l" },
   { 0x0a, SMH_F1_A4,	"lda.l" },
   { 0x0b, SMH_F1_4A,	"sta.l" },
-  { 0x0c, SMH_F1_NARG,	"bad" },
+  { 0x0c, SMH_F1_ABi4,	"ldo.l" },
+  { 0x0d, SMH_F1_AiB4,	"sto.l" },
+  { 0x0e, SMH_F1_NARG,	"bad" },
   { -1, SMH_F1_NARG, NULL }
 };
 
