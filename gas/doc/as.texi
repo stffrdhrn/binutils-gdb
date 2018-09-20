@@ -7656,6 +7656,9 @@ subject, see the hardware manufacturer's manual.
 @ifset NS32K
 * NS32K-Dependent::		NS32K Dependent Features
 @end ifset
+@ifset OPENRISC
+* OpenRISC-Dependent::		OpenRISC 1000 Features
+@end ifset
 @ifset PDP11
 * PDP-11-Dependent::            PDP-11 Dependent Features
 @end ifset
@@ -7881,6 +7884,10 @@ family.
 
 @ifset NS32K
 @include c-ns32k.texi
+@end ifset
+
+@ifset OPENRISC
+@include c-or1k.texi
 @end ifset
 
 @ifset PDP11
