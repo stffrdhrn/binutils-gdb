@@ -1,0 +1,27 @@
+# Run in container-based environment
+sudo: false
+language: c
+cache: ccache
+
+# Install the build requirements
+addons:
+  apt:
+    packages:
+    - dejagnu
+    - build-essential
+    - zlib1g-dev
+    - texinfo
+    - flex
+    - bison
+
+install:
+  - .travis/setup-dejagnu.sh
+  - export DEJAGNU=$HOME/or1k-utils/site.exp
+
+script:
+  - .travis/build.sh
+  - /tmp/bin/or1k-elf-as --version
+  - /tmp/bin/or1k-elf-ld --version
+  - /tmp/bin/or1k-elf-gdb --version
+  - .travis/make.sh check-gas
+  - .travis/make.sh check-ld
