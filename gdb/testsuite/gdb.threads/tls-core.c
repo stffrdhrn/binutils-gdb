@@ -1,6 +1,6 @@
 /* This test is part of GDB, the GNU debugger.
 
-   Copyright 2017 Free Software Foundation, Inc.
+   Copyright 2017-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -16,12 +16,14 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <pthread.h>
+#include <stdlib.h>
 
 int __thread foo = 0xdeadbeef;
 
 static void *
 thread_proc (void *arg)
 {
+  abort ();
   return arg;
 }
 

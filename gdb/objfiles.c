@@ -1,6 +1,6 @@
 /* GDB routines for manipulating objfiles.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -46,12 +46,13 @@
 #include "addrmap.h"
 #include "arch-utils.h"
 #include "exec.h"
-#include "observer.h"
+#include "observable.h"
 #include "complaints.h"
 #include "psymtab.h"
 #include "solist.h"
 #include "gdb_bfd.h"
 #include "btrace.h"
+#include "common/pathstuff.h"
 
 #include <vector>
 
@@ -143,18 +144,14 @@ get_objfile_bfd_data (struct objfile *objfile, struct bfd *abfd)
 	  storage
 	    = ((struct objfile_per_bfd_storage *)
 	       bfd_alloc (abfd, sizeof (struct objfile_per_bfd_storage)));
+	  /* objfile_per_bfd_storage is not trivially constructible, must
+	     call the ctor manually.  */
+	  storage = new (storage) objfile_per_bfd_storage ();
 	  set_bfd_data (abfd, objfiles_bfd_data, storage);
 	}
       else
-	{
-	  storage = (objfile_per_bfd_storage *)
-	    obstack_alloc (&objfile->objfile_obstack,
-			   sizeof (objfile_per_bfd_storage));
-	}
-
-      /* objfile_per_bfd_storage is not trivially constructible, must
-	 call the ctor manually.  */
-      storage = new (storage) objfile_per_bfd_storage ();
+	storage
+	  = obstack_new<objfile_per_bfd_storage> (&objfile->objfile_obstack);
 
       /* Look up the gdbarch associated with the BFD.  */
       if (abfd != NULL)
@@ -268,8 +265,7 @@ objfile_register_static_link (struct objfile *objfile,
   slot = htab_find_slot (objfile->static_links, &lookup_entry, INSERT);
   gdb_assert (*slot == NULL);
 
-  entry = (struct static_link_htab_entry *) obstack_alloc
-	    (&objfile->objfile_obstack, sizeof (*entry));
+  entry = XOBNEW (&objfile->objfile_obstack, static_link_htab_entry);
   entry->block = block;
   entry->static_link = static_link;
   *slot = (void *) entry;
@@ -616,7 +612,7 @@ free_objfile_separate_debug (struct objfile *objfile)
 objfile::~objfile ()
 {
   /* First notify observers that this objfile is about to be freed.  */
-  observer_notify_free_objfile (this);
+  gdb::observers::free_objfile.notify (this);
 
   /* Free all separate debug objfiles.  */
   free_objfile_separate_debug (this);
@@ -704,7 +700,7 @@ objfile::~objfile ()
      FIXME: It's not clear which of these are supposed to persist
      between expressions and which ought to be reset each time.  */
   expression_context_block = NULL;
-  innermost_block = NULL;
+  innermost_block.reset ();
 
   /* Check to see if the current_source_symtab belongs to this objfile,
      and if so, call clear_current_source_symtab_and_line.  */
@@ -777,15 +773,13 @@ static int
 objfile_relocate1 (struct objfile *objfile, 
 		   const struct section_offsets *new_offsets)
 {
-  struct obj_section *s;
   struct section_offsets *delta =
     ((struct section_offsets *) 
      alloca (SIZEOF_N_SECTION_OFFSETS (objfile->num_sections)));
 
-  int i;
   int something_changed = 0;
 
-  for (i = 0; i < objfile->num_sections; ++i)
+  for (int i = 0; i < objfile->num_sections; ++i)
     {
       delta->offsets[i] =
 	ANOFFSET (new_offsets, i) - ANOFFSET (objfile->section_offsets, i);
@@ -803,13 +797,12 @@ objfile_relocate1 (struct objfile *objfile,
     ALL_OBJFILE_FILETABS (objfile, cust, s)
     {
       struct linetable *l;
-      int i;
 
       /* First the line table.  */
       l = SYMTAB_LINETABLE (s);
       if (l)
 	{
-	  for (i = 0; i < l->nitems; ++i)
+	  for (int i = 0; i < l->nitems; ++i)
 	    l->item[i].pc += ANOFFSET (delta,
 				       COMPUNIT_BLOCK_LINE_SECTION
 					 (cust));
@@ -825,7 +818,7 @@ objfile_relocate1 (struct objfile *objfile,
 	addrmap_relocate (BLOCKVECTOR_MAP (bv),
 			  ANOFFSET (delta, block_line_section));
 
-      for (i = 0; i < BLOCKVECTOR_NBLOCKS (bv); ++i)
+      for (int i = 0; i < BLOCKVECTOR_NBLOCKS (bv); ++i)
 	{
 	  struct block *b;
 	  struct symbol *sym;
@@ -834,6 +827,14 @@ objfile_relocate1 (struct objfile *objfile,
 	  b = BLOCKVECTOR_BLOCK (bv, i);
 	  BLOCK_START (b) += ANOFFSET (delta, block_line_section);
 	  BLOCK_END (b) += ANOFFSET (delta, block_line_section);
+
+	  if (BLOCK_RANGES (b) != nullptr)
+	    for (int j = 0; j < BLOCK_NRANGES (b); j++)
+	      {
+		BLOCK_RANGE_START (b, j)
+		  += ANOFFSET (delta, block_line_section);
+		BLOCK_RANGE_END (b, j) += ANOFFSET (delta, block_line_section);
+	      }
 
 	  /* We only want to iterate over the local symbols, not any
 	     symbols in included symtabs.  */
@@ -845,6 +846,10 @@ objfile_relocate1 (struct objfile *objfile,
     }
   }
 
+  /* This stores relocated addresses and so must be cleared.  This
+     will cause it to be recreated on demand.  */
+  objfile->psymbol_map.clear ();
+
   /* Relocate isolated symbols.  */
   {
     struct symbol *iter;
@@ -852,13 +857,6 @@ objfile_relocate1 (struct objfile *objfile,
     for (iter = objfile->template_symbols; iter; iter = iter->hash_next)
       relocate_one_symbol (iter, objfile, delta);
   }
-
-  if (objfile->psymtabs_addrmap)
-    addrmap_relocate (objfile->psymtabs_addrmap,
-		      ANOFFSET (delta, SECT_OFF_TEXT (objfile)));
-
-  if (objfile->sf)
-    objfile->sf->qf->relocate (objfile, new_offsets, delta);
 
   {
     int i;
@@ -871,6 +869,7 @@ objfile_relocate1 (struct objfile *objfile,
   get_objfile_pspace_data (objfile->pspace)->section_map_dirty = 1;
 
   /* Update the table in exec_ops, used to read memory.  */
+  struct obj_section *s;
   ALL_OBJFILE_OSECTIONS (objfile, s)
     {
       int idx = s - objfile->sections;
@@ -905,16 +904,13 @@ objfile_relocate (struct objfile *objfile,
        debug_objfile;
        debug_objfile = objfile_separate_debug_iterate (objfile, debug_objfile))
     {
-      struct section_addr_info *objfile_addrs;
-      struct cleanup *my_cleanups;
-
-      objfile_addrs = build_section_addr_info_from_objfile (objfile);
-      my_cleanups = make_cleanup (xfree, objfile_addrs);
+      section_addr_info objfile_addrs
+	= build_section_addr_info_from_objfile (objfile);
 
       /* Here OBJFILE_ADDRS contain the correct absolute addresses, the
 	 relative ones must be already created according to debug_objfile.  */
 
-      addr_info_make_relative (objfile_addrs, debug_objfile->obfd);
+      addr_info_make_relative (&objfile_addrs, debug_objfile->obfd);
 
       gdb_assert (debug_objfile->num_sections
 		  == gdb_bfd_count_sections (debug_objfile->obfd));
@@ -925,8 +921,6 @@ objfile_relocate (struct objfile *objfile,
 					     objfile_addrs);
 
       changed |= objfile_relocate1 (debug_objfile, new_debug_offsets.data ());
-
-      do_cleanups (my_cleanups);
     }
 
   /* Relocate breakpoints as necessary, after things are relocated.  */
@@ -1293,8 +1287,7 @@ filter_overlapping_sections (struct obj_section **map, int map_size)
 
 	      struct gdbarch *const gdbarch = get_objfile_arch (objf1);
 
-	      complaint (&symfile_complaints,
-			 _("unexpected overlap between:\n"
+	      complaint (_("unexpected overlap between:\n"
 			   " (A) section `%s' from `%s' [%s, %s)\n"
 			   " (B) section `%s' from `%s' [%s, %s).\n"
 			   "Will ignore section B"),
@@ -1465,26 +1458,11 @@ objfiles_changed (void)
 
 /* See comments in objfiles.h.  */
 
-void
+scoped_restore_tmpl<int>
 inhibit_section_map_updates (struct program_space *pspace)
 {
-  get_objfile_pspace_data (pspace)->inhibit_updates = 1;
-}
-
-/* See comments in objfiles.h.  */
-
-void
-resume_section_map_updates (struct program_space *pspace)
-{
-  get_objfile_pspace_data (pspace)->inhibit_updates = 0;
-}
-
-/* See comments in objfiles.h.  */
-
-void
-resume_section_map_updates_cleanup (void *arg)
-{
-  resume_section_map_updates ((struct program_space *) arg);
+  return scoped_restore_tmpl<int>
+    (&get_objfile_pspace_data (pspace)->inhibit_updates, 1);
 }
 
 /* Return 1 if ADDR maps into one of the sections of OBJFILE and 0

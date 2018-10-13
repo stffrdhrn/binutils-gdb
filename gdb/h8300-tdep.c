@@ -1,6 +1,6 @@
 /* Target-machine dependent code for Renesas H8/300, for GDB.
 
-   Copyright (C) 1988-2017 Free Software Foundation, Inc.
+   Copyright (C) 1988-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1160,14 +1160,14 @@ h8300_register_type (struct gdbarch *gdbarch, int regno)
    raw registers.  These helpers extend/narrow the values.  */
 
 static enum register_status
-pseudo_from_raw_register (struct gdbarch *gdbarch, struct regcache *regcache,
+pseudo_from_raw_register (struct gdbarch *gdbarch, readable_regcache *regcache,
 			  gdb_byte *buf, int pseudo_regno, int raw_regno)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   enum register_status status;
   ULONGEST val;
 
-  status = regcache_raw_read_unsigned (regcache, raw_regno, &val);
+  status = regcache->raw_read (raw_regno, &val);
   if (status == REG_VALID)
     store_unsigned_integer (buf,
 			    register_size (gdbarch, pseudo_regno),
@@ -1191,7 +1191,7 @@ raw_from_pseudo_register (struct gdbarch *gdbarch, struct regcache *regcache,
 
 static enum register_status
 h8300_pseudo_register_read (struct gdbarch *gdbarch,
-			    struct regcache *regcache, int regno,
+			    readable_regcache *regcache, int regno,
 			    gdb_byte *buf)
 {
   if (regno == E_PSEUDO_CCR_REGNUM (gdbarch))
@@ -1205,7 +1205,7 @@ h8300_pseudo_register_read (struct gdbarch *gdbarch,
 				       regno, E_EXR_REGNUM);
     }
   else
-    return regcache_raw_read (regcache, regno, buf);
+    return regcache->raw_read (regno, buf);
 }
 
 static void
@@ -1218,7 +1218,7 @@ h8300_pseudo_register_write (struct gdbarch *gdbarch,
   else if (regno == E_PSEUDO_EXR_REGNUM (gdbarch))
     raw_from_pseudo_register (gdbarch, regcache, buf, E_EXR_REGNUM, regno);
   else
-    regcache_raw_write (regcache, regno, buf);
+    regcache->raw_write (regno, buf);
 }
 
 static int
@@ -1265,7 +1265,6 @@ h8300_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
     case bfd_mach_h8300:
       set_gdbarch_num_regs (gdbarch, 13);
       set_gdbarch_num_pseudo_regs (gdbarch, 1);
-      set_gdbarch_ecoff_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_dwarf2_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_stab_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_register_name (gdbarch, h8300_register_name);
@@ -1277,7 +1276,6 @@ h8300_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
     case bfd_mach_h8300hn:
       set_gdbarch_num_regs (gdbarch, 13);
       set_gdbarch_num_pseudo_regs (gdbarch, 1);
-      set_gdbarch_ecoff_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_dwarf2_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_stab_reg_to_regnum (gdbarch, h8300_dbg_reg_to_regnum);
       set_gdbarch_register_name (gdbarch, h8300_register_name);
@@ -1297,7 +1295,6 @@ h8300_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
     case bfd_mach_h8300sn:
       set_gdbarch_num_regs (gdbarch, 16);
       set_gdbarch_num_pseudo_regs (gdbarch, 2);
-      set_gdbarch_ecoff_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_dwarf2_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_stab_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_register_name (gdbarch, h8300s_register_name);
@@ -1317,7 +1314,6 @@ h8300_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
     case bfd_mach_h8300sxn:
       set_gdbarch_num_regs (gdbarch, 18);
       set_gdbarch_num_pseudo_regs (gdbarch, 2);
-      set_gdbarch_ecoff_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_dwarf2_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_stab_reg_to_regnum (gdbarch, h8300s_dbg_reg_to_regnum);
       set_gdbarch_register_name (gdbarch, h8300sx_register_name);

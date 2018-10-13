@@ -1,5 +1,5 @@
 # ; -*- mode: sh ; -*-
-# Copyright (C) 2013-2017 Free Software Foundation, Inc.
+# Copyright (C) 2013-2018 Free Software Foundation, Inc.
 #
 # This file is part of GDB.
 #
@@ -115,7 +115,7 @@ case ${gdb_host} in
 	case ${gdb_host_cpu} in
 	    alpha)
 		# Host: Little-endian Alpha running Linux
-		NATDEPFILES="${NATDEPFILES} alpha-linux-nat.o"
+		NATDEPFILES="${NATDEPFILES} linux-nat-trad.o alpha-linux-nat.o"
 		# doublest.c currently assumes some properties of FP arithmetic
 		# on the host which require this.
 		MH_CFLAGS='-mieee'
@@ -177,6 +177,10 @@ case ${gdb_host} in
 		# systems running FreeBSD.
 		NATDEPFILES="${NATDEPFILES} ppc-fbsd-nat.o bsd-kvm.o"
 		;;
+	    riscv*)
+		# Host: FreeBSD/riscv
+		NATDEPFILES="${NATDEPFILES} riscv-fbsd-nat.o"
+		;;
 	    sparc)
 		# Host: FreeBSD/sparc64
 		NATDEPFILES="${NATDEPFILES} sparc-nat.o sparc64-nat.o \
@@ -228,7 +232,8 @@ case ${gdb_host} in
 	    aarch64)
 		#  Host: AArch64 based machine running GNU/Linux
 		NATDEPFILES="${NATDEPFILES} aarch64-linux-nat.o \
-		aarch32-linux-nat.o aarch64-linux-hw-point.o aarch64-linux.o"
+		aarch32-linux-nat.o aarch64-linux-hw-point.o aarch64-linux.o \
+		aarch64-sve-linux-ptrace.o"
 		;;
 	    arm)
 		# Host: ARM based machine running GNU/Linux
@@ -255,8 +260,8 @@ case ${gdb_host} in
 		;;
 	    mips)
 		# Host: Linux/MIPS
-		NATDEPFILES="${NATDEPFILES} mips-linux-nat.o \
-		mips-linux-watch.o"
+		NATDEPFILES="${NATDEPFILES} linux-nat-trad.o \
+		mips-linux-nat.o mips-linux-watch.o"
 		;;
 	    pa)
 		# Host: Hewlett-Packard PA-RISC machine, running Linux
@@ -264,7 +269,11 @@ case ${gdb_host} in
 		;;
 	    powerpc)
 		# Host: PowerPC, running Linux
-		NATDEPFILES="${NATDEPFILES} ppc-linux-nat.o"
+		NATDEPFILES="${NATDEPFILES} ppc-linux-nat.o ppc-linux.o"
+		;;
+	    riscv*)
+		# Host: RISC-V, running Linux
+		NATDEPFILES="${NATDEPFILES} riscv-linux-nat.o"
 		;;
 	    s390)
 		# Host: S390, running Linux
@@ -410,10 +419,6 @@ case ${gdb_host} in
 		NATDEPFILES="${NATDEPFILES} m68k-bsd-nat.o bsd-kvm.o"
 		LOADLIBES='-lkvm'
 		;;
-	    m88k)
-		# Host: OpenBSD/m88k
-		NATDEPFILES="${NATDEPFILES} m88k-bsd-nat.o"
-		;;
 	    pa)
 		# Host: OpenBSD/hppa
 		NATDEPFILES="${NATDEPFILES} obsd-nat.o hppa-obsd-nat.o"
@@ -464,7 +469,7 @@ case ${gdb_host} in
 	    i386)
 		# Host: Solaris x86_64
 		NATDEPFILES="${NATDEPFILES} \
-		amd64-nat.o i386-v4-nat.o i386-sol2-nat.o"
+		amd64-nat.o i386-sol2-nat.o"
 		;;
 	    sparc)
 		# Host: Solaris SPARC & UltraSPARC

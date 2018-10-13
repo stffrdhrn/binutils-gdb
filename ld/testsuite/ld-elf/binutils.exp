@@ -1,5 +1,5 @@
 # Expect script for binutils tests
-# Copyright (C) 2006-2017 Free Software Foundation, Inc.
+# Copyright (C) 2006-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -24,13 +24,9 @@
 # Make sure that binutils can correctly handle ld output in ELF.
 
 if { ![istarget *-*-linux*]
+     && ![istarget arm*-*-uclinuxfdpiceabi]
      && ![istarget *-*-nacl*]
      && ![istarget *-*-gnu*]} {
-    return
-}
-
-if { [istarget *-*-linux*aout*]
-     || [istarget *-*-linux*oldld*] } {
     return
 }
 
@@ -166,10 +162,8 @@ binutils_test strip "-z relro -shared" relro1
 binutils_test objcopy "-z relro" relro1
 binutils_test objcopy "-z relro -shared" relro1
 if { ([istarget "i?86-*-elf*"]
-      || (([istarget "i?86-*-linux*"]
-	   || [istarget "i?86-*-gnu*"])
-	  && ![istarget "*-*-*aout*"]
-	  && ![istarget "*-*-*oldld*"])
+      || [istarget "i?86-*-linux*"]
+      || [istarget "i?86-*-gnu*"]
       || [istarget "x86_64-*-linux*"]
       || [istarget "amd64-*-linux*"]
       || [istarget "i?86-*nacl*"]
@@ -186,9 +180,11 @@ if { ![istarget "hppa64-*-*"] } {
     lappend tls_tests "tdata3" "tbss1" "tbss2" "tbss3"
 }
 set tls_opts {
-    ""
+    "-z noseparate-code"
+    "-z separate-code"
     "-z relro"
-    "-shared"
+    "-shared -z noseparate-code"
+    "-shared -z separate-code"
     "-shared -z relro"
     "-z max-page-size=0x100000"
     "-z max-page-size=0x100000 -z common-page-size=0x1000"

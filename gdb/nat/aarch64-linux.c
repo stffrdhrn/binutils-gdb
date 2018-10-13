@@ -1,4 +1,4 @@
-/* Copyright (C) 2009-2017 Free Software Foundation, Inc.
+/* Copyright (C) 2009-2018 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GDB.
@@ -45,9 +45,9 @@ aarch64_linux_prepare_to_resume (struct lwp_info *lwp)
       || DR_HAS_CHANGED (info->dr_changed_wp))
     {
       ptid_t ptid = ptid_of_lwp (lwp);
-      int tid = ptid_get_lwp (ptid);
+      int tid = ptid.lwp ();
       struct aarch64_debug_reg_state *state
-	= aarch64_get_debug_reg_state (ptid_get_pid (ptid));
+	= aarch64_get_debug_reg_state (ptid.pid ());
 
       if (show_debug_regs)
 	debug_printf ("prepare_to_resume thread %d\n", tid);

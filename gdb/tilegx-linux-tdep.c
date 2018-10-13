@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux on Tilera TILE-Gx processors.
 
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -65,9 +65,9 @@ static const struct tramp_frame tilegx_linux_rt_sigframe =
   SIGTRAMP_FRAME,
   8,
   {
-    { 0x00045fe551483000ULL, -1 }, /* { moveli r10, 139 } */
-    { 0x286b180051485000ULL, -1 }, /* { swint1 } */
-    { TRAMP_SENTINEL_INSN, -1 }
+    { 0x00045fe551483000ULL, ULONGEST_MAX }, /* { moveli r10, 139 } */
+    { 0x286b180051485000ULL, ULONGEST_MAX }, /* { swint1 } */
+    { TRAMP_SENTINEL_INSN, ULONGEST_MAX }
   },
   tilegx_linux_sigframe_init
 };
@@ -99,8 +99,8 @@ tilegx_iterate_over_regset_sections (struct gdbarch *gdbarch,
 				     void *cb_data,
 				     const struct regcache *regcache)
 {
-  cb (".reg", TILEGX_LINUX_SIZEOF_GREGSET, &tilegx_linux_regset,
-      NULL, cb_data);
+  cb (".reg", TILEGX_LINUX_SIZEOF_GREGSET, TILEGX_LINUX_SIZEOF_GREGSET,
+      &tilegx_linux_regset, NULL, cb_data);
 }
 
 /* OS specific initialization of gdbarch.  */

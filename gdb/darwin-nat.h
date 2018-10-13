@@ -1,5 +1,5 @@
 /* Common things used by the various darwin files
-   Copyright (C) 1995-2017 Free Software Foundation, Inc.
+   Copyright (C) 1995-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -17,8 +17,49 @@
 #ifndef __DARWIN_NAT_H__
 #define __DARWIN_NAT_H__
 
+#include "inf-child.h"
 #include <mach/mach.h>
 #include "gdbthread.h"
+
+/* This needs to be overridden by the platform specific nat code.  */
+
+class darwin_nat_target : public inf_child_target
+{
+  void create_inferior (const char *exec_file,
+			const std::string &allargs,
+			char **env, int from_tty) override;
+
+  void attach (const char *, int) override;
+
+  void detach (inferior *, int) override;
+
+  ptid_t wait (ptid_t, struct target_waitstatus *, int) override;
+
+  void mourn_inferior () override;
+
+  void kill () override;
+
+  void interrupt () override;
+
+  void resume (ptid_t, int , enum gdb_signal) override;
+
+  bool thread_alive (ptid_t ptid) override;
+
+  const char *pid_to_str (ptid_t) override;
+
+  char *pid_to_exec_file (int pid) override;
+
+  enum target_xfer_status xfer_partial (enum target_object object,
+					const char *annex,
+					gdb_byte *readbuf,
+					const gdb_byte *writebuf,
+					ULONGEST offset, ULONGEST len,
+					ULONGEST *xfered_len) override;
+
+  bool supports_multi_process () override;
+
+  ptid_t get_ada_task_ptid (long lwp, long thread) override;
+};
 
 /* Describe the mach exception handling state for a task.  This state is saved
    before being changed and restored when a process is detached.
@@ -73,25 +114,25 @@ enum darwin_msg_state
 struct darwin_thread_info : public private_thread_info
 {
   /* The thread port from a GDB point of view.  */
-  thread_t gdb_port;
+  thread_t gdb_port = 0;
 
   /* The thread port from the inferior point of view.  Not to be used inside
      gdb except for get_ada_task_ptid.  */
-  thread_t inf_port;
+  thread_t inf_port = 0;
 
   /* Current message state.
      If the kernel has sent a message it expects a reply and the inferior
      can't be killed before.  */
-  enum darwin_msg_state msg_state;
+  enum darwin_msg_state msg_state = DARWIN_RUNNING;
 
   /* True if this thread is single-stepped.  */
-  unsigned char single_step;
+  bool single_step = false;
 
   /* True if a signal was manually sent to the thread.  */
-  unsigned char signaled;
+  bool signaled = false;
 
   /* The last exception received.  */
-  struct darwin_exception_msg event;
+  struct darwin_exception_msg event {};
 };
 typedef struct darwin_thread_info darwin_thread_t;
 
@@ -157,11 +198,6 @@ extern void mach_check_error (kern_return_t ret, const char *file,
 			      unsigned int line, const char *func);
 
 void darwin_set_sstep (thread_t thread, int enable);
-
-/* This one is called in darwin-nat.c, but needs to be provided by the
-   platform specific nat code.  It allows each platform to add platform specific
-   stuff to the darwin_ops.  */
-extern void darwin_complete_target (struct target_ops *target);
 
 void darwin_check_osabi (darwin_inferior *inf, thread_t thread);
 

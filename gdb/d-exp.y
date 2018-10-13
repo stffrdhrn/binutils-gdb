@@ -1,6 +1,6 @@
 /* YACC parser for D expressions, for GDB.
 
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -69,7 +69,7 @@ int yyparse (void);
 
 static int yylex (void);
 
-void yyerror (const char *);
+static void yyerror (const char *);
 
 static int type_aggregate_p (struct type *);
 
@@ -422,12 +422,7 @@ PrimaryExpression:
 		  if (sym.symbol && SYMBOL_CLASS (sym.symbol) != LOC_TYPEDEF)
 		    {
 		      if (symbol_read_needs_frame (sym.symbol))
-			{
-			  if (innermost_block == 0
-			      || contained_in (sym.block, innermost_block))
-			    innermost_block = sym.block;
-			}
-
+			innermost_block.update (sym);
 		      write_exp_elt_opcode (pstate, OP_VAR_VALUE);
 		      write_exp_elt_block (pstate, sym.block);
 		      write_exp_elt_sym (pstate, sym.symbol);
@@ -437,9 +432,7 @@ PrimaryExpression:
 		     {
 		      /* It hangs off of `this'.  Must not inadvertently convert from a
 			 method call to data ref.  */
-		      if (innermost_block == 0
-			  || contained_in (sym.block, innermost_block))
-			innermost_block = sym.block;
+		      innermost_block.update (sym);
 		      write_exp_elt_opcode (pstate, OP_THIS);
 		      write_exp_elt_opcode (pstate, OP_THIS);
 		      write_exp_elt_opcode (pstate, STRUCTOP_PTR);
@@ -1116,7 +1109,7 @@ lex_one_token (struct parser_state *par_state)
 	    last_was_structop = 1;
 	  goto symbol;		/* Nope, must be a symbol.  */
 	}
-      /* FALL THRU into number case.  */
+      /* FALL THRU.  */
 
     case '0':
     case '1':
@@ -1320,17 +1313,16 @@ lex_one_token (struct parser_state *par_state)
 }
 
 /* An object of this type is pushed on a FIFO by the "outer" lexer.  */
-typedef struct
+struct token_and_value
 {
   int token;
   YYSTYPE value;
-} token_and_value;
+};
 
-DEF_VEC_O (token_and_value);
 
 /* A FIFO of tokens that have been read but not yet returned to the
    parser.  */
-static VEC (token_and_value) *token_fifo;
+static std::vector<token_and_value> token_fifo;
 
 /* Non-zero if the lexer should return tokens from the FIFO.  */
 static int popping;
@@ -1426,7 +1418,7 @@ yylex (void)
   int last_to_examine, next_to_examine, checkpoint;
   const struct block *search_block;
 
-  if (popping && !VEC_empty (token_and_value, token_fifo))
+  if (popping && !token_fifo.empty ())
     goto do_pop;
   popping = 0;
 
@@ -1438,14 +1430,14 @@ yylex (void)
   /* Read any sequence of alternating "." and identifier tokens into
      the token FIFO.  */
   current.value = yylval;
-  VEC_safe_push (token_and_value, token_fifo, &current);
+  token_fifo.push_back (current);
   last_was_dot = current.token == '.';
 
   while (1)
     {
       current.token = lex_one_token (pstate);
       current.value = yylval;
-      VEC_safe_push (token_and_value, token_fifo, &current);
+      token_fifo.push_back (current);
 
       if ((last_was_dot && current.token != IDENTIFIER)
 	  || (!last_was_dot && current.token != '.'))
@@ -1457,10 +1449,10 @@ yylex (void)
 
   /* We always read one extra token, so compute the number of tokens
      to examine accordingly.  */
-  last_to_examine = VEC_length (token_and_value, token_fifo) - 2;
+  last_to_examine = token_fifo.size () - 2;
   next_to_examine = 0;
 
-  current = *VEC_index (token_and_value, token_fifo, next_to_examine);
+  current = token_fifo[next_to_examine];
   ++next_to_examine;
 
   /* If we are not dealing with a typename, now is the time to find out.  */
@@ -1483,17 +1475,17 @@ yylex (void)
 
       while (next_to_examine <= last_to_examine)
 	{
-	  token_and_value *next;
+	  token_and_value next;
 
-	  next = VEC_index (token_and_value, token_fifo, next_to_examine);
+	  next = token_fifo[next_to_examine];
 	  ++next_to_examine;
 
-	  if (next->token == IDENTIFIER && last_was_dot)
+	  if (next.token == IDENTIFIER && last_was_dot)
 	    {
 	      /* Update the partial name we are constructing.  */
               obstack_grow_str (&name_obstack, ".");
-	      obstack_grow (&name_obstack, next->value.sval.ptr,
-			    next->value.sval.length);
+	      obstack_grow (&name_obstack, next.value.sval.ptr,
+			    next.value.sval.length);
 
 	      yylval.sval.ptr = (char *) obstack_base (&name_obstack);
 	      yylval.sval.length = obstack_object_size (&name_obstack);
@@ -1505,13 +1497,13 @@ yylex (void)
 	      if (current.token == TYPENAME)
 		{
 		  /* Install it as the first token in the FIFO.  */
-		  VEC_replace (token_and_value, token_fifo, 0, &current);
-		  VEC_block_remove (token_and_value, token_fifo, 1,
-				    next_to_examine - 1);
+		  token_fifo[0] = current;
+		  token_fifo.erase (token_fifo.begin () + 1,
+				    token_fifo.begin () + next_to_examine);
 		  break;
 		}
 	    }
-	  else if (next->token == '.' && !last_was_dot)
+	  else if (next.token == '.' && !last_was_dot)
 	    last_was_dot = 1;
 	  else
 	    {
@@ -1522,7 +1514,7 @@ yylex (void)
 
       /* Reset our current token back to the start, if we found nothing
 	 this means that we will just jump to do pop.  */
-      current = *VEC_index (token_and_value, token_fifo, 0);
+      current = token_fifo[0];
       next_to_examine = 1;
     }
   if (current.token != TYPENAME && current.token != '.')
@@ -1546,16 +1538,16 @@ yylex (void)
 
   while (next_to_examine <= last_to_examine)
     {
-      token_and_value *next;
+      token_and_value next;
 
-      next = VEC_index (token_and_value, token_fifo, next_to_examine);
+      next = token_fifo[next_to_examine];
       ++next_to_examine;
 
-      if (next->token == IDENTIFIER && last_was_dot)
+      if (next.token == IDENTIFIER && last_was_dot)
 	{
 	  int classification;
 
-	  yylval = next->value;
+	  yylval = next.value;
 	  classification = classify_inner_name (pstate, search_block,
 						context_type);
 	  /* We keep going until we either run out of names, or until
@@ -1572,8 +1564,8 @@ yylex (void)
 	      /* We don't want to put a leading "." into the name.  */
               obstack_grow_str (&name_obstack, ".");
 	    }
-	  obstack_grow (&name_obstack, next->value.sval.ptr,
-			next->value.sval.length);
+	  obstack_grow (&name_obstack, next.value.sval.ptr,
+			next.value.sval.length);
 
 	  yylval.sval.ptr = (char *) obstack_base (&name_obstack);
 	  yylval.sval.length = obstack_object_size (&name_obstack);
@@ -1587,7 +1579,7 @@ yylex (void)
 
 	  context_type = yylval.tsym.type;
 	}
-      else if (next->token == '.' && !last_was_dot)
+      else if (next.token == '.' && !last_was_dot)
 	last_was_dot = 1;
       else
 	{
@@ -1600,14 +1592,15 @@ yylex (void)
      the FIFO, and delete the other constituent tokens.  */
   if (checkpoint > 0)
     {
-      VEC_replace (token_and_value, token_fifo, 0, &current);
+      token_fifo[0] = current;
       if (checkpoint > 1)
-	VEC_block_remove (token_and_value, token_fifo, 1, checkpoint - 1);
+	token_fifo.erase (token_fifo.begin () + 1,
+			  token_fifo.begin () + checkpoint);
     }
 
  do_pop:
-  current = *VEC_index (token_and_value, token_fifo, 0);
-  VEC_ordered_remove (token_and_value, token_fifo, 0);
+  current = token_fifo[0];
+  token_fifo.erase (token_fifo.begin ());
   yylval = current.value;
   return current.token;
 }
@@ -1627,19 +1620,19 @@ d_parse (struct parser_state *par_state)
   last_was_structop = 0;
   saw_name_at_eof = 0;
 
-  VEC_free (token_and_value, token_fifo);
+  token_fifo.clear ();
   popping = 0;
   name_obstack.clear ();
 
   return yyparse ();
 }
 
-void
+static void
 yyerror (const char *msg)
 {
   if (prev_lexptr)
     lexptr = prev_lexptr;
 
-  error (_("A %s in expression, near `%s'."), (msg ? msg : "error"), lexptr);
+  error (_("A %s in expression, near `%s'."), msg, lexptr);
 }
 

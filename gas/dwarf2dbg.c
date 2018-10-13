@@ -1,5 +1,5 @@
 /* dwarf2dbg.c - DWARF2 debug support
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
    Contributed by David Mosberger-Tang <davidm@hpl.hp.com>
 
    This file is part of GAS, the GNU Assembler.
@@ -251,6 +251,7 @@ generic_dwarf2_emit_offset (symbolS *symbol, unsigned int size)
 {
   expressionS exp;
 
+  memset (&exp, 0, sizeof exp);
   exp.X_op = O_symbol;
   exp.X_add_symbol = symbol;
   exp.X_add_number = 0;
@@ -379,6 +380,7 @@ set_or_check_view (struct line_entry *e, struct line_entry *p,
 	  if (view_assert_failed)
 	    {
 	      expressionS chk;
+
 	      memset (&chk, 0, sizeof (chk));
 	      chk.X_unsigned = 1;
 	      chk.X_op = O_add;
@@ -624,6 +626,7 @@ dwarf2_consume_line_info (void)
 		     | DWARF2_FLAG_PROLOGUE_END
 		     | DWARF2_FLAG_EPILOGUE_BEGIN);
   current.discriminator = 0;
+  current.view = NULL;
 }
 
 /* Called for each (preferably code) label.  If dwarf2_loc_mark_labels
@@ -751,10 +754,10 @@ get_filenum (const char *filename, unsigned int num)
    - Pass .file "source.c" to s_app_file
    - Handle .file 1 "source.c" by adding an entry to the DWARF-2 file table
 
-   If an entry is added to the file table, return a pointer to the filename. */
+   If an entry is added to the file table, return a pointer to the filename.  */
 
 char *
-dwarf2_directive_file (int dummy ATTRIBUTE_UNUSED)
+dwarf2_directive_filename (void)
 {
   offsetT num;
   char *filename;
@@ -793,6 +796,15 @@ dwarf2_directive_file (int dummy ATTRIBUTE_UNUSED)
   get_filenum (filename, num);
 
   return filename;
+}
+
+/* Calls dwarf2_directive_filename, but discards its result.
+   Used in pseudo-op tables where the function result is ignored.  */
+
+void
+dwarf2_directive_file (int dummy ATTRIBUTE_UNUSED)
+{
+  (void) dwarf2_directive_filename ();
 }
 
 void
@@ -1098,6 +1110,7 @@ out_set_addr (symbolS *sym)
 {
   expressionS exp;
 
+  memset (&exp, 0, sizeof exp);
   out_opcode (DW_LNS_extended_op);
   out_uleb128 (sizeof_address + 1);
 
@@ -1363,6 +1376,7 @@ emit_fixed_inc_line_addr (int line_delta, addressT addr_delta, fragS *frag,
       symbolS *to_sym;
       expressionS exp;
 
+      memset (&exp, 0, sizeof exp);
       gas_assert (pexp->X_op == O_subtract);
       to_sym = pexp->X_add_symbol;
 
@@ -1403,6 +1417,7 @@ relax_inc_line_addr (int line_delta, symbolS *to_sym, symbolS *from_sym)
   expressionS exp;
   int max_chars;
 
+  memset (&exp, 0, sizeof exp);
   exp.X_op = O_subtract;
   exp.X_add_symbol = to_sym;
   exp.X_op_symbol = from_sym;
@@ -1770,6 +1785,7 @@ out_debug_line (segT line_seg)
   struct line_seg *s;
   int sizeof_offset;
 
+  memset (&exp, 0, sizeof exp);
   sizeof_offset = out_header (line_seg, &exp);
   line_end = exp.X_add_symbol;
 
@@ -1840,6 +1856,7 @@ out_debug_ranges (segT ranges_seg)
   expressionS exp;
   unsigned int i;
 
+  memset (&exp, 0, sizeof exp);
   subseg_set (ranges_seg, 0);
 
   /* Base Address Entry.  */
@@ -1893,6 +1910,7 @@ out_debug_aranges (segT aranges_seg, segT info_seg)
   char *p;
   int sizeof_offset;
 
+  memset (&exp, 0, sizeof exp);
   sizeof_offset = out_header (aranges_seg, &exp);
   aranges_end = exp.X_add_symbol;
   size = -exp.X_add_number;
@@ -2002,6 +2020,7 @@ out_debug_info (segT info_seg, segT abbrev_seg, segT line_seg, segT ranges_seg,
   symbolS *info_end;
   int sizeof_offset;
 
+  memset (&exp, 0, sizeof exp);
   sizeof_offset = out_header (info_seg, &exp);
   info_end = exp.X_add_symbol;
 

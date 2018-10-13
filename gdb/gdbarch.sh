@@ -2,7 +2,7 @@
 
 # Architecture commands for GDB, the GNU debugger.
 #
-# Copyright (C) 1998-2017 Free Software Foundation, Inc.
+# Copyright (C) 1998-2018 Free Software Foundation, Inc.
 #
 # This file is part of GDB.
 #
@@ -360,9 +360,6 @@ v;int;long_bit;;;8 * sizeof (long);4*TARGET_CHAR_BIT;;0
 # Number of bits in a long long or unsigned long long for the target
 # machine.
 v;int;long_long_bit;;;8 * sizeof (LONGEST);2*gdbarch->long_bit;;0
-# Alignment of a long long or unsigned long long for the target
-# machine.
-v;int;long_long_align_bit;;;8 * sizeof (LONGEST);2*gdbarch->long_bit;;0
 
 # The ABI default bit-size and format for "half", "float", "double", and
 # "long double".  These bit/format pairs should eventually be combined
@@ -422,19 +419,19 @@ v;int;dwarf2_addr_size;;;sizeof (void*);0;gdbarch_ptr_bit (gdbarch) / TARGET_CHA
 # One if \`char' acts like \`signed char', zero if \`unsigned char'.
 v;int;char_signed;;;1;-1;1
 #
-F;CORE_ADDR;read_pc;struct regcache *regcache;regcache
+F;CORE_ADDR;read_pc;readable_regcache *regcache;regcache
 F;void;write_pc;struct regcache *regcache, CORE_ADDR val;regcache, val
 # Function for getting target's idea of a frame pointer.  FIXME: GDB's
 # whole scheme for dealing with "frames" and "frame pointers" needs a
 # serious shakedown.
 m;void;virtual_frame_pointer;CORE_ADDR pc, int *frame_regnum, LONGEST *frame_offset;pc, frame_regnum, frame_offset;0;legacy_virtual_frame_pointer;;0
 #
-M;enum register_status;pseudo_register_read;struct regcache *regcache, int cookednum, gdb_byte *buf;regcache, cookednum, buf
+M;enum register_status;pseudo_register_read;readable_regcache *regcache, int cookednum, gdb_byte *buf;regcache, cookednum, buf
 # Read a register into a new struct value.  If the register is wholly
 # or partly unavailable, this should call mark_value_bytes_unavailable
 # as appropriate.  If this is defined, then pseudo_register_read will
 # never be called.
-M;struct value *;pseudo_register_read_value;struct regcache *regcache, int cookednum;regcache, cookednum
+M;struct value *;pseudo_register_read_value;readable_regcache *regcache, int cookednum;regcache, cookednum
 M;void;pseudo_register_write;struct regcache *regcache, int cookednum, const gdb_byte *buf;regcache, cookednum, buf
 #
 v;int;num_regs;;;0;-1
@@ -625,7 +622,7 @@ m;CORE_ADDR;addr_bits_remove;CORE_ADDR addr;addr;;core_addr_identity;;0
 # For example, on AArch64, the top bits of an address known as the "tag"
 # are ignored by the kernel, the hardware, etc. and can be regarded as
 # additional data associated with the address.
-v;int;significant_addr_bit;;;;;gdbarch_addr_bit (gdbarch);
+v;int;significant_addr_bit;;;;;;0
 
 # FIXME/cagney/2001-01-18: This should be split in two.  A target method that
 # indicates if the target needs software single step.  An ISA method to
@@ -659,6 +656,9 @@ f;CORE_ADDR;skip_trampoline_code;struct frame_info *frame, CORE_ADDR pc;frame, p
 m;CORE_ADDR;skip_solib_resolver;CORE_ADDR pc;pc;;generic_skip_solib_resolver;;0
 # Some systems also have trampoline code for returning from shared libs.
 m;int;in_solib_return_trampoline;CORE_ADDR pc, const char *name;pc, name;;generic_in_solib_return_trampoline;;0
+
+# Return true if PC lies inside an indirect branch thunk.
+m;bool;in_indirect_branch_thunk;CORE_ADDR pc;pc;;default_in_indirect_branch_thunk;;0
 
 # A target might have problems with watchpoints as soon as the stack
 # frame of the current function has been destroyed.  This mostly happens
@@ -707,6 +707,8 @@ f;CORE_ADDR;adjust_dwarf2_addr;CORE_ADDR pc;pc;;default_adjust_dwarf2_addr;;0
 # stop PC.
 f;CORE_ADDR;adjust_dwarf2_line;CORE_ADDR addr, int rel;addr, rel;;default_adjust_dwarf2_line;;0
 v;int;cannot_step_breakpoint;;;0;0;;0
+# See comment in target.h about continuable, steppable and
+# non-steppable watchpoints.
 v;int;have_nonsteppable_watchpoint;;;0;0;;0
 F;int;address_class_type_flags;int byte_size, int dwarf2_addr_class;byte_size, dwarf2_addr_class
 M;const char *;address_class_type_flags_to_name;int type_flags;type_flags
@@ -904,7 +906,7 @@ M;void;record_special_symbol;struct objfile *objfile, asymbol *sym;objfile, sym
 # Function for the 'catch syscall' feature.
 
 # Get architecture-specific system calls information from registers.
-M;LONGEST;get_syscall_number;ptid_t ptid;ptid
+M;LONGEST;get_syscall_number;thread_info *thread;thread
 
 # The filename of the XML syscall for this architecture.
 v;const char *;xml_syscall_file;;;0;0;;0;pstring (gdbarch->xml_syscall_file)
@@ -1045,7 +1047,7 @@ v;int;has_global_breakpoints;;;0;0;;0
 m;int;has_shared_address_space;void;;;default_has_shared_address_space;;0
 
 # True if a fast tracepoint can be set at an address.
-m;int;fast_tracepoint_valid_at;CORE_ADDR addr, char **msg;addr, msg;;default_fast_tracepoint_valid_at;;0
+m;int;fast_tracepoint_valid_at;CORE_ADDR addr, std::string *msg;addr, msg;;default_fast_tracepoint_valid_at;;0
 
 # Guess register state based on tracepoint location.  Used for tracepoints
 # where no registers have been collected, but there's only one location,
@@ -1157,8 +1159,12 @@ m;const char *;gnu_triplet_regexp;void;;;default_gnu_triplet_regexp;;0
 m;int;addressable_memory_unit_size;void;;;default_addressable_memory_unit_size;;0
 
 # Functions for allowing a target to modify its disassembler options.
+v;const char *;disassembler_options_implicit;;;0;0;;0;pstring (gdbarch->disassembler_options_implicit)
 v;char **;disassembler_options;;;0;0;;0;pstring_ptr (gdbarch->disassembler_options)
-v;const disasm_options_t *;valid_disassembler_options;;;0;0;;0;host_address_to_string (gdbarch->valid_disassembler_options)
+v;const disasm_options_and_args_t *;valid_disassembler_options;;;0;0;;0;host_address_to_string (gdbarch->valid_disassembler_options)
+
+# Type alignment.
+m;ULONGEST;type_align;struct type *type;type;;default_type_align;;0
 
 EOF
 }
@@ -1213,7 +1219,7 @@ cat <<EOF
 
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998-2017 Free Software Foundation, Inc.
+   Copyright (C) 1998-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1258,6 +1264,7 @@ cat <<EOF
 #include <vector>
 #include "frame.h"
 #include "dis-asm.h"
+#include "gdb_obstack.h"
 
 struct floatformat;
 struct ui_file;
@@ -1311,13 +1318,15 @@ typedef int (iterate_over_objfiles_in_search_order_cb_ftype)
 
 /* Callback type for regset section iterators.  The callback usually
    invokes the REGSET's supply or collect method, to which it must
-   pass a buffer with at least the given SIZE.  SECT_NAME is a BFD
-   section name, and HUMAN_NAME is used for diagnostic messages.
-   CB_DATA should have been passed unchanged through the iterator.  */
+   pass a buffer - for collects this buffer will need to be created using
+   COLLECT_SIZE, for supply the existing buffer being read from should
+   be at least SUPPLY_SIZE.  SECT_NAME is a BFD section name, and HUMAN_NAME
+   is used for diagnostic messages.  CB_DATA should have been passed
+   unchanged through the iterator.  */
 
 typedef void (iterate_over_regset_sections_cb)
-  (const char *sect_name, int size, const struct regset *regset,
-   const char *human_name, void *cb_data);
+  (const char *sect_name, int supply_size, int collect_size,
+   const struct regset *regset, const char *human_name, void *cb_data);
 EOF
 
 # function typedef's
@@ -1529,14 +1538,19 @@ extern struct gdbarch *gdbarch_alloc (const struct gdbarch_info *info, struct gd
 
 extern void gdbarch_free (struct gdbarch *);
 
+/* Get the obstack owned by ARCH.  */
+
+extern obstack *gdbarch_obstack (gdbarch *arch);
 
 /* Helper function.  Allocate memory from the \`\`struct gdbarch''
    obstack.  The memory is freed when the corresponding architecture
    is also freed.  */
 
-extern void *gdbarch_obstack_zalloc (struct gdbarch *gdbarch, long size);
-#define GDBARCH_OBSTACK_CALLOC(GDBARCH, NR, TYPE) ((TYPE *) gdbarch_obstack_zalloc ((GDBARCH), (NR) * sizeof (TYPE)))
-#define GDBARCH_OBSTACK_ZALLOC(GDBARCH, TYPE) ((TYPE *) gdbarch_obstack_zalloc ((GDBARCH), sizeof (TYPE)))
+#define GDBARCH_OBSTACK_CALLOC(GDBARCH, NR, TYPE) \
+  obstack_calloc<TYPE> (gdbarch_obstack ((GDBARCH)), (NR))
+
+#define GDBARCH_OBSTACK_ZALLOC(GDBARCH, TYPE) \
+  obstack_zalloc<TYPE> (gdbarch_obstack ((GDBARCH)))
 
 /* Duplicate STRING, returning an equivalent string that's allocated on the
    obstack associated with GDBARCH.  The string is freed when the corresponding
@@ -1644,7 +1658,7 @@ cat <<EOF
 #include "reggroups.h"
 #include "osabi.h"
 #include "gdb_obstack.h"
-#include "observer.h"
+#include "observable.h"
 #include "regcache.h"
 #include "objfiles.h"
 #include "auxv.h"
@@ -1846,15 +1860,10 @@ EOF
 printf "\n"
 printf "\n"
 cat <<EOF
-/* Allocate extra space using the per-architecture obstack.  */
 
-void *
-gdbarch_obstack_zalloc (struct gdbarch *arch, long size)
+obstack *gdbarch_obstack (gdbarch *arch)
 {
-  void *data = obstack_alloc (arch->obstack, size);
-
-  memset (data, 0, size);
-  return data;
+  return arch->obstack;
 }
 
 /* See gdbarch.h.  */
@@ -2506,7 +2515,7 @@ set_target_gdbarch (struct gdbarch *new_gdbarch)
   gdb_assert (new_gdbarch != NULL);
   gdb_assert (new_gdbarch->initialized_p);
   current_inferior ()->gdbarch = new_gdbarch;
-  observer_notify_architecture_changed (new_gdbarch);
+  gdb::observers::architecture_changed.notify (new_gdbarch);
   registers_changed ();
 }
 

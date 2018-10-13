@@ -1,6 +1,6 @@
 /* TUI display locator.
 
-   Copyright (C) 1998-2017 Free Software Foundation, Inc.
+   Copyright (C) 1998-2018 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -72,7 +72,7 @@ tui_make_status_line (struct tui_locator_element *loc)
   int pid_width;
   int line_width;
 
-  if (ptid_equal (inferior_ptid, null_ptid))
+  if (inferior_ptid == null_ptid)
     pid_name = "No process";
   else
     pid_name = target_pid_to_str (inferior_ptid);
@@ -358,7 +358,6 @@ tui_show_frame_info (struct frame_info *fi)
 {
   struct tui_win_info *win_info;
   int locator_changed_p;
-  int i;
 
   if (fi)
     {
@@ -473,7 +472,7 @@ tui_show_frame_info (struct frame_info *fi)
 	return 0;
 
       tui_show_locator_content ();
-      for (i = 0; i < (tui_source_windows ())->count; i++)
+      for (int i = 0; i < (tui_source_windows ())->count; i++)
 	{
 	  win_info = (tui_source_windows ())->list[i];
 	  tui_clear_source_content (win_info, EMPTY_SOURCE_PROMPT);

@@ -1,5 +1,5 @@
 /* IBM S/390-specific support for ELF 32 and 64 bit functions
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
    Contributed by Andreas Krebbel.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -28,6 +28,87 @@ s390_is_ifunc_symbol_p (struct elf_link_hash_entry *h)
 {
   struct elf_s390_link_hash_entry *eh = (struct elf_s390_link_hash_entry*)h;
   return h->type == STT_GNU_IFUNC || eh->ifunc_resolver_address != 0;
+}
+
+/* Return true if .got.plt is supposed to be emitted after .got.  */
+
+static inline bfd_boolean
+s390_gotplt_after_got_p (struct bfd_link_info *info)
+{
+  struct elf_s390_link_hash_table *htab = elf_s390_hash_table (info);
+
+  if (!htab->elf.sgot || !htab->elf.sgotplt)
+    return TRUE;
+
+  if (htab->elf.sgot->output_section == htab->elf.sgotplt->output_section)
+    {
+      if (htab->elf.sgot->output_offset < htab->elf.sgotplt->output_offset)
+	return TRUE;
+    }
+  else
+    {
+      if (htab->elf.sgot->output_section->vma
+	  <= htab->elf.sgotplt->output_section->vma)
+	return TRUE;
+    }
+  return FALSE;
+}
+
+/* Return the value of the _GLOBAL_OFFSET_TABLE_ symbol.  */
+
+static inline bfd_vma
+s390_got_pointer (struct bfd_link_info *info)
+{
+  struct elf_s390_link_hash_table *htab = elf_s390_hash_table (info);
+  bfd_vma got_pointer;
+
+  BFD_ASSERT (htab && htab->elf.hgot);
+
+  got_pointer = (htab->elf.hgot->root.u.def.section->output_section->vma
+		 + htab->elf.hgot->root.u.def.section->output_offset);
+  /* Our ABI requires the GOT pointer to point at the very beginning
+     of the global offset table.  */
+  BFD_ASSERT (got_pointer
+	      <= (htab->elf.sgot->output_section->vma
+		  + htab->elf.sgot->output_offset));
+  BFD_ASSERT (got_pointer
+	      <= (htab->elf.sgotplt->output_section->vma
+		  + htab->elf.sgotplt->output_offset));
+
+  return got_pointer;
+}
+
+
+/* Return the offset of the .got versus _GLOBAL_OFFSET_TABLE_.  */
+
+static inline bfd_vma
+s390_got_offset (struct bfd_link_info *info)
+{
+  struct elf_s390_link_hash_table *htab = elf_s390_hash_table (info);
+
+  /* The absolute address of the .got in the target image.  */
+  bfd_vma got_address = (htab->elf.sgot->output_section->vma
+			 + htab->elf.sgot->output_offset);
+
+  /* GOT offset must not be negative.  */
+  BFD_ASSERT (s390_got_pointer (info) <= got_address);
+  return got_address - s390_got_pointer (info);
+}
+
+/* Return the offset of the .got.plt versus _GLOBAL_OFFSET_TABLE_.  */
+
+static inline bfd_vma
+s390_gotplt_offset (struct bfd_link_info *info)
+{
+  struct elf_s390_link_hash_table *htab = elf_s390_hash_table (info);
+
+  /* The absolute address of the .got.plt in the target image.  */
+  bfd_vma gotplt_address = (htab->elf.sgotplt->output_section->vma
+			    + htab->elf.sgotplt->output_offset);
+
+  /* GOT offset must not be negative.  */
+  BFD_ASSERT (s390_got_pointer (info) <= gotplt_address);
+  return gotplt_address - s390_got_pointer (info);
 }
 
 /* Create sections needed by STT_GNU_IFUNC symbol.  */
@@ -223,25 +304,6 @@ elf_s390_allocate_local_syminfo (bfd *abfd, Elf_Internal_Shdr *symtab_hdr)
   return TRUE;
 }
 
-/* Pick ELFOSABI_GNU if IFUNC symbols are used.  */
-
-static bfd_boolean
-elf_s390_add_symbol_hook (bfd *abfd,
-			  struct bfd_link_info *info,
-			  Elf_Internal_Sym *sym,
-			  const char **namep ATTRIBUTE_UNUSED,
-			  flagword *flagsp ATTRIBUTE_UNUSED,
-			  asection **secp ATTRIBUTE_UNUSED,
-			  bfd_vma *valp ATTRIBUTE_UNUSED)
-{
-  if (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
-      && (abfd->flags & DYNAMIC) == 0
-      && bfd_get_flavour (info->output_bfd) == bfd_target_elf_flavour)
-    elf_tdata (info->output_bfd)->has_gnu_symbols |= elf_gnu_symbol_ifunc;
-
-  return TRUE;
-}
-
 /* Whether to sort relocs output by ld -r or ld --emit-relocs, by
    r_offset.  Don't do so for code sections.  We want to keep ordering
    of GDCALL / PLT32DBL for TLS optimizations as is.  On the other
@@ -286,12 +348,12 @@ elf_s390_merge_obj_attributes (bfd *ibfd, struct bfd_link_info *info)
   if (in_attr->i > 2)
     _bfd_error_handler
       /* xgettext:c-format */
-      (_("Warning: %B uses unknown vector ABI %d"), ibfd,
+      (_("warning: %pB uses unknown vector ABI %d"), ibfd,
        in_attr->i);
   else if (out_attr->i > 2)
     _bfd_error_handler
       /* xgettext:c-format */
-      (_("Warning: %B uses unknown vector ABI %d"), obfd,
+      (_("warning: %pB uses unknown vector ABI %d"), obfd,
        out_attr->i);
   else if (in_attr->i != out_attr->i)
     {
@@ -303,7 +365,7 @@ elf_s390_merge_obj_attributes (bfd *ibfd, struct bfd_link_info *info)
 
 	  _bfd_error_handler
 	    /* xgettext:c-format */
-	    (_("Warning: %B uses vector %s ABI, %B uses %s ABI"),
+	    (_("warning: %pB uses vector %s ABI, %pB uses %s ABI"),
 	     ibfd, abi_str[in_attr->i], obfd, abi_str[out_attr->i]);
 	}
       if (in_attr->i > out_attr->i)

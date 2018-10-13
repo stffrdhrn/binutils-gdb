@@ -2,7 +2,7 @@
 
 %{
 
-/* Copyright (C) 1991-2017 Free Software Foundation, Inc.
+/* Copyright (C) 1991-2018 Free Software Foundation, Inc.
    Written by Steve Chamberlain of Cygnus Support.
 
    This file is part of the GNU Binutils.
@@ -424,7 +424,7 @@ V_IDENTIFIER [*?.$_a-zA-Z\[\]\-\!\^\\]([*?.$_a-zA-Z0-9\[\]\-\!\^\\]|::)*
 					/* PR ld/20906.  A corrupt input file
 					   can contain bogus strings.  */
 					len = strlen (yylval.name);
-					if (len > yyleng - 2)
+					if (len > (bfd_size_type) yyleng - 2)
 					  len = yyleng - 2;
 					yylval.name[len] = 0;
 					return NAME;
@@ -729,5 +729,5 @@ lex_warn_invalid (char *where, char *what)
       what = buf;
     }
 
-  einfo (_("%P:%S: ignoring invalid character `%s'%s\n"), NULL, what, where);
+  einfo (_("%P:%pS: ignoring invalid character `%s'%s\n"), NULL, what, where);
 }

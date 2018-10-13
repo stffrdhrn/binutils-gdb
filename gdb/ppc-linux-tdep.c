@@ -1,6 +1,6 @@
 /* Target-dependent code for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -37,11 +37,13 @@
 #include "ppc-tdep.h"
 #include "ppc64-tdep.h"
 #include "ppc-linux-tdep.h"
+#include "arch/ppc-linux-common.h"
+#include "arch/ppc-linux-tdesc.h"
 #include "glibc-tdep.h"
 #include "trad-frame.h"
 #include "frame-unwind.h"
 #include "tramp-frame.h"
-#include "observer.h"
+#include "observable.h"
 #include "auxv.h"
 #include "elf/common.h"
 #include "elf/ppc64.h"
@@ -256,8 +258,8 @@ ppc_linux_return_value (struct gdbarch *gdbarch, struct value *function,
 				      readbuf, writebuf);
 }
 
-/* PLT stub in executable.  */
-static struct ppc_insn_pattern powerpc32_plt_stub[] =
+/* PLT stub in an executable.  */
+static const struct ppc_insn_pattern powerpc32_plt_stub[] =
   {
     { 0xffff0000, 0x3d600000, 0 },	/* lis   r11, xxxx	 */
     { 0xffff0000, 0x816b0000, 0 },	/* lwz   r11, xxxx(r11)  */
@@ -266,16 +268,30 @@ static struct ppc_insn_pattern powerpc32_plt_stub[] =
     {          0,          0, 0 }
   };
 
-/* PLT stub in shared library.  */
-static struct ppc_insn_pattern powerpc32_plt_stub_so[] =
+/* PLT stubs in a shared library or PIE.
+   The first variant is used when the PLT entry is within +/-32k of
+   the GOT pointer (r30).  */
+static const struct ppc_insn_pattern powerpc32_plt_stub_so_1[] =
   {
     { 0xffff0000, 0x817e0000, 0 },	/* lwz   r11, xxxx(r30)  */
     { 0xffffffff, 0x7d6903a6, 0 },	/* mtctr r11		 */
     { 0xffffffff, 0x4e800420, 0 },	/* bctr			 */
-    { 0xffffffff, 0x60000000, 0 },	/* nop			 */
     {          0,          0, 0 }
   };
-#define POWERPC32_PLT_STUB_LEN 	ARRAY_SIZE (powerpc32_plt_stub)
+
+/* The second variant is used when the PLT entry is more than +/-32k
+   from the GOT pointer (r30).  */
+static const struct ppc_insn_pattern powerpc32_plt_stub_so_2[] =
+  {
+    { 0xffff0000, 0x3d7e0000, 0 },	/* addis r11, r30, xxxx  */
+    { 0xffff0000, 0x816b0000, 0 },	/* lwz   r11, xxxx(r11)  */
+    { 0xffffffff, 0x7d6903a6, 0 },	/* mtctr r11		 */
+    { 0xffffffff, 0x4e800420, 0 },	/* bctr			 */
+    {          0,          0, 0 }
+  };
+
+/* The max number of insns we check using ppc_insns_match_pattern.  */
+#define POWERPC32_PLT_CHECK_LEN (ARRAY_SIZE (powerpc32_plt_stub) - 1)
 
 /* Check if PC is in PLT stub.  For non-secure PLT, stub is in .plt
    section.  For secure PLT, stub is in .text and we need to check
@@ -306,13 +322,13 @@ powerpc_linux_in_dynsym_resolve_code (CORE_ADDR pc)
 
    When the execution direction is EXEC_REVERSE, scan backward to
    check whether we are in the middle of a PLT stub.  Currently,
-   we only look-behind at most 4 instructions (the max length of PLT
+   we only look-behind at most 4 instructions (the max length of a PLT
    stub sequence.  */
 
 static CORE_ADDR
 ppc_skip_trampoline_code (struct frame_info *frame, CORE_ADDR pc)
 {
-  unsigned int insnbuf[POWERPC32_PLT_STUB_LEN];
+  unsigned int insnbuf[POWERPC32_PLT_CHECK_LEN];
   struct gdbarch *gdbarch = get_frame_arch (frame);
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
@@ -323,40 +339,47 @@ ppc_skip_trampoline_code (struct frame_info *frame, CORE_ADDR pc)
   /* When reverse-debugging, scan backward to check whether we are
      in the middle of trampoline code.  */
   if (execution_direction == EXEC_REVERSE)
-    scan_limit = 4;	/* At more 4 instructions.  */
+    scan_limit = 4;	/* At most 4 instructions.  */
 
   for (i = 0; i < scan_limit; i++)
     {
       if (ppc_insns_match_pattern (frame, pc, powerpc32_plt_stub, insnbuf))
 	{
-	  /* Insn pattern is
+	  /* Calculate PLT entry address from
 	     lis   r11, xxxx
-	     lwz   r11, xxxx(r11)
-	     Branch target is in r11.  */
-
-	  target = (ppc_insn_d_field (insnbuf[0]) << 16)
-		   | ppc_insn_d_field (insnbuf[1]);
-	  target = read_memory_unsigned_integer (target, 4, byte_order);
+	     lwz   r11, xxxx(r11).  */
+	  target = ((ppc_insn_d_field (insnbuf[0]) << 16)
+		    + ppc_insn_d_field (insnbuf[1]));
 	}
-      else if (ppc_insns_match_pattern (frame, pc, powerpc32_plt_stub_so,
+      else if (i < ARRAY_SIZE (powerpc32_plt_stub_so_1) - 1
+	       && ppc_insns_match_pattern (frame, pc, powerpc32_plt_stub_so_1,
+					   insnbuf))
+	{
+	  /* Calculate PLT entry address from
+	     lwz   r11, xxxx(r30).  */
+	  target = (ppc_insn_d_field (insnbuf[0])
+		    + get_frame_register_unsigned (frame,
+						   tdep->ppc_gp0_regnum + 30));
+	}
+      else if (ppc_insns_match_pattern (frame, pc, powerpc32_plt_stub_so_2,
 					insnbuf))
 	{
-	  /* Insn pattern is
-	     lwz   r11, xxxx(r30)
-	     Branch target is in r11.  */
-
-	  target = get_frame_register_unsigned (frame,
-						tdep->ppc_gp0_regnum + 30)
-		   + ppc_insn_d_field (insnbuf[0]);
-	  target = read_memory_unsigned_integer (target, 4, byte_order);
+	  /* Calculate PLT entry address from
+	     addis r11, r30, xxxx
+	     lwz   r11, xxxx(r11).  */
+	  target = ((ppc_insn_d_field (insnbuf[0]) << 16)
+		    + ppc_insn_d_field (insnbuf[1])
+		    + get_frame_register_unsigned (frame,
+						   tdep->ppc_gp0_regnum + 30));
 	}
       else
 	{
-	  /* Scan backward one more instructions if doesn't match.  */
+	  /* Scan backward one more instruction if it doesn't match.  */
 	  pc -= 4;
 	  continue;
 	}
 
+      target = read_memory_unsigned_integer (target, 4, byte_order);
       return target;
     }
 
@@ -421,6 +444,24 @@ ppc_linux_collect_gregset (const struct regset *regset,
     }
 }
 
+static void
+ppc_linux_collect_vrregset (const struct regset *regset,
+			    const struct regcache *regcache,
+			    int regnum, void *buf, size_t len)
+{
+  gdb_byte *vrregs = (gdb_byte *) buf;
+
+  /* Zero-pad the unused bytes in the fields for vscr and vrsave
+     in case they get displayed somewhere (e.g. in core files).  */
+  if (regnum == PPC_VSCR_REGNUM || regnum == -1)
+    memset (&vrregs[32 * 16], 0, 16);
+
+  if (regnum == PPC_VRSAVE_REGNUM || regnum == -1)
+    memset (&vrregs[33 * 16], 0, 16);
+
+  regcache_collect_regset (regset, regcache, regnum, buf, len);
+}
+
 /* Regset descriptions.  */
 static const struct ppc_reg_offsets ppc32_linux_reg_offsets =
   {
@@ -439,12 +480,7 @@ static const struct ppc_reg_offsets ppc32_linux_reg_offsets =
     /* Floating-point registers.  */
     /* .f0_offset = */ 0,
     /* .fpscr_offset = */ 256,
-    /* .fpscr_size = */ 8,
-
-    /* AltiVec registers.  */
-    /* .vr0_offset = */ 0,
-    /* .vscr_offset = */ 512 + 12,
-    /* .vrsave_offset = */ 528
+    /* .fpscr_size = */ 8
   };
 
 static const struct ppc_reg_offsets ppc64_linux_reg_offsets =
@@ -464,12 +500,7 @@ static const struct ppc_reg_offsets ppc64_linux_reg_offsets =
     /* Floating-point registers.  */
     /* .f0_offset = */ 0,
     /* .fpscr_offset = */ 256,
-    /* .fpscr_size = */ 8,
-
-    /* AltiVec registers.  */
-    /* .vr0_offset = */ 0,
-    /* .vscr_offset = */ 512 + 12,
-    /* .vrsave_offset = */ 528
+    /* .fpscr_size = */ 8
   };
 
 static const struct regset ppc32_linux_gregset = {
@@ -490,16 +521,48 @@ static const struct regset ppc32_linux_fpregset = {
   ppc_collect_fpregset
 };
 
-static const struct regset ppc32_linux_vrregset = {
-  &ppc32_linux_reg_offsets,
-  ppc_supply_vrregset,
-  ppc_collect_vrregset
+static const struct regcache_map_entry ppc32_le_linux_vrregmap[] =
+  {
+      { 32, PPC_VR0_REGNUM, 16 },
+      { 1, PPC_VSCR_REGNUM, 4 },
+      { 1, REGCACHE_MAP_SKIP, 12 },
+      { 1, PPC_VRSAVE_REGNUM, 4 },
+      { 1, REGCACHE_MAP_SKIP, 12 },
+      { 0 }
+  };
+
+static const struct regcache_map_entry ppc32_be_linux_vrregmap[] =
+  {
+      { 32, PPC_VR0_REGNUM, 16 },
+      { 1, REGCACHE_MAP_SKIP, 12},
+      { 1, PPC_VSCR_REGNUM, 4 },
+      { 1, PPC_VRSAVE_REGNUM, 4 },
+      { 1, REGCACHE_MAP_SKIP, 12 },
+      { 0 }
+  };
+
+static const struct regset ppc32_le_linux_vrregset = {
+  ppc32_le_linux_vrregmap,
+  regcache_supply_regset,
+  ppc_linux_collect_vrregset
 };
 
+static const struct regset ppc32_be_linux_vrregset = {
+  ppc32_be_linux_vrregmap,
+  regcache_supply_regset,
+  ppc_linux_collect_vrregset
+};
+
+static const struct regcache_map_entry ppc32_linux_vsxregmap[] =
+  {
+      { 32, PPC_VSR0_UPPER_REGNUM, 8 },
+      { 0 }
+  };
+
 static const struct regset ppc32_linux_vsxregset = {
-  &ppc32_linux_reg_offsets,
-  ppc_supply_vsxregset,
-  ppc_collect_vsxregset
+  ppc32_linux_vsxregmap,
+  regcache_supply_regset,
+  regcache_collect_regset
 };
 
 const struct regset *
@@ -512,6 +575,21 @@ const struct regset *
 ppc_linux_fpregset (void)
 {
   return &ppc32_linux_fpregset;
+}
+
+const struct regset *
+ppc_linux_vrregset (struct gdbarch *gdbarch)
+{
+  if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_BIG)
+    return &ppc32_be_linux_vrregset;
+  else
+    return &ppc32_le_linux_vrregset;
+}
+
+const struct regset *
+ppc_linux_vsxregset (void)
+{
+  return &ppc32_linux_vsxregset;
 }
 
 /* Iterate over supported core file register note sections. */
@@ -527,17 +605,22 @@ ppc_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
   int have_vsx = tdep->ppc_vsr0_upper_regnum != -1;
 
   if (tdep->wordsize == 4)
-    cb (".reg", 48 * 4, &ppc32_linux_gregset, NULL, cb_data);
+    cb (".reg", 48 * 4, 48 * 4, &ppc32_linux_gregset, NULL, cb_data);
   else
-    cb (".reg", 48 * 8, &ppc64_linux_gregset, NULL, cb_data);
+    cb (".reg", 48 * 8, 48 * 8, &ppc64_linux_gregset, NULL, cb_data);
 
-  cb (".reg2", 264, &ppc32_linux_fpregset, NULL, cb_data);
+  cb (".reg2", 264, 264, &ppc32_linux_fpregset, NULL, cb_data);
 
   if (have_altivec)
-    cb (".reg-ppc-vmx", 544, &ppc32_linux_vrregset, "ppc Altivec", cb_data);
+    {
+      const struct regset *vrregset = ppc_linux_vrregset (gdbarch);
+      cb (".reg-ppc-vmx", PPC_LINUX_SIZEOF_VRREGSET, PPC_LINUX_SIZEOF_VRREGSET,
+	  vrregset, "ppc Altivec", cb_data);
+    }
 
   if (have_vsx)
-    cb (".reg-ppc-vsx", 256, &ppc32_linux_vsxregset, "POWER7 VSX", cb_data);
+    cb (".reg-ppc-vsx", PPC_LINUX_SIZEOF_VSXREGSET, PPC_LINUX_SIZEOF_VSXREGSET,
+	&ppc32_linux_vsxregset, "POWER7 VSX", cb_data);
 }
 
 static void
@@ -663,8 +746,8 @@ static struct tramp_frame ppc32_linux_sigaction_tramp_frame = {
   SIGTRAMP_FRAME,
   4,
   { 
-    { 0x380000ac, -1 }, /* li r0, 172 */
-    { 0x44000002, -1 }, /* sc */
+    { 0x380000ac, ULONGEST_MAX }, /* li r0, 172 */
+    { 0x44000002, ULONGEST_MAX }, /* sc */
     { TRAMP_SENTINEL_INSN },
   },
   ppc32_linux_sigaction_cache_init
@@ -673,9 +756,9 @@ static struct tramp_frame ppc64_linux_sigaction_tramp_frame = {
   SIGTRAMP_FRAME,
   4,
   {
-    { 0x38210080, -1 }, /* addi r1,r1,128 */
-    { 0x380000ac, -1 }, /* li r0, 172 */
-    { 0x44000002, -1 }, /* sc */
+    { 0x38210080, ULONGEST_MAX }, /* addi r1,r1,128 */
+    { 0x380000ac, ULONGEST_MAX }, /* li r0, 172 */
+    { 0x44000002, ULONGEST_MAX }, /* sc */
     { TRAMP_SENTINEL_INSN },
   },
   ppc64_linux_sigaction_cache_init
@@ -684,8 +767,8 @@ static struct tramp_frame ppc32_linux_sighandler_tramp_frame = {
   SIGTRAMP_FRAME,
   4,
   { 
-    { 0x38000077, -1 }, /* li r0,119 */
-    { 0x44000002, -1 }, /* sc */
+    { 0x38000077, ULONGEST_MAX }, /* li r0,119 */
+    { 0x44000002, ULONGEST_MAX }, /* sc */
     { TRAMP_SENTINEL_INSN },
   },
   ppc32_linux_sighandler_cache_init
@@ -694,9 +777,9 @@ static struct tramp_frame ppc64_linux_sighandler_tramp_frame = {
   SIGTRAMP_FRAME,
   4,
   { 
-    { 0x38210080, -1 }, /* addi r1,r1,128 */
-    { 0x38000077, -1 }, /* li r0,119 */
-    { 0x44000002, -1 }, /* sc */
+    { 0x38210080, ULONGEST_MAX }, /* addi r1,r1,128 */
+    { 0x38000077, ULONGEST_MAX }, /* li r0,119 */
+    { 0x44000002, ULONGEST_MAX }, /* sc */
     { TRAMP_SENTINEL_INSN },
   },
   ppc64_linux_sighandler_cache_init
@@ -720,9 +803,9 @@ ppc_linux_trap_reg_p (struct gdbarch *gdbarch)
    r0 register.  When the function fails, it returns -1.  */
 static LONGEST
 ppc_linux_get_syscall_number (struct gdbarch *gdbarch,
-                              ptid_t ptid)
+			      thread_info *thread)
 {
-  struct regcache *regcache = get_thread_regcache (ptid);
+  struct regcache *regcache = get_thread_regcache (thread);
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
 
@@ -735,7 +818,7 @@ ppc_linux_get_syscall_number (struct gdbarch *gdbarch,
   /* Getting the system call number from the register.
      When dealing with PowerPC architecture, this information
      is stored at 0th register.  */
-  regcache_cooked_read (regcache, tdep->ppc_gp0_regnum, buf.data ());
+  regcache->cooked_read (tdep->ppc_gp0_regnum, buf.data ());
 
   return extract_signed_integer (buf.data (), tdep->wordsize, byte_order);
 }
@@ -794,7 +877,6 @@ ppc_linux_syscall_record (struct regcache *regcache)
   ULONGEST scnum;
   enum gdb_syscall syscall_gdb;
   int ret;
-  int i;
 
   regcache_raw_read_unsigned (regcache, tdep->ppc_gp0_regnum, &scnum);
   syscall_gdb = ppc_canonicalize_syscall (scnum);
@@ -849,7 +931,7 @@ ppc_linux_syscall_record (struct regcache *regcache)
     return ret;
 
   /* Record registers clobbered during syscall.  */
-  for (i = 3; i <= 12; i++)
+  for (int i = 3; i <= 12; i++)
     {
       if (record_full_arch_list_add_reg (regcache, tdep->ppc_gp0_regnum + i))
 	return -1;
@@ -945,38 +1027,44 @@ ppc_linux_core_read_description (struct gdbarch *gdbarch,
 				 struct target_ops *target,
 				 bfd *abfd)
 {
+  struct ppc_linux_features features = ppc_linux_no_features;
   asection *cell = bfd_sections_find_if (abfd, ppc_linux_spu_section, NULL);
   asection *altivec = bfd_get_section_by_name (abfd, ".reg-ppc-vmx");
   asection *vsx = bfd_get_section_by_name (abfd, ".reg-ppc-vsx");
   asection *section = bfd_get_section_by_name (abfd, ".reg");
+
   if (! section)
     return NULL;
 
   switch (bfd_section_size (abfd, section))
     {
     case 48 * 4:
-      if (cell)
-	return tdesc_powerpc_cell32l;
-      else if (vsx)
-	return tdesc_powerpc_vsx32l;
-      else if (altivec)
-	return tdesc_powerpc_altivec32l;
-      else
-	return tdesc_powerpc_32l;
-
+      features.wordsize = 4;
+      break;
     case 48 * 8:
-      if (cell)
-	return tdesc_powerpc_cell64l;
-      else if (vsx)
-	return tdesc_powerpc_vsx64l;
-      else if (altivec)
-	return tdesc_powerpc_altivec64l;
-      else
-	return tdesc_powerpc_64l;
-
+      features.wordsize = 8;
+      break;
     default:
       return NULL;
     }
+
+  if (cell)
+    features.cell = true;
+
+  if (altivec)
+    features.altivec = true;
+
+  if (vsx)
+    features.vsx = true;
+
+  CORE_ADDR hwcap;
+
+  if (target_auxv_search (target, AT_HWCAP, &hwcap) != 1)
+    hwcap = 0;
+
+  features.isa205 = ppc_linux_has_isa205 (hwcap);
+
+  return ppc_linux_match_description (features);
 }
 
 
@@ -1180,9 +1268,9 @@ ppc_linux_spe_context (int wordsize, enum bfd_endian byte_order,
     return 0;
 
   /* Look up cached address of thread-local variable.  */
-  if (!ptid_equal (spe_context_cache_ptid, inferior_ptid))
+  if (spe_context_cache_ptid != inferior_ptid)
     {
-      struct target_ops *target = &current_target;
+      struct target_ops *target = current_top_target ();
 
       TRY
 	{
@@ -1193,9 +1281,9 @@ ppc_linux_spe_context (int wordsize, enum bfd_endian byte_order,
 	     Instead, we have cached the lm_addr value, and use that to
 	     directly call the target's to_get_thread_local_address.  */
 	  spe_context_cache_address
-	    = target->to_get_thread_local_address (target, inferior_ptid,
-						   spe_context_lm_addr,
-						   spe_context_offset);
+	    = target->get_thread_local_address (inferior_ptid,
+						spe_context_lm_addr,
+						spe_context_offset);
 	  spe_context_cache_ptid = inferior_ptid;
 	}
 
@@ -1241,7 +1329,7 @@ ppc_linux_spe_context (int wordsize, enum bfd_endian byte_order,
 struct ppu2spu_cache
 {
   struct frame_id frame_id;
-  struct regcache *regcache;
+  readonly_detached_regcache *regcache;
 };
 
 static struct gdbarch *
@@ -1269,11 +1357,7 @@ ppu2spu_prev_register (struct frame_info *this_frame,
 
   buf = (gdb_byte *) alloca (register_size (gdbarch, regnum));
 
-  if (regnum < gdbarch_num_regs (gdbarch))
-    regcache_raw_read (cache->regcache, regnum, buf);
-  else
-    gdbarch_pseudo_register_read (gdbarch, cache->regcache, regnum, buf);
-
+  cache->regcache->cooked_read (regnum, buf);
   return frame_unwind_got_bytes (this_frame, regnum, buf);
 }
 
@@ -1286,9 +1370,8 @@ struct ppu2spu_data
 };
 
 static enum register_status
-ppu2spu_unwind_register (void *src, int regnum, gdb_byte *buf)
+ppu2spu_unwind_register (ppu2spu_data *data, int regnum, gdb_byte *buf)
 {
-  struct ppu2spu_data *data = (struct ppu2spu_data *) src;
   enum bfd_endian byte_order = gdbarch_byte_order (data->gdbarch);
 
   if (regnum >= 0 && regnum < SPU_NUM_GPRS)
@@ -1346,16 +1429,18 @@ ppu2spu_sniffer (const struct frame_unwind *self,
 	return 0;
 
       xsnprintf (annex, sizeof annex, "%d/regs", data.id);
-      if (target_read (&current_target, TARGET_OBJECT_SPU, annex,
+      if (target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		       data.gprs, 0, sizeof data.gprs)
 	  == sizeof data.gprs)
 	{
+	  auto cooked_read = [&data] (int regnum, gdb_byte *out_buf)
+	    {
+	      return ppu2spu_unwind_register (&data, regnum, out_buf);
+	    };
 	  struct ppu2spu_cache *cache
 	    = FRAME_OBSTACK_CALLOC (1, struct ppu2spu_cache);
-	  std::unique_ptr<struct regcache> regcache
-	    (new struct regcache (data.gdbarch));
-
-	  regcache_save (regcache.get (), ppu2spu_unwind_register, &data);
+	  std::unique_ptr<readonly_detached_regcache> regcache
+	    (new readonly_detached_regcache (data.gdbarch, cooked_read));
 
 	  cache->frame_id = frame_id_build (base, func);
 	  cache->regcache = regcache.release ();
@@ -1809,6 +1894,10 @@ ppc_linux_init_abi (struct gdbarch_info info,
 
       /* Cell/B.E. cross-architecture unwinder support.  */
       frame_unwind_prepend_unwinder (gdbarch, &ppu2spu_unwind);
+
+      /* We need to support more than "addr_bit" significant address bits
+         in order to support SPUADDR_ADDR encoded values.  */
+      set_gdbarch_significant_addr_bit (gdbarch, 64);
     }
 
   set_gdbarch_displaced_step_location (gdbarch,
@@ -1836,9 +1925,9 @@ _initialize_ppc_linux_tdep (void)
                          ppc_linux_init_abi);
 
   /* Attach to observers to track __spe_current_active_context.  */
-  observer_attach_inferior_created (ppc_linux_spe_context_inferior_created);
-  observer_attach_solib_loaded (ppc_linux_spe_context_solib_loaded);
-  observer_attach_solib_unloaded (ppc_linux_spe_context_solib_unloaded);
+  gdb::observers::inferior_created.attach (ppc_linux_spe_context_inferior_created);
+  gdb::observers::solib_loaded.attach (ppc_linux_spe_context_solib_loaded);
+  gdb::observers::solib_unloaded.attach (ppc_linux_spe_context_solib_unloaded);
 
   /* Initialize the Linux target descriptions.  */
   initialize_tdesc_powerpc_32l ();

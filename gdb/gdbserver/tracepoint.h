@@ -1,5 +1,5 @@
 /* Tracepoint code for remote server for GDB.
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -82,8 +82,6 @@ int tracepoint_finished_step (struct thread_info *tinfo, CORE_ADDR stop_pc);
 int tracepoint_was_hit (struct thread_info *tinfo, CORE_ADDR stop_pc);
 
 void release_while_stepping_state_list (struct thread_info *tinfo);
-
-extern int current_traceframe;
 
 int in_readonly_region (CORE_ADDR addr, ULONGEST length);
 int traceframe_read_mem (int tfnum, CORE_ADDR addr,

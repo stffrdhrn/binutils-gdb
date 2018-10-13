@@ -1,6 +1,6 @@
 /* Filename-seen cache for the GNU debugger, GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -16,6 +16,9 @@
 
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
+
+#ifndef FILENAME_SEEN_CACHE_H
+#define FILENAME_SEEN_CACHE_H
 
 #include "defs.h"
 #include "common/function-view.h"
@@ -59,3 +62,5 @@ private:
   /* Table of files seen so far.  */
   htab_t m_tab;
 };
+
+#endif /* FILENAME_SEEN_CACHE_H */

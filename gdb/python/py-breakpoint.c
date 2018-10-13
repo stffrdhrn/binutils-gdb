@@ -1,6 +1,6 @@
 /* Python interface to breakpoints
 
-   Copyright (C) 2008-2017 Free Software Foundation, Inc.
+   Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,7 +25,7 @@
 #include "breakpoint.h"
 #include "gdbcmd.h"
 #include "gdbthread.h"
-#include "observer.h"
+#include "observable.h"
 #include "cli/cli-script.h"
 #include "ada-lang.h"
 #include "arch-utils.h"
@@ -391,7 +391,12 @@ bppy_get_location (PyObject *self, void *closure)
   if (obj->bp->type != bp_breakpoint)
     Py_RETURN_NONE;
 
-  str = event_location_to_string (obj->bp->location.get ());
+  struct event_location *location = obj->bp->location.get ();
+  /* "catch throw" makes a breakpoint of type bp_breakpoint that does
+     not have a location.  */
+  if (location == nullptr)
+    Py_RETURN_NONE;
+  str = event_location_to_string (location);
   if (! str)
     str = "";
   return host_string_to_python_string (str);
@@ -508,6 +513,48 @@ bppy_get_commands (PyObject *self, void *closure)
 
   current_uiout->redirect (NULL);
   return host_string_to_python_string (stb.c_str ());
+}
+
+/* Set the commands attached to a breakpoint.  Returns 0 on success.
+   Returns -1 on error, with a python exception set.  */
+static int
+bppy_set_commands (PyObject *self, PyObject *newvalue, void *closure)
+{
+  gdbpy_breakpoint_object *self_bp = (gdbpy_breakpoint_object *) self;
+  struct gdb_exception except = exception_none;
+
+  BPPY_SET_REQUIRE_VALID (self_bp);
+
+  gdb::unique_xmalloc_ptr<char> commands
+    (python_string_to_host_string (newvalue));
+  if (commands == nullptr)
+    return -1;
+
+  TRY
+    {
+      bool first = true;
+      char *save_ptr = nullptr;
+      auto reader
+	= [&] ()
+	  {
+	    const char *result = strtok_r (first ? commands.get () : nullptr,
+					   "\n", &save_ptr);
+	    first = false;
+	    return result;
+	  };
+
+      counted_command_line lines = read_command_lines_1 (reader, 1, nullptr);
+      breakpoint_set_commands (self_bp->bp, std::move (lines));
+    }
+  CATCH (ex, RETURN_MASK_ALL)
+    {
+      except = ex;
+    }
+  END_CATCH
+
+  GDB_PY_SET_HANDLE_EXCEPTION (except);
+
+  return 0;
 }
 
 /* Python function to get the breakpoint type.  */
@@ -1086,9 +1133,9 @@ gdbpy_initialize_breakpoints (void)
 			      (PyObject *) &breakpoint_object_type) < 0)
     return -1;
 
-  observer_attach_breakpoint_created (gdbpy_breakpoint_created);
-  observer_attach_breakpoint_deleted (gdbpy_breakpoint_deleted);
-  observer_attach_breakpoint_modified (gdbpy_breakpoint_modified);
+  gdb::observers::breakpoint_created.attach (gdbpy_breakpoint_created);
+  gdb::observers::breakpoint_deleted.attach (gdbpy_breakpoint_deleted);
+  gdb::observers::breakpoint_modified.attach (gdbpy_breakpoint_modified);
 
   /* Add breakpoint types constants.  */
   for (i = 0; pybp_codes[i].name; ++i)
@@ -1185,7 +1232,7 @@ when setting this property.", NULL },
   { "condition", bppy_get_condition, bppy_set_condition,
     "Condition of the breakpoint, as specified by the user,\
 or None if no condition set."},
-  { "commands", bppy_get_commands, NULL,
+  { "commands", bppy_get_commands, bppy_set_commands,
     "Commands of the breakpoint, as specified by the user."},
   { "type", bppy_get_type, NULL,
     "Type of breakpoint."},

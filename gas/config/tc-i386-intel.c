@@ -1,5 +1,5 @@
 /* tc-i386.c -- Assemble Intel syntax code for ix86/x86-64
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -286,11 +286,10 @@ i386_intel_simplify_register (expressionS *e)
       i.op[this_operand].regs = i386_regtab + reg_num;
     }
   else if (!intel_state.index
-	   && (i386_regtab[reg_num].reg_type.bitfield.regxmm
-	       || i386_regtab[reg_num].reg_type.bitfield.regymm
-	       || i386_regtab[reg_num].reg_type.bitfield.regzmm
-	       || i386_regtab[reg_num].reg_num == RegRiz
-	       || i386_regtab[reg_num].reg_num == RegEiz))
+	   && (i386_regtab[reg_num].reg_type.bitfield.xmmword
+	       || i386_regtab[reg_num].reg_type.bitfield.ymmword
+	       || i386_regtab[reg_num].reg_type.bitfield.zmmword
+	       || i386_regtab[reg_num].reg_num == RegIZ))
     intel_state.index = i386_regtab + reg_num;
   else if (!intel_state.base && !intel_state.in_scale)
     intel_state.base = i386_regtab + reg_num;
@@ -451,7 +450,7 @@ static int i386_intel_simplify (expressionS *e)
 	    {
 	      resolve_expression (scale);
 	      if (scale->X_op != O_constant
-		  || intel_state.index->reg_type.bitfield.reg16)
+		  || intel_state.index->reg_type.bitfield.word)
 		scale->X_add_number = 0;
 	      intel_state.scale_factor *= scale->X_add_number;
 	    }
@@ -698,17 +697,14 @@ i386_intel_operand (char *operand_string, int got_a_float)
 	case O_oword_ptr:
 	case O_xmmword_ptr:
 	  i.types[this_operand].bitfield.xmmword = 1;
-	  suffix = XMMWORD_MNEM_SUFFIX;
 	  break;
 
 	case O_ymmword_ptr:
 	  i.types[this_operand].bitfield.ymmword = 1;
-	  suffix = YMMWORD_MNEM_SUFFIX;
 	  break;
 
 	case O_zmmword_ptr:
 	  i.types[this_operand].bitfield.zmmword = 1;
-	  suffix = ZMMWORD_MNEM_SUFFIX;
 	  break;
 
 	case O_far_ptr:
@@ -878,7 +874,7 @@ i386_intel_operand (char *operand_string, int got_a_float)
 		      i.mem_operands = 0;
 		      i.disp_operands = 0;
 		      i.imm_operands = 2;
-		      i.types[0].bitfield.mem = 0;
+		      i.flags[0] &= ~Operand_Mem;
 		      i.types[0].bitfield.disp16 = 0;
 		      i.types[0].bitfield.disp32 = 0;
 		      i.types[0].bitfield.disp32s = 0;
@@ -897,8 +893,8 @@ i386_intel_operand (char *operand_string, int got_a_float)
 	 mode we have to do this here.  */
       if (intel_state.base
 	  && intel_state.index
-	  && intel_state.base->reg_type.bitfield.reg16
-	  && intel_state.index->reg_type.bitfield.reg16
+	  && intel_state.base->reg_type.bitfield.word
+	  && intel_state.index->reg_type.bitfield.word
 	  && intel_state.base->reg_num >= 6
 	  && intel_state.index->reg_num < 6)
 	{
@@ -1012,7 +1008,7 @@ i386_intel_operand (char *operand_string, int got_a_float)
       if (!i386_index_check (operand_string))
 	return 0;
 
-      i.types[this_operand].bitfield.mem = 1;
+      i.flags[this_operand] |= Operand_Mem;
       if (i.mem_operands == 0)
 	i.memop1_string = xstrdup (operand_string);
       ++i.mem_operands;

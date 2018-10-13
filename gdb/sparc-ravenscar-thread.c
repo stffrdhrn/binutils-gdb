@@ -1,6 +1,6 @@
 /* Ravenscar SPARC target support.
 
-   Copyright (C) 2004-2017 Free Software Foundation, Inc.
+   Copyright (C) 2004-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -68,7 +68,7 @@ supply_register_at_address (struct regcache *regcache, int regnum,
 
   buf = (gdb_byte *) alloca (buf_size);
   read_memory (register_addr, buf, buf_size);
-  regcache_raw_supply (regcache, regnum, buf);
+  regcache->raw_supply (regnum, buf);
 }
 
 /* Return true if, for a non-running thread, REGNUM has been saved on the
@@ -112,7 +112,7 @@ sparc_ravenscar_fetch_registers (struct regcache *regcache, int regnum)
   ULONGEST stack_address;
 
   /* The tid is the thread_id field, which is a pointer to the thread.  */
-  thread_descriptor_address = (CORE_ADDR) ptid_get_tid (inferior_ptid);
+  thread_descriptor_address = (CORE_ADDR) inferior_ptid.tid ();
 
   /* Read the saved SP in the context buffer.  */
   current_address = thread_descriptor_address
@@ -162,7 +162,7 @@ sparc_ravenscar_store_registers (struct regcache *regcache, int regnum)
 
   if (register_in_thread_descriptor_p (regnum))
     register_address =
-      ptid_get_tid (inferior_ptid) + sparc_register_offsets [regnum];
+      inferior_ptid.tid () + sparc_register_offsets [regnum];
   else if (register_on_stack_p (regnum))
     {
       regcache_cooked_read_unsigned (regcache, SPARC_SP_REGNUM,
@@ -172,7 +172,7 @@ sparc_ravenscar_store_registers (struct regcache *regcache, int regnum)
   else
     return;
 
-  regcache_raw_collect (regcache, regnum, buf);
+  regcache->raw_collect (regnum, buf);
   write_memory (register_address,
                 buf,
                 buf_size);

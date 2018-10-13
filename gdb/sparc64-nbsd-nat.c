@@ -1,6 +1,6 @@
 /* Native-dependent code for NetBSD/sparc64.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -156,16 +156,19 @@ sparc64nbsd_supply_pcb (struct regcache *regcache, struct pcb *pcb)
       read_memory(pcb->pcb_sp + BIAS - 176 + (11 * 8), 
 		  (gdb_byte *)&pcb->pcb_pc, sizeof pcb->pcb_pc);
 
-  regcache_raw_supply (regcache, SPARC_SP_REGNUM, &pcb->pcb_sp);
-  regcache_raw_supply (regcache, SPARC64_PC_REGNUM, &pcb->pcb_pc);
+  regcache->raw_supply (SPARC_SP_REGNUM, &pcb->pcb_sp);
+  regcache->raw_supply (SPARC64_PC_REGNUM, &pcb->pcb_pc);
 
   state = pcb->pcb_pstate << 8 | pcb->pcb_cwp;
-  regcache_raw_supply (regcache, SPARC64_STATE_REGNUM, &state);
+  regcache->raw_supply (SPARC64_STATE_REGNUM, &state);
 
   sparc_supply_rwindow (regcache, pcb->pcb_sp, -1);
 
   return 1;
 }
+
+/* We've got nothing to add to the generic SPARC target.  */
+static sparc_target<inf_ptrace_target> the_sparc64_nbsd_nat_target;
 
 void
 _initialize_sparc64nbsd_nat (void)
@@ -177,8 +180,7 @@ _initialize_sparc64nbsd_nat (void)
   sparc_gregset_supplies_p = sparc64nbsd_gregset_supplies_p;
   sparc_fpregset_supplies_p = sparc64nbsd_fpregset_supplies_p;
 
-  /* We've got nothing to add to the generic SPARC target.  */
-  add_target (sparc_target ());
+  add_inf_child_target (&the_sparc64_nbsd_nat_target);
 
   /* Support debugging kernel virtual memory images.  */
   bsd_kvm_add_target (sparc64nbsd_supply_pcb);

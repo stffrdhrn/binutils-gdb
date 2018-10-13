@@ -1,4 +1,4 @@
-# Copyright 2016-2017 Free Software Foundation, Inc.
+# Copyright 2016-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,7 +87,7 @@ proc_with_prefix do_test {} {
     }
 
     gdb_test "new-ui" \
-	"usage: new-ui <interpreter> <tty>" \
+	"Usage: new-ui INTERPRETER TTY" \
 	"new-ui without arguments"
 
     set test "new-ui does not repeat"

@@ -1,5 +1,5 @@
 /* Memory breakpoint interfaces for the remote server for GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -125,7 +125,8 @@ int add_breakpoint_condition (struct gdb_breakpoint *bp,
 int add_breakpoint_commands (struct gdb_breakpoint *bp, const char **commands,
 			     int persist);
 
-int any_persistent_commands (void);
+/* Return true if PROC has any persistent command.  */
+bool any_persistent_commands (process_info *proc);
 
 /* Evaluation condition (if any) at breakpoint BP.  Return 1 if
    true and 0 otherwise.  */

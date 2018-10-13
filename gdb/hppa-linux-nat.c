@@ -1,6 +1,6 @@
 /* Functions specific to running GDB native on HPPA running GNU/Linux.
 
-   Copyright (C) 2004-2017 Free Software Foundation, Inc.
+   Copyright (C) 2004-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -33,6 +33,16 @@
 #include "hppa-linux-offsets.h"
 
 #include "hppa-tdep.h"
+
+class hppa_linux_nat_target final : public linux_nat_target
+{
+public:
+  /* Add our register access methods.  */
+  void fetch_registers (struct regcache *, int) override;
+  void store_registers (struct regcache *, int) override;
+};
+
+static hppa_linux_nat_target the_hppa_linux_nat_target;
 
 /* Prototypes for supply_gregset etc.  */
 #include "gregset.h"
@@ -219,11 +229,11 @@ fetch_register (struct regcache *regcache, int regno)
 
   if (gdbarch_cannot_fetch_register (gdbarch, regno))
     {
-      regcache_raw_supply (regcache, regno, NULL);
+      regcache->raw_supply (regno, NULL);
       return;
     }
 
-  tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  tid = get_ptrace_pid (regcache->ptid ());
 
   errno = 0;
   val = ptrace (PTRACE_PEEKUSER, tid, hppa_linux_register_addr (regno, 0), 0);
@@ -232,7 +242,7 @@ fetch_register (struct regcache *regcache, int regno)
 	   gdbarch_register_name (gdbarch, regno),
 	   regno, safe_strerror (errno));
 
-  regcache_raw_supply (regcache, regno, &val);
+  regcache->raw_supply (regno, &val);
 }
 
 /* Store one register.  */
@@ -247,10 +257,10 @@ store_register (const struct regcache *regcache, int regno)
   if (gdbarch_cannot_store_register (gdbarch, regno))
     return;
 
-  tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  tid = get_ptrace_pid (regcache->ptid ());
 
   errno = 0;
-  regcache_raw_collect (regcache, regno, &val);
+  regcache->raw_collect (regno, &val);
   ptrace (PTRACE_POKEUSER, tid, hppa_linux_register_addr (regno, 0), val);
   if (errno != 0)
     error (_("Couldn't write register %s (#%d): %s."),
@@ -262,9 +272,8 @@ store_register (const struct regcache *regcache, int regno)
    regno == -1, otherwise fetch all general registers or all floating
    point registers depending upon the value of regno.  */
 
-static void
-hppa_linux_fetch_inferior_registers (struct target_ops *ops,
-				     struct regcache *regcache, int regno)
+void
+hppa_linux_nat_target::fetch_registers (struct regcache *regcache, int regno)
 {
   if (-1 == regno)
     {
@@ -283,9 +292,8 @@ hppa_linux_fetch_inferior_registers (struct target_ops *ops,
    regno == -1, otherwise store all general registers or all floating
    point registers depending upon the value of regno.  */
 
-static void
-hppa_linux_store_inferior_registers (struct target_ops *ops,
-				     struct regcache *regcache, int regno)
+void
+hppa_linux_nat_target::store_registers (struct regcache *regcache, int regno)
 {
   if (-1 == regno)
     {
@@ -312,7 +320,7 @@ supply_gregset (struct regcache *regcache, const gdb_gregset_t *gregsetp)
   for (i = 0; i < sizeof (greg_map) / sizeof (greg_map[0]); i++, regp++)
     {
       int regno = greg_map[i];
-      regcache_raw_supply (regcache, regno, regp);
+      regcache->raw_supply (regno, regp);
     }
 }
 
@@ -331,9 +339,7 @@ fill_gregset (const struct regcache *regcache,
       int mregno = greg_map[i];
 
       if (regno == -1 || regno == mregno)
-	{
-          regcache_raw_collect(regcache, mregno, &(*gregsetp)[i]);
-	}
+	regcache->raw_collect (mregno, &(*gregsetp)[i]);
     }
 }
 
@@ -350,8 +356,8 @@ supply_fpregset (struct regcache *regcache, const gdb_fpregset_t *fpregsetp)
   for (regi = 0; regi <= 31; regi++)
     {
       from = (const char *) &((*fpregsetp)[regi]);
-      regcache_raw_supply (regcache, 2*regi + HPPA_FP0_REGNUM, from);
-      regcache_raw_supply (regcache, 2*regi + HPPA_FP0_REGNUM + 1, from + 4);
+      regcache->raw_supply (2*regi + HPPA_FP0_REGNUM, from);
+      regcache->raw_supply (2*regi + HPPA_FP0_REGNUM + 1, from + 4);
     }
 }
 
@@ -373,22 +379,14 @@ fill_fpregset (const struct regcache *regcache,
       char *to = (char *) &((*fpregsetp)[(i - HPPA_FP0_REGNUM) / 2]);
       if ((i - HPPA_FP0_REGNUM) & 1)
 	to += 4;
-      regcache_raw_collect (regcache, i, to);
+      regcache->raw_collect (i, to);
    }
 }
 
 void
 _initialize_hppa_linux_nat (void)
 {
-  struct target_ops *t;
-
-  /* Fill in the generic GNU/Linux methods.  */
-  t = linux_target ();
-
-  /* Add our register access methods.  */
-  t->to_fetch_registers = hppa_linux_fetch_inferior_registers;
-  t->to_store_registers = hppa_linux_store_inferior_registers;
-
   /* Register the target.  */
-  linux_nat_add_target (t);
+  linux_target = &the_hppa_linux_nat_target;
+  add_inf_child_target (&the_hppa_linux_nat_target);
 }

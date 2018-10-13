@@ -1,6 +1,6 @@
 /* Symbol table definitions for GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -60,6 +60,16 @@ enum class symbol_name_match_type
      namespace/module/package.  */
   FULL,
 
+  /* Search name matching.  This is like FULL, but the search name did
+     not come from the user; instead it is already a search name
+     retrieved from a SYMBOL_SEARCH_NAME/MSYMBOL_SEARCH_NAME call.
+     For Ada, this avoids re-encoding an already-encoded search name
+     (which would potentially incorrectly lowercase letters in the
+     linkage/search name that should remain uppercase).  For C++, it
+     avoids trying to demangle a name we already know is
+     demangled.  */
+  SEARCH_NAME,
+
   /* Expression matching.  The same as FULL matching in most
      languages.  The same as WILD matching in Ada.  */
   EXPRESSION,
@@ -100,7 +110,11 @@ class ada_lookup_name_info final
   bool standard_p () const
   { return m_standard_p; }
 
- private:
+  /* Return true if doing a verbatim match.  */
+  bool verbatim_p () const
+  { return m_verbatim_p; }
+
+private:
   /* The Ada-encoded lookup name.  */
   std::string m_encoded_name;
 
@@ -566,8 +580,26 @@ enum minimal_symbol_type
 {
   mst_unknown = 0,		/* Unknown type, the default */
   mst_text,			/* Generally executable instructions */
-  mst_text_gnu_ifunc,		/* Executable code returning address
+
+  /* A GNU ifunc symbol, in the .text section.  GDB uses to know
+     whether the user is setting a breakpoint on a GNU ifunc function,
+     and thus GDB needs to actually set the breakpoint on the target
+     function.  It is also used to know whether the program stepped
+     into an ifunc resolver -- the resolver may get a separate
+     symbol/alias under a different name, but it'll have the same
+     address as the ifunc symbol.  */
+  mst_text_gnu_ifunc,           /* Executable code returning address
 				   of executable code */
+
+  /* A GNU ifunc function descriptor symbol, in a data section
+     (typically ".opd").  Seen on architectures that use function
+     descriptors, like PPC64/ELFv1.  In this case, this symbol's value
+     is the address of the descriptor.  There'll be a corresponding
+     mst_text_gnu_ifunc synthetic symbol for the text/entry
+     address.  */
+  mst_data_gnu_ifunc,		/* Executable code returning address
+				   of executable code */
+
   mst_slot_got_plt,		/* GOT entries for .plt sections */
   mst_data,			/* Generally initialized data */
   mst_bss,			/* Generally uninitialized data */
@@ -951,7 +983,7 @@ struct symbol_computed_ops
      The generated C code must assign the location to a local
      variable; this variable's name is RESULT_NAME.  */
 
-  void (*generate_c_location) (struct symbol *symbol, string_file &stream,
+  void (*generate_c_location) (struct symbol *symbol, string_file *stream,
 			       struct gdbarch *gdbarch,
 			       unsigned char *registers_used,
 			       CORE_ADDR pc, const char *result_name);
@@ -1554,6 +1586,20 @@ extern struct block_symbol lookup_symbol (const char *,
 					  const domain_enum,
 					  struct field_of_this_result *);
 
+/* Find the definition for a specified symbol search name in domain
+   DOMAIN, visible from lexical block BLOCK if non-NULL or from
+   global/static blocks if BLOCK is NULL.  The passed-in search name
+   should not come from the user; instead it should already be a
+   search name as retrieved from a
+   SYMBOL_SEARCH_NAME/MSYMBOL_SEARCH_NAME call.  See definition of
+   symbol_name_match_type::SEARCH_NAME.  Returns the struct symbol
+   pointer, or NULL if no symbol is found.  The symbol's section is
+   fixed up if necessary.  */
+
+extern struct block_symbol lookup_symbol_search_name (const char *search_name,
+						      const struct block *block,
+						      domain_enum domain);
+
 /* A default version of lookup_symbol_nonlocal for use by languages
    that can't think of anything better to do.
    This implements the C lookup rules.  */
@@ -1603,6 +1649,7 @@ extern struct block_symbol
 
 extern struct symbol *
   lookup_symbol_in_block (const char *name,
+			  symbol_name_match_type match_type,
 			  const struct block *block,
 			  const domain_enum domain);
 
@@ -1623,28 +1670,99 @@ extern struct type *lookup_enum (const char *, const struct block *);
 
 /* from blockframe.c: */
 
-/* lookup the function symbol corresponding to the address.  */
+/* lookup the function symbol corresponding to the address.  The
+   return value will not be an inlined function; the containing
+   function will be returned instead.  */
 
 extern struct symbol *find_pc_function (CORE_ADDR);
 
-/* lookup the function corresponding to the address and section.  */
+/* lookup the function corresponding to the address and section.  The
+   return value will not be an inlined function; the containing
+   function will be returned instead.  */
 
 extern struct symbol *find_pc_sect_function (CORE_ADDR, struct obj_section *);
+
+/* lookup the function symbol corresponding to the address and
+   section.  The return value will be the closest enclosing function,
+   which might be an inline function.  */
+
+extern struct symbol *find_pc_sect_containing_function
+  (CORE_ADDR pc, struct obj_section *section);
 
 /* Find the symbol at the given address.  Returns NULL if no symbol
    found.  Only exact matches for ADDRESS are considered.  */
 
 extern struct symbol *find_symbol_at_address (CORE_ADDR);
 
-extern int find_pc_partial_function_gnu_ifunc (CORE_ADDR pc, const char **name,
+/* Finds the "function" (text symbol) that is smaller than PC but
+   greatest of all of the potential text symbols in SECTION.  Sets
+   *NAME and/or *ADDRESS conditionally if that pointer is non-null.
+   If ENDADDR is non-null, then set *ENDADDR to be the end of the
+   function (exclusive).  If the optional parameter BLOCK is non-null,
+   then set *BLOCK to the address of the block corresponding to the
+   function symbol, if such a symbol could be found during the lookup;
+   nullptr is used as a return value for *BLOCK if no block is found. 
+   This function either succeeds or fails (not halfway succeeds).  If
+   it succeeds, it sets *NAME, *ADDRESS, and *ENDADDR to real
+   information and returns 1.  If it fails, it sets *NAME, *ADDRESS
+   and *ENDADDR to zero and returns 0.
+   
+   If the function in question occupies non-contiguous ranges,
+   *ADDRESS and *ENDADDR are (subject to the conditions noted above) set
+   to the start and end of the range in which PC is found.  Thus
+   *ADDRESS <= PC < *ENDADDR with no intervening gaps (in which ranges
+   from other functions might be found).
+   
+   This property allows find_pc_partial_function to be used (as it had
+   been prior to the introduction of non-contiguous range support) by
+   various tdep files for finding a start address and limit address
+   for prologue analysis.  This still isn't ideal, however, because we
+   probably shouldn't be doing prologue analysis (in which
+   instructions are scanned to determine frame size and stack layout)
+   for any range that doesn't contain the entry pc.  Moreover, a good
+   argument can be made that prologue analysis ought to be performed
+   starting from the entry pc even when PC is within some other range.
+   This might suggest that *ADDRESS and *ENDADDR ought to be set to the
+   limits of the entry pc range, but that will cause the 
+   *ADDRESS <= PC < *ENDADDR condition to be violated; many of the
+   callers of find_pc_partial_function expect this condition to hold. 
+
+   Callers which require the start and/or end addresses for the range
+   containing the entry pc should instead call
+   find_function_entry_range_from_pc.  */
+
+extern int find_pc_partial_function (CORE_ADDR pc, const char **name,
+				     CORE_ADDR *address, CORE_ADDR *endaddr,
+				     const struct block **block = nullptr);
+
+/* Like find_pc_partial_function, above, but *ADDRESS and *ENDADDR are
+   set to start and end addresses of the range containing the entry pc.
+
+   Note that it is not necessarily the case that (for non-NULL ADDRESS
+   and ENDADDR arguments) the *ADDRESS <= PC < *ENDADDR condition will
+   hold.
+
+   See comment for find_pc_partial_function, above, for further
+   explanation.  */
+
+extern bool find_function_entry_range_from_pc (CORE_ADDR pc,
+					       const char **name,
 					       CORE_ADDR *address,
-					       CORE_ADDR *endaddr,
-					       int *is_gnu_ifunc_p);
+					       CORE_ADDR *endaddr);
 
-/* lookup function from address, return name, start addr and end addr.  */
+/* Return the type of a function with its first instruction exactly at
+   the PC address.  Return NULL otherwise.  */
 
-extern int find_pc_partial_function (CORE_ADDR, const char **, CORE_ADDR *,
-				     CORE_ADDR *);
+extern struct type *find_function_type (CORE_ADDR pc);
+
+/* See if we can figure out the function's actual type from the type
+   that the resolver returns.  RESOLVER_FUNADDR is the address of the
+   ifunc resolver.  */
+
+extern struct type *find_gnu_ifunc_target_type (CORE_ADDR resolver_funaddr);
+
+/* Find the GNU ifunc minimal symbol that matches SYM.  */
+extern bound_minimal_symbol find_gnu_ifunc (const symbol *sym);
 
 extern void clear_pc_function_cache (void);
 
@@ -1722,6 +1840,7 @@ struct symtab_and_line
   struct symtab *symtab = NULL;
   struct symbol *symbol = NULL;
   struct obj_section *section = NULL;
+  struct minimal_symbol *msymbol = NULL;
   /* Line number.  Line numbers start at 1 and proceed through symtab->nlines.
      0 is never a valid line number; it is used to indicate that line number
      information is not available.  */
@@ -1860,8 +1979,17 @@ int matching_obj_sections (struct obj_section *, struct obj_section *);
 
 extern struct symtab *find_line_symtab (struct symtab *, int, int *, int *);
 
-extern struct symtab_and_line find_function_start_sal (struct symbol *sym,
-						       int);
+/* Given a function symbol SYM, find the symtab and line for the start
+   of the function.  If FUNFIRSTLINE is true, we want the first line
+   of real code inside the function.  */
+extern symtab_and_line find_function_start_sal (symbol *sym, bool
+						funfirstline);
+
+/* Same, but start with a function address/section instead of a
+   symbol.  */
+extern symtab_and_line find_function_start_sal (CORE_ADDR func_addr,
+						obj_section *section,
+						bool funfirstline);
 
 extern void skip_prologue_sal (struct symtab_and_line *);
 
@@ -1996,7 +2124,7 @@ std::vector<CORE_ADDR> find_pcs_for_symtab_line
    true to indicate that LA_ITERATE_OVER_SYMBOLS should continue
    iterating, or false to indicate that the iteration should end.  */
 
-typedef bool (symbol_found_callback_ftype) (symbol *sym);
+typedef bool (symbol_found_callback_ftype) (struct block_symbol *bsym);
 
 void iterate_over_symbols (const struct block *block,
 			   const lookup_name_info &name,
@@ -2056,5 +2184,48 @@ void completion_list_add_name (completion_tracker &tracker,
 			       const char *symname,
 			       const lookup_name_info &lookup_name,
 			       const char *text, const char *word);
+
+/* A simple symbol searching class.  */
+
+class symbol_searcher
+{
+public:
+  /* Returns the symbols found for the search.  */
+  const std::vector<block_symbol> &
+  matching_symbols () const
+  {
+    return m_symbols;
+  }
+
+  /* Returns the minimal symbols found for the search.  */
+  const std::vector<bound_minimal_symbol> &
+  matching_msymbols () const
+  {
+    return m_minimal_symbols;
+  }
+
+  /* Search for all symbols named NAME in LANGUAGE with DOMAIN, restricting
+     search to FILE_SYMTABS and SEARCH_PSPACE, both of which may be NULL
+     to search all symtabs and program spaces.  */
+  void find_all_symbols (const std::string &name,
+			 const struct language_defn *language,
+			 enum search_domain search_domain,
+			 std::vector<symtab *> *search_symtabs,
+			 struct program_space *search_pspace);
+
+  /* Reset this object to perform another search.  */
+  void reset ()
+  {
+    m_symbols.clear ();
+    m_minimal_symbols.clear ();
+  }
+
+private:
+  /* Matching debug symbols.  */
+  std::vector<block_symbol>  m_symbols;
+
+  /* Matching non-debug symbols.  */
+  std::vector<bound_minimal_symbol> m_minimal_symbols;
+};
 
 #endif /* !defined(SYMTAB_H) */

@@ -1,6 +1,6 @@
 /* Motorola m68k target-dependent support for GNU/Linux.
 
-   Copyright (C) 1996-2017 Free Software Foundation, Inc.
+   Copyright (C) 1996-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -32,7 +32,7 @@
 #include "glibc-tdep.h"
 #include "solib-svr4.h"
 #include "auxv.h"
-#include "observer.h"
+#include "observable.h"
 #include "elf/common.h"
 #include "linux-tdep.h"
 #include "regset.h"
@@ -374,8 +374,10 @@ m68k_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					 void *cb_data,
 					 const struct regcache *regcache)
 {
-  cb (".reg", M68K_LINUX_GREGS_SIZE, &m68k_linux_gregset, NULL, cb_data);
-  cb (".reg2", M68K_LINUX_FPREGS_SIZE, &m68k_linux_fpregset, NULL, cb_data);
+  cb (".reg", M68K_LINUX_GREGS_SIZE, M68K_LINUX_GREGS_SIZE, &m68k_linux_gregset,
+      NULL, cb_data);
+  cb (".reg2", M68K_LINUX_FPREGS_SIZE, M68K_LINUX_FPREGS_SIZE,
+      &m68k_linux_fpregset, NULL, cb_data);
 }
 
 static void
@@ -426,5 +428,5 @@ _initialize_m68k_linux_tdep (void)
 {
   gdbarch_register_osabi (bfd_arch_m68k, 0, GDB_OSABI_LINUX,
 			  m68k_linux_init_abi);
-  observer_attach_inferior_created (m68k_linux_inferior_created);
+  gdb::observers::inferior_created.attach (m68k_linux_inferior_created);
 }

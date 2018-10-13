@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2017 Free Software Foundation, Inc.
+# Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -170,7 +170,11 @@ if { [is_elf_format] } then {
     if {! [istarget "h8300-*-*"]} then {
 	# The h8300 port issues a warning message for
 	# new sections created without atrributes.
-	run_elf_list_test "section2" "$target_machine" "-al" "-s" ""
+	if  { [istarget "i*86-*-*"] || [istarget "x86_64-*-*"] } then {
+	    run_elf_list_test "section2" "$target_machine" "-al -mx86-used-note=no" "-s" ""
+	} {
+	    run_elf_list_test "section2" "$target_machine" "-al" "-s" ""
+	}
     }
     run_dump_test "section3"
     run_dump_test "section4"
@@ -219,6 +223,7 @@ if { [is_elf_format] } then {
     run_dump_test "section12a"
     run_dump_test "section12b"
     run_dump_test "section13"
+    run_dump_test "section14"
     run_dump_test "dwarf2-1"
     run_dump_test "dwarf2-2"
     run_dump_test "dwarf2-3"
@@ -244,11 +249,14 @@ if { [is_elf_format] } then {
     run_dump_test "bad-group"
 
     run_dump_test "syms"
+
+    run_dump_test "missing-build-notes"
     
+    run_dump_test "common1"
+    run_dump_test "common2"
+
     # hpux has a non-standard common directive.
     if { ![istarget "*-*-hpux*"] } then {
-	run_dump_test "common1"
-	run_dump_test "common2"
 	run_dump_test "common3a"
 	run_dump_test "common3b"
 	run_dump_test "common4a"

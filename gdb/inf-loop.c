@@ -1,5 +1,5 @@
 /* Handling of inferior events for the event loop for GDB, the GNU debugger.
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
    Written by Elena Zannoni <ezannoni@cygnus.com> of Cygnus Solutions.
 
    This file is part of GDB.
@@ -29,7 +29,7 @@
 #include "continuations.h"
 #include "interps.h"
 #include "top.h"
-#include "observer.h"
+#include "observable.h"
 
 /* General function to handle events in the inferior.  */
 
@@ -55,7 +55,7 @@ inferior_event_handler (enum inferior_event_type event_type,
 
       /* Do all continuations associated with the whole inferior (not
 	 a particular thread).  */
-      if (!ptid_equal (inferior_ptid, null_ptid))
+      if (inferior_ptid != null_ptid)
 	do_all_inferior_continuations (0);
 
       /* When running a command list (from a user command, say), these

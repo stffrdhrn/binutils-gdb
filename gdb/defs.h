@@ -1,7 +1,7 @@
 /* *INDENT-OFF* */ /* ATTRIBUTE_PRINTF confuses indent, avoid running it
 		      for now.  */
 /* Basic, host-specific, and target-specific definitions for GDB.
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -309,7 +309,7 @@ typedef void initialize_file_ftype (void);
 
 extern char *gdb_readline_wrapper (const char *);
 
-extern char *command_line_input (const char *, int, const char *);
+extern char *command_line_input (const char *, const char *);
 
 extern void print_prompt (void);
 
@@ -327,38 +327,8 @@ extern int print_address_symbolic (struct gdbarch *, CORE_ADDR,
 				   struct ui_file *, int,
 				   const char *);
 
-extern int build_address_symbolic (struct gdbarch *,
-				   CORE_ADDR addr,
-				   int do_demangle, 
-				   char **name, 
-				   int *offset, 
-				   char **filename, 
-				   int *line, 	
-				   int *unmapped);
-
 extern void print_address (struct gdbarch *, CORE_ADDR, struct ui_file *);
 extern const char *pc_prefix (CORE_ADDR);
-
-/* From source.c */
-
-/* See openp function definition for their description.  */
-#define OPF_TRY_CWD_FIRST     0x01
-#define OPF_SEARCH_IN_PATH    0x02
-#define OPF_RETURN_REALPATH   0x04
-
-extern int openp (const char *, int, const char *, int, char **);
-
-extern int source_full_path_of (const char *, char **);
-
-extern void mod_path (const char *, char **);
-
-extern void add_path (const char *, char **, int);
-
-extern void directory_switch (const char *, int);
-
-extern char *source_path;
-
-extern void init_source_path (void);
 
 /* From exec.c */
 
@@ -419,13 +389,12 @@ enum info_proc_what
     /* * Display `info proc cwd'.  */
     IP_CWD,
 
+    /* * Display `info proc files'.  */
+    IP_FILES,
+
     /* * Display all of the above.  */
     IP_ALL
   };
-
-/* * String containing the current directory (what getwd would return).  */
-
-extern char *current_directory;
 
 /* * Default radixes for input and output.  Only some values supported.  */
 extern unsigned input_radix;
@@ -507,9 +476,8 @@ extern int longest_to_int (LONGEST);
    table in osabi.c.  */
 enum gdb_osabi
 {
-  GDB_OSABI_UNINITIALIZED = -1, /* For struct gdbarch_info.  */
-
   GDB_OSABI_UNKNOWN = 0,	/* keep this zero */
+  GDB_OSABI_NONE,
 
   GDB_OSABI_SVR4,
   GDB_OSABI_HURD,
@@ -555,11 +523,6 @@ enum symbol_needs_kind
 
 /* Dynamic target-system-dependent parameters for GDB.  */
 #include "gdbarch.h"
-
-/* * Maximum size of a register.  Something small, but large enough for
-   all known ISAs.  If it turns out to be too small, make it bigger.  */
-
-enum { MAX_REGISTER_SIZE = 64 };
 
 /* In findvar.c.  */
 
@@ -688,7 +651,7 @@ enum block_enum
   FIRST_LOCAL_BLOCK = 2
 };
 
-/* User selection used in observer.h and multiple print functions.  */
+/* User selection used in observable.h and multiple print functions.  */
 
 enum user_selected_what_flag
   {

@@ -1,5 +1,5 @@
 /* ldlang.h - linker command language support
-   Copyright (C) 1991-2017 Free Software Foundation, Inc.
+   Copyright (C) 1991-2018 Free Software Foundation, Inc.
 
    This file is part of the GNU Binutils.
 
@@ -143,6 +143,8 @@ typedef struct lang_output_section_statement_struct
   fill_type *fill;
   union etree_union *addr_tree;
   union etree_union *load_base;
+  union etree_union *section_alignment;
+  union etree_union *subsection_alignment;
 
   /* If non-null, an expression to evaluate after setting the section's
      size.  The expression is evaluated inside REGION (above) with '.'
@@ -153,8 +155,6 @@ typedef struct lang_output_section_statement_struct
   lang_output_section_phdr_list *phdrs;
 
   unsigned int block_value;
-  int subsection_alignment;	/* Alignment of components.  */
-  int section_alignment;	/* Alignment of start of section.  */
   int constraint;
   flagword flags;
   enum section_type sectype;

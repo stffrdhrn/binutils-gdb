@@ -1,16 +1,15 @@
 /* THIS FILE IS GENERATED.  -*- buffer-read-only: t -*- vi:set ro:
   Original: x32-core.xml */
 
-#include "arch/tdesc.h"
+#include "common/tdesc.h"
 
 static int
 create_feature_i386_x32_core (struct target_desc *result, long regnum)
 {
   struct tdesc_feature *feature;
 
-  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.core", "x32-core.xml");
+  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.core");
   tdesc_type_with_fields *type_with_fields;
-  tdesc_type *field_type;
   type_with_fields = tdesc_create_flags (feature, "i386_eflags", 4);
   tdesc_add_flag (type_with_fields, 0, "CF");
   tdesc_add_flag (type_with_fields, 1, "");

@@ -1,5 +1,5 @@
 /* SPU target-dependent code for GDB, the GNU debugger.
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
    Contributed by Ulrich Weigand <uweigand@de.ibm.com>.
    Based on a port by Sid Manning <sid@us.ibm.com>.
@@ -39,7 +39,7 @@
 #include "regcache.h"
 #include "reggroups.h"
 #include "block.h"
-#include "observer.h"
+#include "observable.h"
 #include "infcall.h"
 #include "dwarf2.h"
 #include "dwarf2-frame.h"
@@ -182,7 +182,7 @@ spu_register_type (struct gdbarch *gdbarch, int reg_nr)
 /* Pseudo registers for preferred slots - stack pointer.  */
 
 static enum register_status
-spu_pseudo_register_read_spu (struct regcache *regcache, const char *regname,
+spu_pseudo_register_read_spu (readable_regcache *regcache, const char *regname,
 			      gdb_byte *buf)
 {
   struct gdbarch *gdbarch = regcache->arch ();
@@ -193,12 +193,12 @@ spu_pseudo_register_read_spu (struct regcache *regcache, const char *regname,
   ULONGEST id;
   ULONGEST ul;
 
-  status = regcache_raw_read_unsigned (regcache, SPU_ID_REGNUM, &id);
+  status = regcache->raw_read (SPU_ID_REGNUM, &id);
   if (status != REG_VALID)
     return status;
   xsnprintf (annex, sizeof annex, "%d/%s", (int) id, regname);
   memset (reg, 0, sizeof reg);
-  target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 	       reg, 0, sizeof reg);
 
   ul = strtoulst ((char *) reg, NULL, 16);
@@ -207,7 +207,7 @@ spu_pseudo_register_read_spu (struct regcache *regcache, const char *regname,
 }
 
 static enum register_status
-spu_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+spu_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
                           int regnum, gdb_byte *buf)
 {
   gdb_byte reg[16];
@@ -218,18 +218,18 @@ spu_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
   switch (regnum)
     {
     case SPU_SP_REGNUM:
-      status = regcache_raw_read (regcache, SPU_RAW_SP_REGNUM, reg);
+      status = regcache->raw_read (SPU_RAW_SP_REGNUM, reg);
       if (status != REG_VALID)
 	return status;
       memcpy (buf, reg, 4);
       return status;
 
     case SPU_FPSCR_REGNUM:
-      status = regcache_raw_read_unsigned (regcache, SPU_ID_REGNUM, &id);
+      status = regcache->raw_read (SPU_ID_REGNUM, &id);
       if (status != REG_VALID)
 	return status;
       xsnprintf (annex, sizeof annex, "%d/fpcr", (int) id);
-      target_read (&current_target, TARGET_OBJECT_SPU, annex, buf, 0, 16);
+      target_read (current_top_target (), TARGET_OBJECT_SPU, annex, buf, 0, 16);
       return status;
 
     case SPU_SRR0_REGNUM:
@@ -263,7 +263,7 @@ spu_pseudo_register_write_spu (struct regcache *regcache, const char *regname,
   xsnprintf (annex, sizeof annex, "%d/%s", (int) id, regname);
   xsnprintf (reg, sizeof reg, "0x%s",
 	     phex_nz (extract_unsigned_integer (buf, 4, byte_order), 4));
-  target_write (&current_target, TARGET_OBJECT_SPU, annex,
+  target_write (current_top_target (), TARGET_OBJECT_SPU, annex,
 		(gdb_byte *) reg, 0, strlen (reg));
 }
 
@@ -278,15 +278,15 @@ spu_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
   switch (regnum)
     {
     case SPU_SP_REGNUM:
-      regcache_raw_read (regcache, SPU_RAW_SP_REGNUM, reg);
+      regcache->raw_read (SPU_RAW_SP_REGNUM, reg);
       memcpy (reg, buf, 4);
-      regcache_raw_write (regcache, SPU_RAW_SP_REGNUM, reg);
+      regcache->raw_write (SPU_RAW_SP_REGNUM, reg);
       break;
 
     case SPU_FPSCR_REGNUM:
       regcache_raw_read_unsigned (regcache, SPU_ID_REGNUM, &id);
       xsnprintf (annex, sizeof annex, "%d/fpcr", (int) id);
-      target_write (&current_target, TARGET_OBJECT_SPU, annex, buf, 0, 16);
+      target_write (current_top_target (), TARGET_OBJECT_SPU, annex, buf, 0, 16);
       break;
 
     case SPU_SRR0_REGNUM:
@@ -1176,11 +1176,12 @@ spu_unwind_sp (struct gdbarch *gdbarch, struct frame_info *next_frame)
 }
 
 static CORE_ADDR
-spu_read_pc (struct regcache *regcache)
+spu_read_pc (readable_regcache *regcache)
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (regcache->arch ());
   ULONGEST pc;
-  regcache_cooked_read_unsigned (regcache, SPU_PC_REGNUM, &pc);
+
+  regcache->cooked_read (SPU_PC_REGNUM, &pc);
   /* Mask off interrupt enable bit.  */
   return SPUADDR (tdep->id, pc & -4);
 }
@@ -1202,7 +1203,7 @@ spu_write_pc (struct regcache *regcache, CORE_ADDR pc)
 struct spu2ppu_cache
 {
   struct frame_id frame_id;
-  struct regcache *regcache;
+  readonly_detached_regcache *regcache;
 };
 
 static struct gdbarch *
@@ -1229,7 +1230,7 @@ spu2ppu_prev_register (struct frame_info *this_frame,
   gdb_byte *buf;
 
   buf = (gdb_byte *) alloca (register_size (gdbarch, regnum));
-  regcache_cooked_read (cache->regcache, regnum, buf);
+  cache->regcache->cooked_read (regnum, buf);
   return frame_unwind_got_bytes (this_frame, regnum, buf);
 }
 
@@ -1274,7 +1275,7 @@ spu2ppu_sniffer (const struct frame_unwind *self,
 	{
 	  struct regcache *regcache;
 	  regcache = get_thread_arch_regcache (inferior_ptid, target_gdbarch ());
-	  cache->regcache = regcache_dup (regcache);
+	  cache->regcache = new readonly_detached_regcache (*regcache);
 	  *this_prologue_cache = cache;
 	  return 1;
 	}
@@ -1355,19 +1356,19 @@ spu_value_to_regcache (struct regcache *regcache, int regnum,
   if (spu_scalar_value_p (type))
     {
       int preferred_slot = len < 4 ? 4 - len : 0;
-      regcache_cooked_write_part (regcache, regnum, preferred_slot, len, in);
+      regcache->cooked_write_part (regnum, preferred_slot, len, in);
     }
   else
     {
       while (len >= 16)
 	{
-	  regcache_cooked_write (regcache, regnum++, in);
+	  regcache->cooked_write (regnum++, in);
 	  in += 16;
 	  len -= 16;
 	}
 
       if (len > 0)
-	regcache_cooked_write_part (regcache, regnum, 0, len, in);
+	regcache->cooked_write_part (regnum, 0, len, in);
     }
 }
 
@@ -1380,19 +1381,19 @@ spu_regcache_to_value (struct regcache *regcache, int regnum,
   if (spu_scalar_value_p (type))
     {
       int preferred_slot = len < 4 ? 4 - len : 0;
-      regcache_cooked_read_part (regcache, regnum, preferred_slot, len, out);
+      regcache->cooked_read_part (regnum, preferred_slot, len, out);
     }
   else
     {
       while (len >= 16)
 	{
-	  regcache_cooked_read (regcache, regnum++, out);
+	  regcache->cooked_read (regnum++, out);
 	  out += 16;
 	  len -= 16;
 	}
 
       if (len > 0)
-	regcache_cooked_read_part (regcache, regnum, 0, len, out);
+	regcache->cooked_read_part (regnum, 0, len, out);
     }
 }
 
@@ -1412,7 +1413,7 @@ spu_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   /* Set the return address.  */
   memset (buf, 0, sizeof buf);
   store_unsigned_integer (buf, 4, byte_order, SPUADDR_ADDR (bp_addr));
-  regcache_cooked_write (regcache, SPU_LR_REGNUM, buf);
+  regcache->cooked_write (SPU_LR_REGNUM, buf);
 
   /* If STRUCT_RETURN is true, then the struct return address (in
      STRUCT_ADDR) will consume the first argument-passing register.
@@ -1421,7 +1422,7 @@ spu_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
     {
       memset (buf, 0, sizeof buf);
       store_unsigned_integer (buf, 4, byte_order, SPUADDR_ADDR (struct_addr));
-      regcache_cooked_write (regcache, regnum++, buf);
+      regcache->cooked_write (regnum++, buf);
     }
 
   /* Fill in argument registers.  */
@@ -1479,7 +1480,7 @@ spu_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   sp -= 32;
 
   /* Store stack back chain.  */
-  regcache_cooked_read (regcache, SPU_RAW_SP_REGNUM, buf);
+  regcache->cooked_read (SPU_RAW_SP_REGNUM, buf);
   target_write_memory (sp, buf, 16);
 
   /* Finally, update all slots of the SP register.  */
@@ -1489,7 +1490,7 @@ spu_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
       CORE_ADDR sp_slot = extract_unsigned_integer (buf + 4*i, 4, byte_order);
       store_unsigned_integer (buf + 4*i, 4, byte_order, sp_slot + sp_delta);
     }
-  regcache_cooked_write (regcache, SPU_RAW_SP_REGNUM, buf);
+  regcache->cooked_write (SPU_RAW_SP_REGNUM, buf);
 
   return sp;
 }
@@ -1539,7 +1540,7 @@ spu_return_value (struct gdbarch *gdbarch, struct value *function,
 	{
 	case RETURN_VALUE_REGISTER_CONVENTION:
 	  if (opencl_vector && TYPE_LENGTH (type) == 2)
-	    regcache_cooked_write_part (regcache, SPU_ARG1_REGNUM, 2, 2, in);
+	    regcache->cooked_write_part (SPU_ARG1_REGNUM, 2, 2, in);
 	  else
 	    spu_value_to_regcache (regcache, SPU_ARG1_REGNUM, type, in);
 	  break;
@@ -1555,7 +1556,7 @@ spu_return_value (struct gdbarch *gdbarch, struct value *function,
 	{
 	case RETURN_VALUE_REGISTER_CONVENTION:
 	  if (opencl_vector && TYPE_LENGTH (type) == 2)
-	    regcache_cooked_read_part (regcache, SPU_ARG1_REGNUM, 2, 2, out);
+	    regcache->cooked_read_part (SPU_ARG1_REGNUM, 2, 2, out);
 	  else
 	    spu_regcache_to_value (regcache, SPU_ARG1_REGNUM, type, out);
 	  break;
@@ -1595,14 +1596,14 @@ spu_memory_remove_breakpoint (struct gdbarch *gdbarch,
      -- this is not the correct behaviour.
 
      The workaround is to check whether the PID we are asked to remove this
-     breakpoint from (i.e. ptid_get_pid (inferior_ptid)) is different from the
+     breakpoint from (i.e. inferior_ptid.pid ()) is different from the
      PID of the current inferior (i.e. current_inferior ()->pid).  This is only
      true in the context of detach_breakpoints.  If so, we simply do nothing.
      [ Note that for the fork child process, it does not matter if breakpoints
      remain inserted, because those SPU contexts are not runnable anyway --
      the Linux kernel allows only the original process to invoke spu_run.  */
 
-  if (ptid_get_pid (inferior_ptid) != current_inferior ()->pid) 
+  if (inferior_ptid.pid () != current_inferior ()->pid) 
     return 0;
 
   return default_memory_remove_breakpoint (gdbarch, bp_tgt);
@@ -1654,7 +1655,7 @@ spu_software_single_step (struct regcache *regcache)
 	target += SPUADDR_ADDR (pc);
       else if (reg != -1)
       {
-	regcache_raw_read_part (regcache, reg, 0, 4, buf);
+	regcache->raw_read_part (reg, 0, 4, buf);
 	target += extract_unsigned_integer (buf, 4, byte_order) & -4;
       }
 
@@ -1819,8 +1820,8 @@ spu_get_overlay_table (struct objfile *objfile)
     {
       CORE_ADDR vma  = extract_unsigned_integer (ovly_table + 16*i + 0,
 						 4, byte_order);
-      CORE_ADDR size = extract_unsigned_integer (ovly_table + 16*i + 4,
-						 4, byte_order);
+      /* Note that this skips the "size" entry, which is at offset
+	 4.  */
       CORE_ADDR pos  = extract_unsigned_integer (ovly_table + 16*i + 8,
 						 4, byte_order);
       CORE_ADDR buf  = extract_unsigned_integer (ovly_table + 16*i + 12,
@@ -1966,7 +1967,9 @@ spu_catch_start (struct objfile *objfile)
       struct symbol *sym;
       struct symtab_and_line sal;
 
-      sym = block_lookup_symbol (block, "main", VAR_DOMAIN);
+      sym = block_lookup_symbol (block, "main",
+				 symbol_name_match_type::SEARCH_NAME,
+				 VAR_DOMAIN);
       if (sym)
 	{
 	  fixup_symbol_section (sym, objfile);
@@ -2076,7 +2079,7 @@ info_spu_event_command (const char *args, int from_tty)
   id = get_frame_register_unsigned (frame, SPU_ID_REGNUM);
 
   xsnprintf (annex, sizeof annex, "%d/event_status", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, (sizeof (buf) - 1));
   if (len <= 0)
     error (_("Could not read event_status."));
@@ -2084,7 +2087,7 @@ info_spu_event_command (const char *args, int from_tty)
   event_status = strtoulst ((char *) buf, NULL, 16);
  
   xsnprintf (annex, sizeof annex, "%d/event_mask", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, (sizeof (buf) - 1));
   if (len <= 0)
     error (_("Could not read event_mask."));
@@ -2093,18 +2096,12 @@ info_spu_event_command (const char *args, int from_tty)
  
   ui_out_emit_tuple tuple_emitter (current_uiout, "SPUInfoEvent");
 
-  if (current_uiout->is_mi_like_p ())
-    {
-      current_uiout->field_fmt ("event_status",
-				"0x%s", phex_nz (event_status, 4));
-      current_uiout->field_fmt ("event_mask",
-				"0x%s", phex_nz (event_mask, 4));
-    }
-  else
-    {
-      printf_filtered (_("Event Status 0x%s\n"), phex (event_status, 4));
-      printf_filtered (_("Event Mask   0x%s\n"), phex (event_mask, 4));
-    }
+  current_uiout->text (_("Event Status "));
+  current_uiout->field_fmt ("event_status", "0x%s", phex (event_status, 4));
+  current_uiout->text ("\n");
+  current_uiout->text (_("Event Mask   "));
+  current_uiout->field_fmt ("event_mask", "0x%s", phex (event_mask, 4));
+  current_uiout->text ("\n");
 }
 
 static void
@@ -2130,7 +2127,8 @@ info_spu_signal_command (const char *args, int from_tty)
   id = get_frame_register_unsigned (frame, SPU_ID_REGNUM);
 
   xsnprintf (annex, sizeof annex, "%d/signal1", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex, buf, 0, 4);
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU,
+		     annex, buf, 0, 4);
   if (len < 0)
     error (_("Could not read signal1."));
   else if (len == 4)
@@ -2140,7 +2138,7 @@ info_spu_signal_command (const char *args, int from_tty)
     }
     
   xsnprintf (annex, sizeof annex, "%d/signal1_type", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, (sizeof (buf) - 1));
   if (len <= 0)
     error (_("Could not read signal1_type."));
@@ -2148,7 +2146,8 @@ info_spu_signal_command (const char *args, int from_tty)
   signal1_type = strtoulst ((char *) buf, NULL, 16);
 
   xsnprintf (annex, sizeof annex, "%d/signal2", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex, buf, 0, 4);
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU,
+		     annex, buf, 0, 4);
   if (len < 0)
     error (_("Could not read signal2."));
   else if (len == 4)
@@ -2158,7 +2157,7 @@ info_spu_signal_command (const char *args, int from_tty)
     }
     
   xsnprintf (annex, sizeof annex, "%d/signal2_type", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, (sizeof (buf) - 1));
   if (len <= 0)
     error (_("Could not read signal2_type."));
@@ -2223,8 +2222,7 @@ info_spu_mailbox_list (gdb_byte *buf, int nr, enum bfd_endian byte_order,
 	current_uiout->field_fmt (field, "0x%s", phex (val, 4));
       }
 
-      if (!current_uiout->is_mi_like_p ())
-	printf_filtered ("\n");
+      current_uiout->text ("\n");
     }
 }
 
@@ -2247,7 +2245,7 @@ info_spu_mailbox_command (const char *args, int from_tty)
   ui_out_emit_tuple tuple_emitter (current_uiout, "SPUInfoMailbox");
 
   xsnprintf (annex, sizeof annex, "%d/mbox_info", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, sizeof buf);
   if (len < 0)
     error (_("Could not read mbox_info."));
@@ -2256,7 +2254,7 @@ info_spu_mailbox_command (const char *args, int from_tty)
 			 "mbox", "SPU Outbound Mailbox");
 
   xsnprintf (annex, sizeof annex, "%d/ibox_info", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, sizeof buf);
   if (len < 0)
     error (_("Could not read ibox_info."));
@@ -2265,7 +2263,7 @@ info_spu_mailbox_command (const char *args, int from_tty)
 			 "ibox", "SPU Outbound Interrupt Mailbox");
 
   xsnprintf (annex, sizeof annex, "%d/wbox_info", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, sizeof buf);
   if (len < 0)
     error (_("Could not read wbox_info."));
@@ -2451,8 +2449,7 @@ info_spu_dma_cmdlist (gdb_byte *buf, int nr, enum bfd_endian byte_order)
 	  current_uiout->field_skip ("error_p");
       }
 
-      if (!current_uiout->is_mi_like_p ())
-	printf_filtered ("\n");
+      current_uiout->text ("\n");
     }
 }
 
@@ -2478,7 +2475,7 @@ info_spu_dma_command (const char *args, int from_tty)
   id = get_frame_register_unsigned (frame, SPU_ID_REGNUM);
 
   xsnprintf (annex, sizeof annex, "%d/dma_info", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, 40 + 16 * 32);
   if (len <= 0)
     error (_("Could not read dma_info."));
@@ -2555,7 +2552,7 @@ info_spu_proxydma_command (const char *args, int from_tty)
   id = get_frame_register_unsigned (frame, SPU_ID_REGNUM);
 
   xsnprintf (annex, sizeof annex, "%d/proxydma_info", id);
-  len = target_read (&current_target, TARGET_OBJECT_SPU, annex,
+  len = target_read (current_top_target (), TARGET_OBJECT_SPU, annex,
 		     buf, 0, 24 + 8 * 32);
   if (len <= 0)
     error (_("Could not read proxydma_info."));
@@ -2720,6 +2717,9 @@ spu_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   set_gdbarch_address_class_name_to_type_flags
     (gdbarch, spu_address_class_name_to_type_flags);
 
+  /* We need to support more than "addr_bit" significant address bits
+     in order to support SPUADDR_ADDR encoded values.  */
+  set_gdbarch_significant_addr_bit (gdbarch, 64);
 
   /* Inferior function calls.  */
   set_gdbarch_call_dummy_location (gdbarch, ON_STACK);
@@ -2765,14 +2765,14 @@ _initialize_spu_tdep (void)
   register_gdbarch_init (bfd_arch_spu, spu_gdbarch_init);
 
   /* Add ourselves to objfile event chain.  */
-  observer_attach_new_objfile (spu_overlay_new_objfile);
+  gdb::observers::new_objfile.attach (spu_overlay_new_objfile);
   spu_overlay_data = register_objfile_data ();
 
   /* Install spu stop-on-load handler.  */
-  observer_attach_new_objfile (spu_catch_start);
+  gdb::observers::new_objfile.attach (spu_catch_start);
 
   /* Add ourselves to normal_stop event chain.  */
-  observer_attach_normal_stop (spu_attach_normal_stop);
+  gdb::observers::normal_stop.attach (spu_attach_normal_stop);
 
   /* Add root prefix command for all "set spu"/"show spu" commands.  */
   add_prefix_cmd ("spu", no_class, set_spu_command,

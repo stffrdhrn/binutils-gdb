@@ -1,5 +1,5 @@
 /* MI Command Set - MI Console.
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -38,6 +38,8 @@ public:
   void flush () override;
 
   void write (const char *buf, long length_buf) override;
+
+  void write_async_safe (const char *buf, long length_buf) override;
 
 private:
   /* The wrapped raw output stream.  */

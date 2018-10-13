@@ -1,5 +1,5 @@
 /* GDB routines for manipulating the minimal symbol tables.
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
    This file is part of GDB.
@@ -70,10 +70,12 @@ msymbol_is_function (struct objfile *objfile, minimal_symbol *minsym,
     case mst_abs:
     case mst_file_data:
     case mst_file_bss:
+    case mst_data_gnu_ifunc:
       {
 	struct gdbarch *gdbarch = get_objfile_arch (objfile);
-	CORE_ADDR pc = gdbarch_convert_from_func_ptr_addr (gdbarch, msym_addr,
-							   &current_target);
+	CORE_ADDR pc
+	  = gdbarch_convert_from_func_ptr_addr (gdbarch, msym_addr,
+						current_top_target ());
 	if (pc != msym_addr)
 	  {
 	    if (func_address_p != NULL)
@@ -359,8 +361,8 @@ lookup_minimal_symbol (const char *name, const char *sfile,
 		       % MINIMAL_SYMBOL_HASH_SIZE);
 
 		  symbol_name_matcher_ftype *match
-		    = language_get_symbol_name_matcher (language_def (lang),
-							lookup_name);
+		    = get_symbol_name_matcher (language_def (lang),
+					       lookup_name);
 		  struct minimal_symbol **msymbol_demangled_hash
 		    = objfile->per_bfd->msymbol_demangled_hash;
 
@@ -447,19 +449,35 @@ find_minimal_symbol_address (const char *name, CORE_ADDR *addr,
   return sym.minsym == NULL;
 }
 
+/* Get the lookup name form best suitable for linkage name
+   matching.  */
+
+static const char *
+linkage_name_str (const lookup_name_info &lookup_name)
+{
+  /* Unlike most languages (including C++), Ada uses the
+     encoded/linkage name as the search name recorded in symbols.  So
+     if debugging in Ada mode, prefer the Ada-encoded name.  This also
+     makes Ada's verbatim match syntax ("<...>") work, because
+     "lookup_name.name()" includes the "<>"s, while
+     "lookup_name.ada().lookup_name()" is the encoded name with "<>"s
+     stripped.  */
+  if (current_language->la_language == language_ada)
+    return lookup_name.ada ().lookup_name ().c_str ();
+
+  return lookup_name.name ().c_str ();
+}
+
 /* See minsyms.h.  */
 
 void
-iterate_over_minimal_symbols (struct objfile *objf,
-			      const lookup_name_info &lookup_name,
-			      void (*callback) (struct minimal_symbol *,
-						void *),
-			      void *user_data)
+iterate_over_minimal_symbols
+    (struct objfile *objf, const lookup_name_info &lookup_name,
+     gdb::function_view<bool (struct minimal_symbol *)> callback)
 {
-
   /* The first pass is over the ordinary hash table.  */
     {
-      const char *name = lookup_name.name ().c_str ();
+      const char *name = linkage_name_str (lookup_name);
       unsigned int hash = msymbol_hash (name) % MINIMAL_SYMBOL_HASH_SIZE;
       auto *mangled_cmp
 	= (case_sensitivity == case_sensitive_on
@@ -471,7 +489,8 @@ iterate_over_minimal_symbols (struct objfile *objf,
 	   iter = iter->hash_next)
 	{
 	  if (mangled_cmp (MSYMBOL_LINKAGE_NAME (iter), name) == 0)
-	    (*callback) (iter, user_data);
+	    if (callback (iter))
+	      return;
 	}
     }
 
@@ -482,7 +501,7 @@ iterate_over_minimal_symbols (struct objfile *objf,
     {
       const language_defn *lang_def = language_def (lang);
       symbol_name_matcher_ftype *name_match
-	= language_get_symbol_name_matcher (lang_def, lookup_name);
+	= get_symbol_name_matcher (lang_def, lookup_name);
 
       unsigned int hash
 	= lookup_name.search_name_hash (lang) % MINIMAL_SYMBOL_HASH_SIZE;
@@ -490,7 +509,8 @@ iterate_over_minimal_symbols (struct objfile *objf,
 	   iter != NULL;
 	   iter = iter->demangled_hash_next)
 	if (name_match (MSYMBOL_SEARCH_NAME (iter), lookup_name, NULL))
-	  (*callback) (iter, user_data);
+	  if (callback (iter))
+	    return;
     }
 }
 
@@ -636,6 +656,27 @@ frob_address (struct objfile *objfile, CORE_ADDR *pc)
   return 0;
 }
 
+/* Helper for lookup_minimal_symbol_by_pc_section.  Convert a
+   lookup_msym_prefer to a minimal_symbol_type.  */
+
+static minimal_symbol_type
+msym_prefer_to_msym_type (lookup_msym_prefer prefer)
+{
+  switch (prefer)
+    {
+    case lookup_msym_prefer::TEXT:
+      return mst_text;
+    case lookup_msym_prefer::TRAMPOLINE:
+      return mst_solib_trampoline;
+    case lookup_msym_prefer::GNU_IFUNC:
+      return mst_text_gnu_ifunc;
+    }
+
+  /* Assert here instead of in a default switch case above so that
+     -Wswitch warns if a new enumerator is added.  */
+  gdb_assert_not_reached ("unhandled lookup_msym_prefer");
+}
+
 /* Search through the minimal symbol table for each objfile and find
    the symbol whose address is the largest address that is still less
    than or equal to PC, and matches SECTION (which is not NULL).
@@ -651,10 +692,9 @@ frob_address (struct objfile *objfile, CORE_ADDR *pc)
    there are text and trampoline symbols at the same address.
    Otherwise prefer mst_text symbols.  */
 
-static struct bound_minimal_symbol
-lookup_minimal_symbol_by_pc_section_1 (CORE_ADDR pc_in,
-				       struct obj_section *section,
-				       int want_trampoline)
+bound_minimal_symbol
+lookup_minimal_symbol_by_pc_section (CORE_ADDR pc_in, struct obj_section *section,
+				     lookup_msym_prefer prefer)
 {
   int lo;
   int hi;
@@ -664,10 +704,15 @@ lookup_minimal_symbol_by_pc_section_1 (CORE_ADDR pc_in,
   struct minimal_symbol *best_symbol = NULL;
   struct objfile *best_objfile = NULL;
   struct bound_minimal_symbol result;
-  enum minimal_symbol_type want_type, other_type;
 
-  want_type = want_trampoline ? mst_solib_trampoline : mst_text;
-  other_type = want_trampoline ? mst_text : mst_solib_trampoline;
+  if (section == NULL)
+    {
+      section = find_pc_section (pc_in);
+      if (section == NULL)
+	return {};
+    }
+
+  minimal_symbol_type want_type = msym_prefer_to_msym_type (prefer);
 
   /* We can not require the symbol found to be in section, because
      e.g. IRIX 6.5 mdebug relies on this code returning an absolute
@@ -786,7 +831,7 @@ lookup_minimal_symbol_by_pc_section_1 (CORE_ADDR pc_in,
 		     preceding symbol too.  If they are otherwise
 		     identical prefer that one.  */
 		  if (hi > 0
-		      && MSYMBOL_TYPE (&msymbol[hi]) == other_type
+		      && MSYMBOL_TYPE (&msymbol[hi]) != want_type
 		      && MSYMBOL_TYPE (&msymbol[hi - 1]) == want_type
 		      && (MSYMBOL_SIZE (&msymbol[hi])
 			  == MSYMBOL_SIZE (&msymbol[hi - 1]))
@@ -883,41 +928,12 @@ lookup_minimal_symbol_by_pc_section_1 (CORE_ADDR pc_in,
   return result;
 }
 
-struct bound_minimal_symbol
-lookup_minimal_symbol_by_pc_section (CORE_ADDR pc, struct obj_section *section)
-{
-  if (section == NULL)
-    {
-      /* NOTE: cagney/2004-01-27: This was using find_pc_mapped_section to
-	 force the section but that (well unless you're doing overlay
-	 debugging) always returns NULL making the call somewhat useless.  */
-      section = find_pc_section (pc);
-      if (section == NULL)
-	{
-	  struct bound_minimal_symbol result;
-
-	  memset (&result, 0, sizeof (result));
-	  return result;
-	}
-    }
-  return lookup_minimal_symbol_by_pc_section_1 (pc, section, 0);
-}
-
 /* See minsyms.h.  */
 
 struct bound_minimal_symbol
 lookup_minimal_symbol_by_pc (CORE_ADDR pc)
 {
-  struct obj_section *section = find_pc_section (pc);
-
-  if (section == NULL)
-    {
-      struct bound_minimal_symbol result;
-
-      memset (&result, 0, sizeof (result));
-      return result;
-    }
-  return lookup_minimal_symbol_by_pc_section_1 (pc, section, 0);
+  return lookup_minimal_symbol_by_pc_section (pc, NULL);
 }
 
 /* Return non-zero iff PC is in an STT_GNU_IFUNC function resolver.  */
@@ -925,8 +941,9 @@ lookup_minimal_symbol_by_pc (CORE_ADDR pc)
 int
 in_gnu_ifunc_stub (CORE_ADDR pc)
 {
-  struct bound_minimal_symbol msymbol = lookup_minimal_symbol_by_pc (pc);
-
+  bound_minimal_symbol msymbol
+    = lookup_minimal_symbol_by_pc_section (pc, NULL,
+					   lookup_msym_prefer::GNU_IFUNC);
   return msymbol.minsym && MSYMBOL_TYPE (msymbol.minsym) == mst_text_gnu_ifunc;
 }
 
@@ -983,35 +1000,6 @@ static const struct gnu_ifunc_fns stub_gnu_ifunc_fns =
 
 const struct gnu_ifunc_fns *gnu_ifunc_fns_p = &stub_gnu_ifunc_fns;
 
-/* See minsyms.h.  */
-
-struct bound_minimal_symbol
-lookup_minimal_symbol_and_objfile (const char *name)
-{
-  struct bound_minimal_symbol result;
-  struct objfile *objfile;
-  unsigned int hash = msymbol_hash (name) % MINIMAL_SYMBOL_HASH_SIZE;
-
-  ALL_OBJFILES (objfile)
-    {
-      struct minimal_symbol *msym;
-
-      for (msym = objfile->per_bfd->msymbol_hash[hash];
-	   msym != NULL;
-	   msym = msym->hash_next)
-	{
-	  if (strcmp (MSYMBOL_LINKAGE_NAME (msym), name) == 0)
-	    {
-	      result.minsym = msym;
-	      result.objfile = objfile;
-	      return result;
-	    }
-	}
-    }
-
-  memset (&result, 0, sizeof (result));
-  return result;
-}
 
 
 /* Return leading symbol character for a BFD.  If BFD is NULL,
@@ -1077,6 +1065,7 @@ minimal_symbol_reader::record (const char *name, CORE_ADDR address,
       section = SECT_OFF_TEXT (m_objfile);
       break;
     case mst_data:
+    case mst_data_gnu_ifunc:
     case mst_file_data:
       section = SECT_OFF_DATA (m_objfile);
       break;
@@ -1422,10 +1411,8 @@ void
 terminate_minimal_symbol_table (struct objfile *objfile)
 {
   if (! objfile->per_bfd->msymbols)
-    objfile->per_bfd->msymbols
-      = ((struct minimal_symbol *)
-	 obstack_alloc (&objfile->per_bfd->storage_obstack,
-			sizeof (struct minimal_symbol)));
+    objfile->per_bfd->msymbols = XOBNEW (&objfile->per_bfd->storage_obstack,
+					 minimal_symbol);
 
   {
     struct minimal_symbol *m
@@ -1446,12 +1433,9 @@ terminate_minimal_symbol_table (struct objfile *objfile)
 static struct minimal_symbol *
 lookup_solib_trampoline_symbol_by_pc (CORE_ADDR pc)
 {
-  struct obj_section *section = find_pc_section (pc);
-  struct bound_minimal_symbol msymbol;
-
-  if (section == NULL)
-    return NULL;
-  msymbol = lookup_minimal_symbol_by_pc_section_1 (pc, section, 1);
+  bound_minimal_symbol msymbol
+    = lookup_minimal_symbol_by_pc_section (pc, NULL,
+					   lookup_msym_prefer::TRAMPOLINE);
 
   if (msymbol.minsym != NULL
       && MSYMBOL_TYPE (msymbol.minsym) == mst_solib_trampoline)
@@ -1480,26 +1464,19 @@ find_solib_trampoline_target (struct frame_info *frame, CORE_ADDR pc)
     {
       ALL_MSYMBOLS (objfile, msymbol)
       {
-	if ((MSYMBOL_TYPE (msymbol) == mst_text
-	    || MSYMBOL_TYPE (msymbol) == mst_text_gnu_ifunc)
-	    && strcmp (MSYMBOL_LINKAGE_NAME (msymbol),
-		       MSYMBOL_LINKAGE_NAME (tsymbol)) == 0)
-	  return MSYMBOL_VALUE_ADDRESS (objfile, msymbol);
-
 	/* Also handle minimal symbols pointing to function descriptors.  */
-	if (MSYMBOL_TYPE (msymbol) == mst_data
+	if ((MSYMBOL_TYPE (msymbol) == mst_text
+	     || MSYMBOL_TYPE (msymbol) == mst_text_gnu_ifunc
+	     || MSYMBOL_TYPE (msymbol) == mst_data
+	     || MSYMBOL_TYPE (msymbol) == mst_data_gnu_ifunc)
 	    && strcmp (MSYMBOL_LINKAGE_NAME (msymbol),
 		       MSYMBOL_LINKAGE_NAME (tsymbol)) == 0)
 	  {
 	    CORE_ADDR func;
 
-	    func = gdbarch_convert_from_func_ptr_addr
-		    (get_objfile_arch (objfile),
-		     MSYMBOL_VALUE_ADDRESS (objfile, msymbol),
-		     &current_target);
-
-	    /* Ignore data symbols that are not function descriptors.  */
-	    if (func != MSYMBOL_VALUE_ADDRESS (objfile, msymbol))
+	    /* Ignore data symbols that are not function
+	       descriptors.  */
+	    if (msymbol_is_function (objfile, msymbol, &func))
 	      return func;
 	  }
       }

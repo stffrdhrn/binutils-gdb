@@ -1,5 +1,5 @@
 # This shell script emits a C file. -*- C -*-
-#   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -116,8 +116,8 @@ avr_elf_create_output_section_statements (void)
 
   if (bfd_get_flavour (link_info.output_bfd) != bfd_target_elf_flavour)
     {
-      einfo (_("%X%P: changing output format whilst linking "
-	       "is not supported\n"));
+      einfo (_("%F%P: error: cannot change output format "
+	       "whilst linking %s binaries\n"), "AVR");
       return;
     }
 
@@ -131,7 +131,7 @@ avr_elf_create_output_section_statements (void)
 			     bfd_get_arch (link_info.output_bfd),
 			     bfd_get_mach (link_info.output_bfd)))
     {
-      einfo (_("%X%P: can not create stub BFD %E\n"));
+      einfo (_("%X%P: can not create stub BFD: %E\n"));
       return;
     }
 
@@ -257,7 +257,7 @@ PARSE_AND_LIST_OPTIONS='
   fprintf (file, _("  --pmem-wrap-around=<val>    "
 		   "Make the linker relaxation machine assume that a\n"
 		   "                              "
-		   "  program counter wrap-around occures at address\n"
+		   "  program counter wrap-around occurs at address\n"
 		   "                              "
 		   "  <val>.  Supported values: 8k, 16k, 32k and 64k.\n"));
   fprintf (file, _("  --no-call-ret-replacement   "

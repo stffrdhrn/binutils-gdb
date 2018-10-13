@@ -1,4 +1,4 @@
-/* Copyright (C) 1986-2017 Free Software Foundation, Inc.
+/* Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -82,10 +82,6 @@ extern void start_remote (int from_tty);
 extern void clear_proceed_status (int step);
 
 extern void proceed (CORE_ADDR, enum gdb_signal);
-
-/* The `resume' routine should only be called in special circumstances.
-   Normally, use `proceed', which handles a lot of bookkeeping.  */
-extern void resume (enum gdb_signal);
 
 /* Return a ptid representing the set of threads that we will proceed,
    in the perspective of the user/frontend.  We may actually resume

@@ -1,6 +1,6 @@
 /* Output generating routines for GDB.
 
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions.
    Written by Fernando Nasser for Cygnus.
@@ -438,50 +438,6 @@ ui_out::end (ui_out_type type)
   do_end (type);
 }
 
-struct ui_out_end_cleanup_data
-{
-  struct ui_out *uiout;
-  enum ui_out_type type;
-};
-
-static void
-do_cleanup_end (void *data)
-{
-  struct ui_out_end_cleanup_data *end_cleanup_data
-    = (struct ui_out_end_cleanup_data *) data;
-
-  end_cleanup_data->uiout->end (end_cleanup_data->type);
-  xfree (end_cleanup_data);
-}
-
-static struct cleanup *
-make_cleanup_ui_out_end (struct ui_out *uiout,
-			 enum ui_out_type type)
-{
-  struct ui_out_end_cleanup_data *end_cleanup_data;
-
-  end_cleanup_data = XNEW (struct ui_out_end_cleanup_data);
-  end_cleanup_data->uiout = uiout;
-  end_cleanup_data->type = type;
-  return make_cleanup (do_cleanup_end, end_cleanup_data);
-}
-
-struct cleanup *
-make_cleanup_ui_out_tuple_begin_end (struct ui_out *uiout,
-				     const char *id)
-{
-  uiout->begin (ui_out_type_tuple, id);
-  return make_cleanup_ui_out_end (uiout, ui_out_type_tuple);
-}
-
-struct cleanup *
-make_cleanup_ui_out_list_begin_end (struct ui_out *uiout,
-				    const char *id)
-{
-  uiout->begin (ui_out_type_list, id);
-  return make_cleanup_ui_out_end (uiout, ui_out_type_list);
-}
-
 void
 ui_out::field_int (const char *fldname, int value)
 {
@@ -552,6 +508,12 @@ ui_out::field_string (const char *fldname, const char *string)
   do_field_string (fldno, width, align, fldname, string);
 }
 
+void
+ui_out::field_string (const char *fldname, const std::string &string)
+{
+  field_string (fldname, string.c_str ());
+}
+
 /* VARARGS */
 void
 ui_out::field_fmt (const char *fldname, const char *format, ...)
@@ -619,7 +581,7 @@ ui_out::test_flags (ui_out_flags mask)
 }
 
 bool
-ui_out::is_mi_like_p ()
+ui_out::is_mi_like_p () const
 {
   return do_is_mi_like_p ();
 }

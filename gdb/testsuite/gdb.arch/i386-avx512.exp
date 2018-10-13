@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Free Software Foundation, Inc.
+# Copyright 2014-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,9 +93,9 @@ gdb_test "break [gdb_get_line_number "third breakpoint here"]" \
 gdb_continue_to_breakpoint "continue to third breakpoint in main"
 
 if [is_amd64_regs_target] {
-    set nr_regs 8
-} else {
     set nr_regs 32
+} else {
+    set nr_regs 8
 }
 
 for { set r 0 } { $r < $nr_regs } { incr r } {

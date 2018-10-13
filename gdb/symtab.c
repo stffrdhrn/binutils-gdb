@@ -1,6 +1,6 @@
 /* Symbol table lookup for the GNU debugger, GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -54,7 +54,7 @@
 #include <ctype.h>
 #include "cp-abi.h"
 #include "cp-support.h"
-#include "observer.h"
+#include "observable.h"
 #include "solist.h"
 #include "macrotab.h"
 #include "macroscope.h"
@@ -66,6 +66,7 @@
 #include "filename-seen-cache.h"
 #include "arch-utils.h"
 #include <algorithm>
+#include "common/pathstuff.h"
 
 /* Forward declarations for local functions.  */
 
@@ -75,6 +76,7 @@ static int find_line_common (struct linetable *, int, int *, int);
 
 static struct block_symbol
   lookup_symbol_aux (const char *name,
+		     symbol_name_match_type match_type,
 		     const struct block *block,
 		     const domain_enum domain,
 		     enum language language,
@@ -82,6 +84,7 @@ static struct block_symbol
 
 static
 struct block_symbol lookup_local_symbol (const char *name,
+					 symbol_name_match_type match_type,
 					 const struct block *block,
 					 const domain_enum domain,
 					 enum language language);
@@ -525,7 +528,7 @@ gdb_mangle_name (struct type *type, int method_id, int signature_id)
   struct fn_field *method = &f[signature_id];
   const char *field_name = TYPE_FN_FIELDLIST_NAME (type, method_id);
   const char *physname = TYPE_FN_FIELD_PHYSNAME (f, signature_id);
-  const char *newname = type_name_no_tag (type);
+  const char *newname = TYPE_NAME (type);
 
   /* Does the form of physname indicate that it is the full mangled name
      of a constructor (not just the args)?  */
@@ -953,8 +956,7 @@ symbol_matches_search_name (const struct general_symbol_info *gsymbol,
 			    const lookup_name_info &name)
 {
   symbol_name_matcher_ftype *name_match
-    = language_get_symbol_name_matcher (language_def (gsymbol->language),
-					name);
+    = get_symbol_name_matcher (language_def (gsymbol->language), name);
   return name_match (symbol_search_name (gsymbol), name, NULL);
 }
 
@@ -1744,7 +1746,7 @@ fixup_symbol_section (struct symbol *sym, struct objfile *objfile)
       addr = SYMBOL_VALUE_ADDRESS (sym);
       break;
     case LOC_BLOCK:
-      addr = BLOCK_START (SYMBOL_BLOCK_VALUE (sym));
+      addr = BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym));
       break;
 
     default:
@@ -1773,14 +1775,18 @@ demangle_for_lookup_info::demangle_for_lookup_info
 
       if (without_params != NULL)
 	{
-	  m_demangled_name = demangle_for_lookup (without_params.get (),
-						  lang, storage);
+	  if (lookup_name.match_type () != symbol_name_match_type::SEARCH_NAME)
+	    m_demangled_name = demangle_for_lookup (without_params.get (),
+						    lang, storage);
 	  return;
 	}
     }
 
-  m_demangled_name = demangle_for_lookup (lookup_name.name ().c_str (),
-					  lang, storage);
+  if (lookup_name.match_type () == symbol_name_match_type::SEARCH_NAME)
+    m_demangled_name = lookup_name.name ();
+  else
+    m_demangled_name = demangle_for_lookup (lookup_name.name ().c_str (),
+					    lang, storage);
 }
 
 /* See symtab.h.  */
@@ -1876,7 +1882,9 @@ lookup_symbol_in_language (const char *name, const struct block *block,
   demangle_result_storage storage;
   const char *modified_name = demangle_for_lookup (name, lang, storage);
 
-  return lookup_symbol_aux (modified_name, block, domain, lang,
+  return lookup_symbol_aux (modified_name,
+			    symbol_name_match_type::FULL,
+			    block, domain, lang,
 			    is_a_field_of_this);
 }
 
@@ -1890,6 +1898,16 @@ lookup_symbol (const char *name, const struct block *block,
   return lookup_symbol_in_language (name, block, domain,
 				    current_language->la_language,
 				    is_a_field_of_this);
+}
+
+/* See symtab.h.  */
+
+struct block_symbol
+lookup_symbol_search_name (const char *search_name, const struct block *block,
+			   domain_enum domain)
+{
+  return lookup_symbol_aux (search_name, symbol_name_match_type::SEARCH_NAME,
+			    block, domain, language_asm, NULL);
 }
 
 /* See symtab.h.  */
@@ -1915,7 +1933,9 @@ lookup_language_this (const struct language_defn *lang,
     {
       struct symbol *sym;
 
-      sym = block_lookup_symbol (block, lang->la_name_of_this, VAR_DOMAIN);
+      sym = block_lookup_symbol (block, lang->la_name_of_this,
+				 symbol_name_match_type::SEARCH_NAME,
+				 VAR_DOMAIN);
       if (sym != NULL)
 	{
 	  if (symbol_lookup_debug > 1)
@@ -1986,7 +2006,8 @@ check_field (struct type *type, const char *name,
    (e.g., demangled name) of the symbol that we're looking for.  */
 
 static struct block_symbol
-lookup_symbol_aux (const char *name, const struct block *block,
+lookup_symbol_aux (const char *name, symbol_name_match_type match_type,
+		   const struct block *block,
 		   const domain_enum domain, enum language language,
 		   struct field_of_this_result *is_a_field_of_this)
 {
@@ -2015,7 +2036,7 @@ lookup_symbol_aux (const char *name, const struct block *block,
   /* Search specified block and its superiors.  Don't search
      STATIC_BLOCK or GLOBAL_BLOCK.  */
 
-  result = lookup_local_symbol (name, block, domain, language);
+  result = lookup_local_symbol (name, match_type, block, domain, language);
   if (result.symbol != NULL)
     {
       if (symbol_lookup_debug)
@@ -2097,7 +2118,9 @@ lookup_symbol_aux (const char *name, const struct block *block,
    Don't search STATIC_BLOCK or GLOBAL_BLOCK.  */
 
 static struct block_symbol
-lookup_local_symbol (const char *name, const struct block *block,
+lookup_local_symbol (const char *name,
+		     symbol_name_match_type match_type,
+		     const struct block *block,
 		     const domain_enum domain,
 		     enum language language)
 {
@@ -2112,18 +2135,18 @@ lookup_local_symbol (const char *name, const struct block *block,
 
   while (block != static_block)
     {
-      sym = lookup_symbol_in_block (name, block, domain);
+      sym = lookup_symbol_in_block (name, match_type, block, domain);
       if (sym != NULL)
 	return (struct block_symbol) {sym, block};
 
       if (language == language_cplus || language == language_fortran)
         {
-          struct block_symbol sym
+          struct block_symbol blocksym
 	    = cp_lookup_symbol_imports_or_template (scope, name, block,
 						    domain);
 
-          if (sym.symbol != NULL)
-            return sym;
+          if (blocksym.symbol != NULL)
+            return blocksym;
         }
 
       if (BLOCK_FUNCTION (block) != NULL && block_inlined_p (block))
@@ -2165,7 +2188,8 @@ lookup_objfile_from_block (const struct block *block)
 /* See symtab.h.  */
 
 struct symbol *
-lookup_symbol_in_block (const char *name, const struct block *block,
+lookup_symbol_in_block (const char *name, symbol_name_match_type match_type,
+			const struct block *block,
 			const domain_enum domain)
 {
   struct symbol *sym;
@@ -2181,7 +2205,7 @@ lookup_symbol_in_block (const char *name, const struct block *block,
 			  domain_name (domain));
     }
 
-  sym = block_lookup_symbol (block, name, domain);
+  sym = block_lookup_symbol (block, name, match_type, domain);
   if (sym)
     {
       if (symbol_lookup_debug > 1)
@@ -2370,7 +2394,8 @@ lookup_symbol_via_quick_fns (struct objfile *objfile, int block_index,
 
   bv = COMPUNIT_BLOCKVECTOR (cust);
   block = BLOCKVECTOR_BLOCK (bv, block_index);
-  result.symbol = block_lookup_symbol (block, name, domain);
+  result.symbol = block_lookup_symbol (block, name,
+				       symbol_name_match_type::FULL, domain);
   if (result.symbol == NULL)
     error_in_psymtab_expansion (block_index, name, cust);
 
@@ -2483,7 +2508,9 @@ lookup_symbol_in_static_block (const char *name,
 			  domain_name (domain));
     }
 
-  sym = lookup_symbol_in_block (name, static_block, domain);
+  sym = lookup_symbol_in_block (name,
+				symbol_name_match_type::FULL,
+				static_block, domain);
   if (symbol_lookup_debug)
     {
       fprintf_unfiltered (gdb_stdlog,
@@ -2833,7 +2860,9 @@ iterate_over_symbols (const struct block *block,
       if (symbol_matches_domain (SYMBOL_LANGUAGE (sym),
 				 SYMBOL_DOMAIN (sym), domain))
 	{
-	  if (!callback (sym))
+	  struct block_symbol block_sym = {sym, block};
+
+	  if (!callback (&block_sym))
 	    return;
 	}
     }
@@ -3019,8 +3048,6 @@ find_symbol_at_address (CORE_ADDR address)
    find the one whose first PC is closer than that of the next line in this
    symtab.  */
 
-/* If it's worth the effort, we could be using a binary search.  */
-
 struct symtab_and_line
 find_pc_sect_line (CORE_ADDR pc, struct obj_section *section, int notcurrent)
 {
@@ -3028,7 +3055,6 @@ find_pc_sect_line (CORE_ADDR pc, struct obj_section *section, int notcurrent)
   struct symtab *iter_s;
   struct linetable *l;
   int len;
-  int i;
   struct linetable_entry *item;
   const struct blockvector *bv;
   struct bound_minimal_symbol msymbol;
@@ -3187,15 +3213,17 @@ find_pc_sect_line (CORE_ADDR pc, struct obj_section *section, int notcurrent)
       if (item->pc > pc && (!alt || item->pc < alt->pc))
 	alt = item;
 
-      for (i = 0; i < len; i++, item++)
-	{
-	  /* Leave prev pointing to the linetable entry for the last line
-	     that started at or before PC.  */
-	  if (item->pc > pc)
-	    break;
+      auto pc_compare = [](const CORE_ADDR & comp_pc,
+			   const struct linetable_entry & lhs)->bool
+      {
+	return comp_pc < lhs.pc;
+      };
 
-	  prev = item;
-	}
+      struct linetable_entry *first = item;
+      struct linetable_entry *last = item + len;
+      item = std::upper_bound (first, last, pc, pc_compare);
+      if (item != first)
+	prev = item - 1;		/* Found a matching item.  */
 
       /* At this point, prev points at the line whose start addr is <= pc, and
          item points at the next line.  If we ran off the end of the linetable
@@ -3218,10 +3246,10 @@ find_pc_sect_line (CORE_ADDR pc, struct obj_section *section, int notcurrent)
 	}
 
       /* If another line (denoted by ITEM) is in the linetable and its
-         PC is after BEST's PC, but before the current BEST_END, then
+	 PC is after BEST's PC, but before the current BEST_END, then
 	 use ITEM's PC as the new best_end.  */
-      if (best && i < len && item->pc > best->pc
-          && (best_end == 0 || best_end > item->pc))
+      if (best && item < last && item->pc > best->pc
+	  && (best_end == 0 || best_end > item->pc))
 	best_end = item->pc;
     }
 
@@ -3548,46 +3576,37 @@ find_pc_line_pc_range (CORE_ADDR pc, CORE_ADDR *startptr, CORE_ADDR *endptr)
   return sal.symtab != 0;
 }
 
-/* Given a function symbol SYM, find the symtab and line for the start
-   of the function.
-   If the argument FUNFIRSTLINE is nonzero, we want the first line
-   of real code inside the function.
-   This function should return SALs matching those from minsym_found,
-   otherwise false multiple-locations breakpoints could be placed.  */
+/* Helper for find_function_start_sal.  Does most of the work, except
+   setting the sal's symbol.  */
 
-struct symtab_and_line
-find_function_start_sal (struct symbol *sym, int funfirstline)
+static symtab_and_line
+find_function_start_sal_1 (CORE_ADDR func_addr, obj_section *section,
+			   bool funfirstline)
 {
-  fixup_symbol_section (sym, NULL);
-
-  obj_section *section = SYMBOL_OBJ_SECTION (symbol_objfile (sym), sym);
-  symtab_and_line sal
-    = find_pc_sect_line (BLOCK_START (SYMBOL_BLOCK_VALUE (sym)), section, 0);
-  sal.symbol = sym;
+  symtab_and_line sal = find_pc_sect_line (func_addr, section, 0);
 
   if (funfirstline && sal.symtab != NULL
       && (COMPUNIT_LOCATIONS_VALID (SYMTAB_COMPUNIT (sal.symtab))
 	  || SYMTAB_LANGUAGE (sal.symtab) == language_asm))
     {
-      struct gdbarch *gdbarch = symbol_arch (sym);
+      struct gdbarch *gdbarch = get_objfile_arch (SYMTAB_OBJFILE (sal.symtab));
 
-      sal.pc = BLOCK_START (SYMBOL_BLOCK_VALUE (sym));
+      sal.pc = func_addr;
       if (gdbarch_skip_entrypoint_p (gdbarch))
 	sal.pc = gdbarch_skip_entrypoint (gdbarch, sal.pc);
       return sal;
     }
 
   /* We always should have a line for the function start address.
-     If we don't, something is odd.  Create a plain SAL refering
+     If we don't, something is odd.  Create a plain SAL referring
      just the PC and hope that skip_prologue_sal (if requested)
      can find a line number for after the prologue.  */
-  if (sal.pc < BLOCK_START (SYMBOL_BLOCK_VALUE (sym)))
+  if (sal.pc < func_addr)
     {
       sal = {};
       sal.pspace = current_program_space;
-      sal.pc = BLOCK_START (SYMBOL_BLOCK_VALUE (sym));
+      sal.pc = func_addr;
       sal.section = section;
-      sal.symbol = sym;
     }
 
   if (funfirstline)
@@ -3595,6 +3614,38 @@ find_function_start_sal (struct symbol *sym, int funfirstline)
 
   return sal;
 }
+
+/* See symtab.h.  */
+
+symtab_and_line
+find_function_start_sal (CORE_ADDR func_addr, obj_section *section,
+			 bool funfirstline)
+{
+  symtab_and_line sal
+    = find_function_start_sal_1 (func_addr, section, funfirstline);
+
+  /* find_function_start_sal_1 does a linetable search, so it finds
+     the symtab and linenumber, but not a symbol.  Fill in the
+     function symbol too.  */
+  sal.symbol = find_pc_sect_containing_function (sal.pc, sal.section);
+
+  return sal;
+}
+
+/* See symtab.h.  */
+
+symtab_and_line
+find_function_start_sal (symbol *sym, bool funfirstline)
+{
+  fixup_symbol_section (sym, NULL);
+  symtab_and_line sal
+    = find_function_start_sal_1 (BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym)),
+				 SYMBOL_OBJ_SECTION (symbol_objfile (sym), sym),
+				 funfirstline);
+  sal.symbol = sym;
+  return sal;
+}
+
 
 /* Given a function start address FUNC_ADDR and SYMTAB, find the first
    address for that function that has an entry in SYMTAB's line info
@@ -3668,7 +3719,7 @@ skip_prologue_sal (struct symtab_and_line *sal)
       fixup_symbol_section (sym, NULL);
 
       objfile = symbol_objfile (sym);
-      pc = BLOCK_START (SYMBOL_BLOCK_VALUE (sym));
+      pc = BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym));
       section = SYMBOL_OBJ_SECTION (objfile, sym);
       name = SYMBOL_LINKAGE_NAME (sym);
     }
@@ -3729,7 +3780,7 @@ skip_prologue_sal (struct symtab_and_line *sal)
       /* Check if gdbarch_skip_prologue left us in mid-line, and the next
 	 line is still part of the same function.  */
       if (skip && start_sal.pc != pc
-	  && (sym ? (BLOCK_START (SYMBOL_BLOCK_VALUE (sym)) <= start_sal.end
+	  && (sym ? (BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym)) <= start_sal.end
 		     && start_sal.end < BLOCK_END (SYMBOL_BLOCK_VALUE (sym)))
 	      : (lookup_minimal_symbol_by_pc_section (start_sal.end, section).minsym
 		 == lookup_minimal_symbol_by_pc_section (pc, section).minsym)))
@@ -3933,7 +3984,7 @@ find_function_alias_target (bound_minimal_symbol msymbol)
   symbol *sym = find_pc_function (func_addr);
   if (sym != NULL
       && SYMBOL_CLASS (sym) == LOC_BLOCK
-      && BLOCK_START (SYMBOL_BLOCK_VALUE (sym)) == func_addr)
+      && BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym)) == func_addr)
     return sym;
 
   return NULL;
@@ -4473,7 +4524,9 @@ search_symbols (const char *regexp, enum search_domain kind,
 
 /* Helper function for symtab_symbol_info, this function uses
    the data returned from search_symbols() to print information
-   regarding the match to gdb_stdout.  */
+   regarding the match to gdb_stdout.  If LAST is not NULL,
+   print file and line number information for the symbol as
+   well.  Skip printing the filename if it matches LAST.  */
 
 static void
 print_symbol_info (enum search_domain kind,
@@ -4481,13 +4534,22 @@ print_symbol_info (enum search_domain kind,
 		   int block, const char *last)
 {
   struct symtab *s = symbol_symtab (sym);
-  const char *s_filename = symtab_to_filename_for_display (s);
 
-  if (last == NULL || filename_cmp (last, s_filename) != 0)
+  if (last != NULL)
     {
-      fputs_filtered ("\nFile ", gdb_stdout);
-      fputs_filtered (s_filename, gdb_stdout);
-      fputs_filtered (":\n", gdb_stdout);
+      const char *s_filename = symtab_to_filename_for_display (s);
+
+      if (filename_cmp (last, s_filename) != 0)
+	{
+	  fputs_filtered ("\nFile ", gdb_stdout);
+	  fputs_filtered (s_filename, gdb_stdout);
+	  fputs_filtered (":\n", gdb_stdout);
+	}
+
+      if (SYMBOL_LINE (sym) != 0)
+	printf_filtered ("%d:\t", SYMBOL_LINE (sym));
+      else
+	puts_filtered ("\t");
     }
 
   if (kind != TYPES_DOMAIN && block == STATIC_BLOCK)
@@ -4541,7 +4603,7 @@ symtab_symbol_info (const char *regexp, enum search_domain kind, int from_tty)
 {
   static const char * const classnames[] =
     {"variable", "function", "type"};
-  const char *last_filename = NULL;
+  const char *last_filename = "";
   int first = 1;
 
   gdb_assert (kind <= TYPES_DOMAIN);
@@ -4652,10 +4714,7 @@ rbreak_command (const char *regexp, int from_tty)
 	  string = string_printf ("%s:'%s'", fullname,
 				  SYMBOL_LINKAGE_NAME (p.symbol));
 	  break_command (&string[0], from_tty);
-	  print_symbol_info (FUNCTIONS_DOMAIN,
-			     p.symbol,
-			     p.block,
-			     symtab_to_filename_for_display (symtab));
+	  print_symbol_info (FUNCTIONS_DOMAIN, p.symbol, p.block, NULL);
 	}
       else
 	{
@@ -4677,24 +4736,10 @@ compare_symbol_name (const char *symbol_name, language symbol_language,
 		     const lookup_name_info &lookup_name,
 		     completion_match_result &match_res)
 {
-  const language_defn *lang;
-
-  /* If we're completing for an expression and the symbol doesn't have
-     an explicit language set, fallback to the current language.  Ada
-     minimal symbols won't have their language set to Ada, for
-     example, and if we compared using the default/C-like matcher,
-     then when completing e.g., symbols in a package named "pck", we'd
-     match internal Ada symbols like "pckS", which are invalid in an
-     Ada expression, unless you wrap them in '<' '>' to request a
-     verbatim match.  */
-  if (symbol_language == language_auto
-      && lookup_name.match_type () == symbol_name_match_type::EXPRESSION)
-    lang = current_language;
-  else
-    lang = language_def (symbol_language);
+  const language_defn *lang = language_def (symbol_language);
 
   symbol_name_matcher_ftype *name_match
-    = language_get_symbol_name_matcher (lang, lookup_name);
+    = get_symbol_name_matcher (lang, lookup_name);
 
   return name_match (symbol_name, lookup_name, &match_res);
 }
@@ -4932,6 +4977,50 @@ symbol_is_function_or_method (minimal_symbol *msymbol)
     }
 }
 
+/* See symtab.h.  */
+
+bound_minimal_symbol
+find_gnu_ifunc (const symbol *sym)
+{
+  if (SYMBOL_CLASS (sym) != LOC_BLOCK)
+    return {};
+
+  lookup_name_info lookup_name (SYMBOL_SEARCH_NAME (sym),
+				symbol_name_match_type::SEARCH_NAME);
+  struct objfile *objfile = symbol_objfile (sym);
+
+  CORE_ADDR address = BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (sym));
+  minimal_symbol *ifunc = NULL;
+
+  iterate_over_minimal_symbols (objfile, lookup_name,
+				[&] (minimal_symbol *minsym)
+    {
+      if (MSYMBOL_TYPE (minsym) == mst_text_gnu_ifunc
+	  || MSYMBOL_TYPE (minsym) == mst_data_gnu_ifunc)
+	{
+	  CORE_ADDR msym_addr = MSYMBOL_VALUE_ADDRESS (objfile, minsym);
+	  if (MSYMBOL_TYPE (minsym) == mst_data_gnu_ifunc)
+	    {
+	      struct gdbarch *gdbarch = get_objfile_arch (objfile);
+	      msym_addr
+		= gdbarch_convert_from_func_ptr_addr (gdbarch,
+						      msym_addr,
+						      current_top_target ());
+	    }
+	  if (msym_addr == address)
+	    {
+	      ifunc = minsym;
+	      return true;
+	    }
+	}
+      return false;
+    });
+
+  if (ifunc != NULL)
+    return {ifunc, objfile};
+  return {};
+}
+
 /* Add matching symbols from SYMTAB to the current completion list.  */
 
 static void
@@ -5142,7 +5231,7 @@ default_collect_symbol_completion_matches_break_on
   if (current_language->la_macro_expansion == macro_expansion_c
       && code == TYPE_CODE_UNDEF)
     {
-      struct macro_scope *scope;
+      gdb::unique_xmalloc_ptr<struct macro_scope> scope;
 
       /* This adds a macro's name to the current completion list.  */
       auto add_macro_name = [&] (const char *macro_name,
@@ -5163,11 +5252,8 @@ default_collect_symbol_completion_matches_break_on
 	 completion time.  */
       scope = default_macro_scope ();
       if (scope)
-	{
-	  macro_for_each_in_scope (scope->file, scope->line,
-				   add_macro_name);
-	  xfree (scope);
-	}
+	macro_for_each_in_scope (scope->file, scope->line,
+				 add_macro_name);
 
       /* User-defined macros are always visible.  */
       macro_for_each (macro_user_macros, add_macro_name);
@@ -5907,7 +5993,7 @@ If zero then the symbol cache is disabled."),
 	   _("Flush the symbol cache for each program space."),
 	   &maintenancelist);
 
-  observer_attach_executable_changed (symtab_observer_executable_changed);
-  observer_attach_new_objfile (symtab_new_objfile_observer);
-  observer_attach_free_objfile (symtab_free_objfile_observer);
+  gdb::observers::executable_changed.attach (symtab_observer_executable_changed);
+  gdb::observers::new_objfile.attach (symtab_new_objfile_observer);
+  gdb::observers::free_objfile.attach (symtab_free_objfile_observer);
 }

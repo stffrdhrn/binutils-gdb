@@ -1,6 +1,6 @@
 /* Floating point routines for GDB, the GNU debugger.
 
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -627,7 +627,6 @@ host_float_ops<T>::from_target (const struct floatformat *fmt,
     }
 
   unsigned char *ufrom = (unsigned char *) from;
-  T dto;
   long exponent;
   unsigned long mant;
   unsigned int mant_bits, mant_off;
@@ -685,7 +684,7 @@ host_float_ops<T>::from_target (const struct floatformat *fmt,
 
   mant_bits_left = fmt->man_len;
   mant_off = fmt->man_start;
-  dto = 0.0;
+  T dto = 0.0;
 
   special_exponent = exponent == 0 || exponent == fmt->exp_nan;
 
@@ -948,7 +947,11 @@ host_float_ops<T>::to_string (const gdb_byte *addr, const struct type *type,
 
   T host_float;
   from_target (type, addr, &host_float);
+
+  DIAGNOSTIC_PUSH
+  DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
   return string_printf (host_format.c_str (), host_float);
+  DIAGNOSTIC_POP
 }
 
 /* Parse string IN into a target floating-number of type TYPE and
@@ -977,7 +980,10 @@ host_float_ops<T>::from_string (gdb_byte *addr, const struct type *type,
     scan_format += scanf_length_modifier<T>::value;
   scan_format += "g%n";
 
+  DIAGNOSTIC_PUSH
+  DIAGNOSTIC_IGNORE_FORMAT_NONLITERAL
   num = sscanf (in.c_str (), scan_format.c_str(), &host_float, &n);
+  DIAGNOSTIC_POP
 
   /* The sscanf man page suggests not making any assumptions on the effect
      of %n on the result, so we don't.

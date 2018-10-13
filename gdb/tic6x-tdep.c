@@ -1,6 +1,6 @@
 /* Target dependent code for GDB on TI C6x systems.
 
-   Copyright (C) 2010-2017 Free Software Foundation, Inc.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
    Contributed by Andrew Jenner <andrew@codesourcery.com>
    Contributed by Yao Qi <yao@codesourcery.com>
 
@@ -147,7 +147,6 @@ tic6x_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 			struct tic6x_unwind_cache *cache,
 			struct frame_info *this_frame)
 {
-  unsigned long inst;
   unsigned int src_reg, base_reg, dst_reg;
   int i;
   CORE_ADDR pc = start_pc;
@@ -242,7 +241,7 @@ tic6x_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
     }
   /* Step 2: Skip insn on setting up dsbt if it is.  Usually, it looks like,
      ldw .D2T2 *+b14(0),b14 */
-  inst = tic6x_fetch_instruction (gdbarch, pc);
+  unsigned long inst = tic6x_fetch_instruction (gdbarch, pc);
   /* The s bit determines which file dst will be loaded into, same effect as
      other places.  */
   dst_reg = tic6x_register_number ((inst >> 23) & 0x1f, (inst >> 1) & 1, 0);
@@ -722,10 +721,9 @@ tic6x_extract_return_value (struct type *valtype, struct regcache *regcache,
 	 register and the second byte occupies byte 0.
 	 so, we read the contents in VAL from the LSBs of register.  */
       if (len < 3 && byte_order == BFD_ENDIAN_BIG)
-	regcache_cooked_read_part (regcache, TIC6X_A4_REGNUM, 4 - len, len,
-				   valbuf);
+	regcache->cooked_read_part (TIC6X_A4_REGNUM, 4 - len, len, valbuf);
       else
-	regcache_cooked_read (regcache, TIC6X_A4_REGNUM, valbuf);
+	regcache->cooked_read (TIC6X_A4_REGNUM, valbuf);
     }
   else if (len <= 8)
     {
@@ -736,13 +734,13 @@ tic6x_extract_return_value (struct type *valtype, struct regcache *regcache,
 	 lower (even) register.  */
       if (byte_order == BFD_ENDIAN_BIG)
 	{
-	  regcache_cooked_read (regcache, TIC6X_A4_REGNUM, valbuf + 4);
-	  regcache_cooked_read (regcache, TIC6X_A5_REGNUM, valbuf);
+	  regcache->cooked_read (TIC6X_A4_REGNUM, valbuf + 4);
+	  regcache->cooked_read (TIC6X_A5_REGNUM, valbuf);
 	}
       else
 	{
-	  regcache_cooked_read (regcache, TIC6X_A4_REGNUM, valbuf);
-	  regcache_cooked_read (regcache, TIC6X_A5_REGNUM, valbuf + 4);
+	  regcache->cooked_read (TIC6X_A4_REGNUM, valbuf);
+	  regcache->cooked_read (TIC6X_A5_REGNUM, valbuf + 4);
 	}
     }
 }
@@ -761,22 +759,21 @@ tic6x_store_return_value (struct type *valtype, struct regcache *regcache,
   if (len <= 4)
     {
       if (len < 3 && byte_order == BFD_ENDIAN_BIG)
-	regcache_cooked_write_part (regcache, TIC6X_A4_REGNUM, 4 - len, len,
-				    valbuf);
+	regcache->cooked_write_part (TIC6X_A4_REGNUM, 4 - len, len, valbuf);
       else
-	regcache_cooked_write (regcache, TIC6X_A4_REGNUM, valbuf);
+	regcache->cooked_write (TIC6X_A4_REGNUM, valbuf);
     }
   else if (len <= 8)
     {
       if (byte_order == BFD_ENDIAN_BIG)
 	{
-	  regcache_cooked_write (regcache, TIC6X_A4_REGNUM, valbuf + 4);
-	  regcache_cooked_write (regcache, TIC6X_A5_REGNUM, valbuf);
+	  regcache->cooked_write (TIC6X_A4_REGNUM, valbuf + 4);
+	  regcache->cooked_write (TIC6X_A5_REGNUM, valbuf);
 	}
       else
 	{
-	  regcache_cooked_write (regcache, TIC6X_A4_REGNUM, valbuf);
-	  regcache_cooked_write (regcache, TIC6X_A5_REGNUM, valbuf + 4);
+	  regcache->cooked_write (TIC6X_A4_REGNUM, valbuf);
+	  regcache->cooked_write (TIC6X_A5_REGNUM, valbuf + 4);
 	}
     }
 }
@@ -884,7 +881,6 @@ tic6x_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   int argnum;
   int stack_offset = 4;
   int references_offset = 4;
-  CORE_ADDR func_addr = find_function_addr (function, NULL);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   struct type *func_type = value_type (function);
   /* The first arg passed on stack.  Mostly the first 10 args are passed by
@@ -958,10 +954,10 @@ tic6x_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 		     so, we write the contents in VAL to the lsp of
 		     register.  */
 		  if (len < 3 && byte_order == BFD_ENDIAN_BIG)
-		    regcache_cooked_write_part (regcache, arg_regs[argreg],
-						4 - len, len, val);
+		    regcache->cooked_write_part (arg_regs[argreg], 4 - len, len,
+						 val);
 		  else
-		    regcache_cooked_write (regcache, arg_regs[argreg], val);
+		    regcache->cooked_write (arg_regs[argreg], val);
 		}
 	      else
 		{
@@ -988,19 +984,15 @@ tic6x_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 		         padding in the LSBs of the lower (even) register.  */
 		      if (byte_order == BFD_ENDIAN_BIG)
 			{
-			  regcache_cooked_write (regcache,
-						 arg_regs[argreg] + 1, val);
-			  regcache_cooked_write_part (regcache,
-						      arg_regs[argreg], 0,
-						      len - 4, val + 4);
+			  regcache->cooked_write (arg_regs[argreg] + 1, val);
+			  regcache->cooked_write_part (arg_regs[argreg], 0,
+						       len - 4, val + 4);
 			}
 		      else
 			{
-			  regcache_cooked_write (regcache, arg_regs[argreg],
-						 val);
-			  regcache_cooked_write_part (regcache,
-						      arg_regs[argreg] + 1, 0,
-						      len - 4, val + 4);
+			  regcache->cooked_write (arg_regs[argreg], val);
+			  regcache->cooked_write_part (arg_regs[argreg] + 1, 0,
+						       len - 4, val + 4);
 			}
 		    }
 		  else
@@ -1074,7 +1066,6 @@ tic6x_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	      if (typecode == TYPE_CODE_COMPLEX)
 		{
 		  /* The argument is being passed by reference on stack.  */
-		  CORE_ADDR addr;
 		  references_offset = align_up (references_offset, 8);
 
 		  addr = sp + references_offset;

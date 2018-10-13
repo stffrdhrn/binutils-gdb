@@ -1,5 +1,5 @@
 /* Agent expression code for remote server.
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -847,6 +847,11 @@ ax_printf (CORE_ADDR fn, CORE_ADDR chan, const char *format,
 	    int j;
 
 	    tem = args[i];
+	    if (tem == 0)
+	      {
+		printf (current_substring, "(null)");
+		break;
+	      }
 
 	    /* This is a %s argument.  Find the length of the string.  */
 	    for (j = 0;; j++)

@@ -1,6 +1,6 @@
 /* SystemTap probe support for GDB.
 
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1146,24 +1146,13 @@ static expression_up
 stap_parse_argument (const char **arg, struct type *atype,
 		     struct gdbarch *gdbarch)
 {
-  struct stap_parse_info p;
-  struct cleanup *back_to;
-
   /* We need to initialize the expression buffer, in order to begin
      our parsing efforts.  We use language_c here because we may need
      to do pointer arithmetics.  */
-  initialize_expout (&p.pstate, 10, language_def (language_c), gdbarch);
-  back_to = make_cleanup (free_current_contents, &p.pstate.expout);
-
-  p.saved_arg = *arg;
-  p.arg = *arg;
-  p.arg_type = atype;
-  p.gdbarch = gdbarch;
-  p.inside_paren_p = 0;
+  struct stap_parse_info p (*arg, atype, 10, language_def (language_c),
+			    gdbarch);
 
   stap_parse_argument_1 (&p, 0, STAP_OPERAND_PREC_NONE);
-
-  discard_cleanups (back_to);
 
   gdb_assert (p.inside_paren_p == 0);
 
@@ -1172,13 +1161,10 @@ stap_parse_argument (const char **arg, struct type *atype,
   write_exp_elt_type (&p.pstate, atype);
   write_exp_elt_opcode (&p.pstate, UNOP_CAST);
 
-  reallocate_expout (&p.pstate);
-
   p.arg = skip_spaces (p.arg);
   *arg = p.arg;
 
-  /* We can safely return EXPOUT here.  */
-  return expression_up (p.pstate.expout);
+  return p.pstate.release ();
 }
 
 /* Implementation of 'parse_arguments' method.  */
@@ -1526,7 +1512,7 @@ handle_stap_probe (struct objfile *objfile, struct sdt_note *el,
   /* Making sure there is a name.  */
   if (name == NULL)
     {
-      complaint (&symfile_complaints, _("corrupt probe name when "
+      complaint (_("corrupt probe name when "
 					"reading `%s'"),
 		 objfile_name (objfile));
 
@@ -1563,7 +1549,7 @@ handle_stap_probe (struct objfile *objfile, struct sdt_note *el,
       || (memchr (probe_args, '\0', (char *) el->data + el->size - name)
 	  != el->data + el->size - 1))
     {
-      complaint (&symfile_complaints, _("corrupt probe argument when "
+      complaint (_("corrupt probe argument when "
 					"reading `%s'"),
 		 objfile_name (objfile));
       /* If the argument string is NULL, it means some problem happened with
@@ -1604,7 +1590,7 @@ get_stap_base_address (bfd *obfd, bfd_vma *base)
 
   if (ret == NULL)
     {
-      complaint (&symfile_complaints, _("could not obtain base address for "
+      complaint (_("could not obtain base address for "
 					"SystemTap section on objfile `%s'."),
 		 obfd->filename);
       return 0;
@@ -1674,7 +1660,7 @@ stap_static_probe_ops::get_probes (std::vector<probe *> *probesp,
     {
       /* If we are here, it means we have failed to parse every known
 	 probe.  */
-      complaint (&symfile_complaints, _("could not parse SystemTap probe(s) "
+      complaint (_("could not parse SystemTap probe(s) "
 					"from inferior"));
       return;
     }

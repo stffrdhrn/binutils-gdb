@@ -1,6 +1,6 @@
 /* Common target dependent code for GDB on AArch64 systems.
 
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
    Contributed by ARM Ltd.
 
    This file is part of GDB.
@@ -32,6 +32,10 @@ struct regset;
 #define AARCH64_DWARF_X0   0
 #define AARCH64_DWARF_SP  31
 #define AARCH64_DWARF_V0  64
+#define AARCH64_DWARF_SVE_VG   46
+#define AARCH64_DWARF_SVE_FFR  47
+#define AARCH64_DWARF_SVE_P0   48
+#define AARCH64_DWARF_SVE_Z0   96
 
 /* Size of integer registers.  */
 #define X_REGISTER_SIZE  8
@@ -70,12 +74,22 @@ struct gdbarch_tdep
   struct type *vns_type;
   struct type *vnh_type;
   struct type *vnb_type;
+  struct type *vnv_type;
 
   /* syscall record.  */
   int (*aarch64_syscall_record) (struct regcache *regcache, unsigned long svc_number);
+
+  /* The VQ value for SVE targets, or zero if SVE is not supported.  */
+  uint64_t vq;
+
+  /* Returns true if the target supports SVE.  */
+  bool has_sve () const
+  {
+    return vq != 0;
+  }
 };
 
-const target_desc *aarch64_read_description ();
+const target_desc *aarch64_read_description (uint64_t vq);
 
 extern int aarch64_process_record (struct gdbarch *gdbarch,
                                struct regcache *regcache, CORE_ADDR addr);

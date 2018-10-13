@@ -1,5 +1,5 @@
 /* Support for HPPA 64-bit ELF
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -2078,8 +2078,8 @@ elf64_hppa_finish_dynamic_symbol (bfd *output_bfd,
 	{
 	  _bfd_error_handler
 	    /* xgettext:c-format */
-	    (_("stub entry for %s cannot load .plt, dp offset = %Ld"),
-	     hh->eh.root.root.string, value);
+	    (_("stub entry for %s cannot load .plt, dp offset = %" PRId64),
+	     hh->eh.root.root.string, (int64_t) value);
 	  return FALSE;
 	}
 
@@ -3283,10 +3283,10 @@ elf_hppa_final_link_relocate (Elf_Internal_Rela *rel,
 	  {
 	    _bfd_error_handler
 	      /* xgettext:c-format */
-	      (_("%B(%A+%#Lx): cannot reach %s"),
+	      (_("%pB(%pA+%#" PRIx64 "): cannot reach %s"),
 	      input_bfd,
 	      input_section,
-	      offset,
+	      (uint64_t) offset,
 	      eh ? eh->root.root.string : "unknown");
 	    bfd_set_error (bfd_error_bad_value);
 	    return bfd_reloc_overflow;
@@ -3556,33 +3556,12 @@ elf_hppa_final_link_relocate (Elf_Internal_Rela *rel,
 
     case R_PARISC_LTOFF_FPTR32:
       {
-	/* We may still need to create the FPTR itself if it was for
-	   a local symbol.  */
-	if (hh == NULL)
-	  {
-	    /* The first two words of an .opd entry are zero.  */
-	    memset (hppa_info->opd_sec->contents + hh->opd_offset, 0, 16);
-
-	    /* The next word is the address of the function.  */
-	    bfd_put_64 (hppa_info->opd_sec->owner, value + addend,
-			(hppa_info->opd_sec->contents
-			 + hh->opd_offset + 16));
-
-	    /* The last word is our local __gp value.  */
-	    value = _bfd_get_gp_value
-		      (hppa_info->opd_sec->output_section->owner);
-	    bfd_put_64 (hppa_info->opd_sec->owner, value,
-			hppa_info->opd_sec->contents + hh->opd_offset + 24);
-
-	    /* The DLT value is the address of the .opd entry.  */
-	    value = (hh->opd_offset
-		     + hppa_info->opd_sec->output_offset
-		     + hppa_info->opd_sec->output_section->vma);
-
-	    bfd_put_64 (hppa_info->dlt_sec->owner,
-			value,
-			hppa_info->dlt_sec->contents + hh->dlt_offset);
-	  }
+	/* FIXME: There used to be code here to create the FPTR itself if
+	   the relocation was against a local symbol.  But the code could
+	   never have worked.  If the assert below is ever triggered then
+	   the code will need to be reinstated and fixed so that it does
+	   what is needed.  */
+	BFD_ASSERT (hh != NULL);
 
 	/* We want the value of the DLT offset for this symbol, not
 	   the symbol's actual address.  Note that __gp may not point
@@ -4052,8 +4031,8 @@ const struct elf_size_info hppa64_elf_size_info =
 					elf64_hppa_create_dynamic_sections
 #define elf_backend_post_process_headers	elf64_hppa_post_process_headers
 
-#define elf_backend_omit_section_dynsym \
-  ((bfd_boolean (*) (bfd *, struct bfd_link_info *, asection *)) bfd_true)
+#define elf_backend_omit_section_dynsym _bfd_elf_omit_section_dynsym_all
+
 #define elf_backend_adjust_dynamic_symbol \
 					elf64_hppa_adjust_dynamic_symbol
 

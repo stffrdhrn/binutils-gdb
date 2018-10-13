@@ -4,5 +4,7 @@
 #target: aarch64*-*-*
 
 #...
-[ \t0-9a-f]+:[ \t0-9a-f]+bl[ \t0-9a-f]+<\*ABS\*\+(0x2e0|0x330)@plt>
+0+(150|1d0|1e8) <__GI_foo>:
+#...
+[ \t0-9a-f]+:[ \t0-9a-f]+bl[ \t0-9a-f]+<\*ABS\*\+0x(150|1d0|1e8)@plt>
 #pass

@@ -1,6 +1,6 @@
 /* Native-dependent code for AMD64 BSD's.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -38,12 +38,11 @@
 /* Fetch register REGNUM from the inferior.  If REGNUM is -1, do this
    for all registers (including the floating-point registers).  */
 
-static void
-amd64bsd_fetch_inferior_registers (struct target_ops *ops,
-				   struct regcache *regcache, int regnum)
+void
+amd64bsd_fetch_inferior_registers (struct regcache *regcache, int regnum)
 {
   struct gdbarch *gdbarch = regcache->arch ();
-  pid_t pid = get_ptrace_pid (regcache_get_ptid (regcache));
+  pid_t pid = get_ptrace_pid (regcache->ptid ());
 
   if (regnum == -1 || amd64_native_gregset_supplies_p (gdbarch, regnum))
     {
@@ -65,7 +64,7 @@ amd64bsd_fetch_inferior_registers (struct target_ops *ops,
       if (ptrace (PT_GETFSBASE, pid, (PTRACE_TYPE_ARG3) &base, 0) == -1)
 	perror_with_name (_("Couldn't get segment register fs_base"));
 
-      regcache_raw_supply (regcache, AMD64_FSBASE_REGNUM, &base);
+      regcache->raw_supply (AMD64_FSBASE_REGNUM, &base);
       if (regnum != -1)
 	return;
     }
@@ -78,7 +77,7 @@ amd64bsd_fetch_inferior_registers (struct target_ops *ops,
       if (ptrace (PT_GETGSBASE, pid, (PTRACE_TYPE_ARG3) &base, 0) == -1)
 	perror_with_name (_("Couldn't get segment register gs_base"));
 
-      regcache_raw_supply (regcache, AMD64_GSBASE_REGNUM, &base);
+      regcache->raw_supply (AMD64_GSBASE_REGNUM, &base);
       if (regnum != -1)
 	return;
     }
@@ -112,12 +111,11 @@ amd64bsd_fetch_inferior_registers (struct target_ops *ops,
 /* Store register REGNUM back into the inferior.  If REGNUM is -1, do
    this for all registers (including the floating-point registers).  */
 
-static void
-amd64bsd_store_inferior_registers (struct target_ops *ops,
-				   struct regcache *regcache, int regnum)
+void
+amd64bsd_store_inferior_registers (struct regcache *regcache, int regnum)
 {
   struct gdbarch *gdbarch = regcache->arch ();
-  pid_t pid = get_ptrace_pid (regcache_get_ptid (regcache));
+  pid_t pid = get_ptrace_pid (regcache->ptid ());
 
   if (regnum == -1 || amd64_native_gregset_supplies_p (gdbarch, regnum))
     {
@@ -140,7 +138,7 @@ amd64bsd_store_inferior_registers (struct target_ops *ops,
     {
       register_t base;
 
-      regcache_raw_collect (regcache, AMD64_FSBASE_REGNUM, &base);
+      regcache->raw_collect (AMD64_FSBASE_REGNUM, &base);
 
       if (ptrace (PT_SETFSBASE, pid, (PTRACE_TYPE_ARG3) &base, 0) == -1)
 	perror_with_name (_("Couldn't write segment register fs_base"));
@@ -153,7 +151,7 @@ amd64bsd_store_inferior_registers (struct target_ops *ops,
     {
       register_t base;
 
-      regcache_raw_collect (regcache, AMD64_GSBASE_REGNUM, &base);
+      regcache->raw_collect (AMD64_GSBASE_REGNUM, &base);
 
       if (ptrace (PT_SETGSBASE, pid, (PTRACE_TYPE_ARG3) &base, 0) == -1)
 	perror_with_name (_("Couldn't write segment register gs_base"));
@@ -192,18 +190,4 @@ amd64bsd_store_inferior_registers (struct target_ops *ops,
       if (ptrace (PT_SETFPREGS, pid, (PTRACE_TYPE_ARG3) &fpregs, 0) == -1)
 	perror_with_name (_("Couldn't write floating point status"));
     }
-}
-
-/* Create a prototype *BSD/amd64 target.  The client can override it
-   with local methods.  */
-
-struct target_ops *
-amd64bsd_target (void)
-{
-  struct target_ops *t;
-
-  t = x86bsd_target ();
-  t->to_fetch_registers = amd64bsd_fetch_inferior_registers;
-  t->to_store_registers = amd64bsd_store_inferior_registers;
-  return t;
 }

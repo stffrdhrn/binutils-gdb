@@ -1,6 +1,6 @@
 /* Language independent support for printing types for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -65,18 +65,129 @@ static struct type_print_options default_ptype_flags =
 
 
 
-/* A hash table holding typedef_field objects.  This is more
-   complicated than an ordinary hash because it must also track the
-   lifetime of some -- but not all -- of the contained objects.  */
+/* See typeprint.h.  */
 
-struct typedef_hash_table
+const int print_offset_data::indentation = 23;
+
+
+/* See typeprint.h.  */
+
+void
+print_offset_data::maybe_print_hole (struct ui_file *stream,
+				     unsigned int bitpos,
+				     const char *for_what)
 {
-  /* The actual hash table.  */
-  htab_t table;
+  /* We check for END_BITPOS > 0 because there is a specific
+     scenario when END_BITPOS can be zero and BITPOS can be >
+     0: when we are dealing with a struct/class with a virtual method.
+     Because of the vtable, the first field of the struct/class will
+     have an offset of sizeof (void *) (the size of the vtable).  If
+     we do not check for END_BITPOS > 0 here, GDB will report
+     a hole before the first field, which is not accurate.  */
+  if (end_bitpos > 0 && end_bitpos < bitpos)
+    {
+      /* If END_BITPOS is smaller than the current type's
+	 bitpos, it means there's a hole in the struct, so we report
+	 it here.  */
+      unsigned int hole = bitpos - end_bitpos;
+      unsigned int hole_byte = hole / TARGET_CHAR_BIT;
+      unsigned int hole_bit = hole % TARGET_CHAR_BIT;
 
-  /* Storage for typedef_field objects that must be synthesized.  */
-  struct obstack storage;
-};
+      if (hole_bit > 0)
+	fprintf_filtered (stream, "/* XXX %2u-bit %s  */\n", hole_bit,
+			  for_what);
+
+      if (hole_byte > 0)
+	fprintf_filtered (stream, "/* XXX %2u-byte %s */\n", hole_byte,
+			  for_what);
+    }
+}
+
+/* See typeprint.h.  */
+
+void
+print_offset_data::update (struct type *type, unsigned int field_idx,
+			   struct ui_file *stream)
+{
+  if (field_is_static (&TYPE_FIELD (type, field_idx)))
+    {
+      print_spaces_filtered (indentation, stream);
+      return;
+    }
+
+  struct type *ftype = check_typedef (TYPE_FIELD_TYPE (type, field_idx));
+  if (TYPE_CODE (type) == TYPE_CODE_UNION)
+    {
+      /* Since union fields don't have the concept of offsets, we just
+	 print their sizes.  */
+      fprintf_filtered (stream, "/*              %4u */", TYPE_LENGTH (ftype));
+      return;
+    }
+
+  unsigned int bitpos = TYPE_FIELD_BITPOS (type, field_idx);
+  unsigned int fieldsize_byte = TYPE_LENGTH (ftype);
+  unsigned int fieldsize_bit = fieldsize_byte * TARGET_CHAR_BIT;
+
+  maybe_print_hole (stream, bitpos, "hole");
+
+  if (TYPE_FIELD_PACKED (type, field_idx))
+    {
+      /* We're dealing with a bitfield.  Print how many bits are left
+	 to be used.  */
+      unsigned int bitsize = TYPE_FIELD_BITSIZE (type, field_idx);
+      /* The bitpos relative to the beginning of our container
+	 field.  */
+      unsigned int relative_bitpos;
+
+      /* The following was copied from
+	 value.c:value_primitive_field.  */
+      if ((bitpos % fieldsize_bit) + bitsize <= fieldsize_bit)
+	relative_bitpos = bitpos % fieldsize_bit;
+      else
+	relative_bitpos = bitpos % TARGET_CHAR_BIT;
+
+      /* This is the exact offset (in bits) of this bitfield.  */
+      unsigned int bit_offset
+	= (bitpos - relative_bitpos) + offset_bitpos;
+
+      /* The position of the field, relative to the beginning of the
+	 struct, and how many bits are left to be used in this
+	 container.  */
+      fprintf_filtered (stream, "/* %4u:%2u", bit_offset / TARGET_CHAR_BIT,
+			fieldsize_bit - (relative_bitpos + bitsize));
+      fieldsize_bit = bitsize;
+    }
+  else
+    {
+      /* The position of the field, relative to the beginning of the
+	 struct.  */
+      fprintf_filtered (stream, "/* %4u",
+			(bitpos + offset_bitpos) / TARGET_CHAR_BIT);
+
+      fprintf_filtered (stream, "   ");
+    }
+
+  fprintf_filtered (stream, "   |  %4u */", fieldsize_byte);
+
+  end_bitpos = bitpos + fieldsize_bit;
+}
+
+/* See typeprint.h.  */
+
+void
+print_offset_data::finish (struct type *type, int level,
+			   struct ui_file *stream)
+{
+  unsigned int bitpos = TYPE_LENGTH (type) * TARGET_CHAR_BIT;
+  maybe_print_hole (stream, bitpos, "padding");
+
+  fputs_filtered ("\n", stream);
+  print_spaces_filtered (level + 4 + print_offset_data::indentation, stream);
+  fprintf_filtered (stream, "/* total size (bytes): %4u */\n",
+		    TYPE_LENGTH (type));
+}
+
+
 
 /* A hash function for a typedef_field.  */
 
@@ -100,23 +211,19 @@ eq_typedef_field (const void *a, const void *b)
   return types_equal (tfa->type, tfb->type);
 }
 
-/* Add typedefs from T to the hash table TABLE.  */
+/* See typeprint.h.  */
 
 void
-recursively_update_typedef_hash (struct typedef_hash_table *table,
-				 struct type *t)
+typedef_hash_table::recursively_update (struct type *t)
 {
   int i;
-
-  if (table == NULL)
-    return;
 
   for (i = 0; i < TYPE_TYPEDEF_FIELD_COUNT (t); ++i)
     {
       struct decl_field *tdef = &TYPE_TYPEDEF_FIELD (t, i);
       void **slot;
 
-      slot = htab_find_slot (table->table, tdef, INSERT);
+      slot = htab_find_slot (m_table, tdef, INSERT);
       /* Only add a given typedef name once.  Really this shouldn't
 	 happen; but it is safe enough to do the updates breadth-first
 	 and thus use the most specific typedef.  */
@@ -126,18 +233,15 @@ recursively_update_typedef_hash (struct typedef_hash_table *table,
 
   /* Recurse into superclasses.  */
   for (i = 0; i < TYPE_N_BASECLASSES (t); ++i)
-    recursively_update_typedef_hash (table, TYPE_BASECLASS (t, i));
+    recursively_update (TYPE_BASECLASS (t, i));
 }
 
-/* Add template parameters from T to the typedef hash TABLE.  */
+/* See typeprint.h.  */
 
 void
-add_template_parameters (struct typedef_hash_table *table, struct type *t)
+typedef_hash_table::add_template_parameters (struct type *t)
 {
   int i;
-
-  if (table == NULL)
-    return;
 
   for (i = 0; i < TYPE_N_TEMPLATE_ARGUMENTS (t); ++i)
     {
@@ -148,61 +252,32 @@ add_template_parameters (struct typedef_hash_table *table, struct type *t)
       if (SYMBOL_CLASS (TYPE_TEMPLATE_ARGUMENT (t, i)) != LOC_TYPEDEF)
 	continue;
 
-      tf = XOBNEW (&table->storage, struct decl_field);
+      tf = XOBNEW (&m_storage, struct decl_field);
       tf->name = SYMBOL_LINKAGE_NAME (TYPE_TEMPLATE_ARGUMENT (t, i));
       tf->type = SYMBOL_TYPE (TYPE_TEMPLATE_ARGUMENT (t, i));
 
-      slot = htab_find_slot (table->table, tf, INSERT);
+      slot = htab_find_slot (m_table, tf, INSERT);
       if (*slot == NULL)
 	*slot = tf;
     }
 }
 
-/* Create a new typedef-lookup hash table.  */
+/* See typeprint.h.  */
 
-struct typedef_hash_table *
-create_typedef_hash (void)
+typedef_hash_table::typedef_hash_table ()
 {
-  struct typedef_hash_table *result;
-
-  result = XNEW (struct typedef_hash_table);
-  result->table = htab_create_alloc (10, hash_typedef_field, eq_typedef_field,
-				     NULL, xcalloc, xfree);
-  obstack_init (&result->storage);
-
-  return result;
+  m_table = htab_create_alloc (10, hash_typedef_field, eq_typedef_field,
+			       NULL, xcalloc, xfree);
 }
 
 /* Free a typedef field table.  */
 
-void
-free_typedef_hash (struct typedef_hash_table *table)
+typedef_hash_table::~typedef_hash_table ()
 {
-  if (table != NULL)
-    {
-      htab_delete (table->table);
-      obstack_free (&table->storage, NULL);
-      xfree (table);
-    }
+  htab_delete (m_table);
 }
 
-/* A cleanup for freeing a typedef_hash_table.  */
-
-static void
-do_free_typedef_hash (void *arg)
-{
-  free_typedef_hash ((struct typedef_hash_table *) arg);
-}
-
-/* Return a new cleanup that frees TABLE.  */
-
-struct cleanup *
-make_cleanup_free_typedef_hash (struct typedef_hash_table *table)
-{
-  return make_cleanup (do_free_typedef_hash, table);
-}
-
-/* Helper function for copy_typedef_hash.  */
+/* Helper function for typedef_hash_table::copy.  */
 
 static int
 copy_typedef_hash_element (void **slot, void *nt)
@@ -217,42 +292,14 @@ copy_typedef_hash_element (void **slot, void *nt)
   return 1;
 }
 
-/* Copy a typedef hash.  */
+/* See typeprint.h.  */
 
-struct typedef_hash_table *
-copy_typedef_hash (struct typedef_hash_table *table)
+typedef_hash_table::typedef_hash_table (const typedef_hash_table &table)
 {
-  struct typedef_hash_table *result;
-
-  if (table == NULL)
-    return NULL;
-
-  result = create_typedef_hash ();
-  htab_traverse_noresize (table->table, copy_typedef_hash_element,
-			  result->table);
-  return result;
-}
-
-/* A cleanup to free the global typedef hash.  */
-
-static void
-do_free_global_table (void *arg)
-{
-  struct type_print_options *flags = (struct type_print_options *) arg;
-
-  free_typedef_hash (flags->global_typedefs);
-  free_ext_lang_type_printers (flags->global_printers);
-}
-
-/* Create the global typedef hash.  */
-
-static struct cleanup *
-create_global_typedef_table (struct type_print_options *flags)
-{
-  gdb_assert (flags->global_typedefs == NULL && flags->global_printers == NULL);
-  flags->global_typedefs = create_typedef_hash ();
-  flags->global_printers = start_ext_lang_type_printers ();
-  return make_cleanup (do_free_global_table, flags);
+  m_table = htab_create_alloc (10, hash_typedef_field, eq_typedef_field,
+			       NULL, xcalloc, xfree);
+  htab_traverse_noresize (table.m_table, copy_typedef_hash_element,
+			  m_table);
 }
 
 /* Look up the type T in the global typedef hash.  If it is found,
@@ -260,9 +307,9 @@ create_global_typedef_table (struct type_print_options *flags)
    type-printers, if any, given by start_script_type_printers and return the
    result.  A NULL return means that the name was not found.  */
 
-static const char *
-find_global_typedef (const struct type_print_options *flags,
-		     struct type *t)
+const char *
+typedef_hash_table::find_global_typedef (const struct type_print_options *flags,
+					 struct type *t)
 {
   char *applied;
   void **slot;
@@ -274,7 +321,7 @@ find_global_typedef (const struct type_print_options *flags,
   tf.name = NULL;
   tf.type = t;
 
-  slot = htab_find_slot (flags->global_typedefs->table, &tf, INSERT);
+  slot = htab_find_slot (flags->global_typedefs->m_table, &tf, INSERT);
   if (*slot != NULL)
     {
       new_tf = (struct decl_field *) *slot;
@@ -283,7 +330,7 @@ find_global_typedef (const struct type_print_options *flags,
 
   /* Put an entry into the hash table now, in case
      apply_ext_lang_type_printers recurses.  */
-  new_tf = XOBNEW (&flags->global_typedefs->storage, struct decl_field);
+  new_tf = XOBNEW (&flags->global_typedefs->m_storage, struct decl_field);
   new_tf->name = NULL;
   new_tf->type = t;
 
@@ -294,7 +341,7 @@ find_global_typedef (const struct type_print_options *flags,
   if (applied != NULL)
     {
       new_tf->name
-	= (const char *) obstack_copy0 (&flags->global_typedefs->storage,
+	= (const char *) obstack_copy0 (&flags->global_typedefs->m_storage,
 					applied, strlen (applied));
       xfree (applied);
     }
@@ -302,13 +349,11 @@ find_global_typedef (const struct type_print_options *flags,
   return new_tf->name;
 }
 
-/* Look up the type T in the typedef hash table in with FLAGS.  If T
-   is in the table, return its short (class-relative) typedef name.
-   Otherwise return NULL.  If the table is NULL, this always returns
-   NULL.  */
+/* See typeprint.h.  */
 
 const char *
-find_typedef_in_hash (const struct type_print_options *flags, struct type *t)
+typedef_hash_table::find_typedef (const struct type_print_options *flags,
+				  struct type *t)
 {
   if (flags->local_typedefs != NULL)
     {
@@ -316,7 +361,7 @@ find_typedef_in_hash (const struct type_print_options *flags, struct type *t)
 
       tf.name = NULL;
       tf.type = t;
-      found = (struct decl_field *) htab_find (flags->local_typedefs->table,
+      found = (struct decl_field *) htab_find (flags->local_typedefs->m_table,
 					       &tf);
 
       if (found != NULL)
@@ -406,7 +451,6 @@ static void
 whatis_exp (const char *exp, int show)
 {
   struct value *val;
-  struct cleanup *old_chain;
   struct type *real_type = NULL;
   struct type *type;
   int full = 0;
@@ -414,8 +458,6 @@ whatis_exp (const char *exp, int show)
   int using_enc = 0;
   struct value_print_options opts;
   struct type_print_options flags = default_ptype_flags;
-
-  old_chain = make_cleanup (null_cleanup, NULL);
 
   if (exp)
     {
@@ -448,7 +490,8 @@ whatis_exp (const char *exp, int show)
 		       feature.  */
 		    if (show > 0
 			&& (current_language->la_language == language_c
-			    || current_language->la_language == language_cplus))
+			    || current_language->la_language == language_cplus
+			    || current_language->la_language == language_rust))
 		      {
 			flags.print_offsets = 1;
 			flags.print_typedefs = 0;
@@ -489,6 +532,10 @@ whatis_exp (const char *exp, int show)
 	  check_typedef (type);
 	  if (TYPE_CODE (type) == TYPE_CODE_TYPEDEF)
 	    type = TYPE_TARGET_TYPE (type);
+
+	  /* If the expression is actually a type, then there's no
+	     value to fetch the dynamic type from.  */
+	  val = NULL;
 	}
       else
 	{
@@ -506,7 +553,7 @@ whatis_exp (const char *exp, int show)
     }
 
   get_user_print_options (&opts);
-  if (opts.objectprint)
+  if (val != NULL && opts.objectprint)
     {
       if (((TYPE_CODE (type) == TYPE_CODE_PTR) || TYPE_IS_REFERENCE (type))
 	  && (TYPE_CODE (TYPE_TARGET_TYPE (type)) == TYPE_CODE_STRUCT))
@@ -522,8 +569,16 @@ whatis_exp (const char *exp, int show)
 
   printf_filtered ("type = ");
 
+  std::unique_ptr<typedef_hash_table> table_holder;
+  std::unique_ptr<ext_lang_type_printers> printer_holder;
   if (!flags.raw)
-    create_global_typedef_table (&flags);
+    {
+      table_holder.reset (new typedef_hash_table);
+      flags.global_typedefs = table_holder.get ();
+
+      printer_holder.reset (new ext_lang_type_printers);
+      flags.global_printers = printer_holder.get ();
+    }
 
   if (real_type)
     {
@@ -536,8 +591,6 @@ whatis_exp (const char *exp, int show)
 
   LA_PRINT_TYPE (type, "", gdb_stdout, show, 0, &flags);
   printf_filtered ("\n");
-
-  do_cleanups (old_chain);
 }
 
 static void

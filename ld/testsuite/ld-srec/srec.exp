@@ -1,6 +1,6 @@
 # Test linking directly to S-records.
 # By Ian Lance Taylor, Cygnus Support.
-#   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+#   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -282,12 +282,10 @@ proc run_srec_test { test objs } {
 	setup_xfail "msp430*-*-*"
     }
 
-    # SH64 targets cannot convert format in the linker 
-    # using the -oformat command line switch.
-    if [istarget sh64*-*-elf] {
-        # This is what gcc passes to ld by default.
-        set flags "$flags -mshelf32"
-	setup_xfail "sh64*-*-*"
+    # The RISC-V target does not correctly process
+    # relocs when output format is not ELF.
+    if [istarget riscv*-*-*] {
+	setup_xfail "riscv*-*-*"
     }
 
     # V850 targets need libgcc.a
@@ -359,6 +357,13 @@ set CC "$CC $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS"
 set old_CXX "$CXX"
 set CXX "$CXX $PLT_CFLAGS $NOPIE_CFLAGS $NOPIE_LDFLAGS"
 
+# S-records can't handle .note.gnu.property sections.
+if { [is_elf_format] \
+     && ([istarget "i?86-*-*"] || [istarget "x86_64-*-*"]) } {
+    set CC "$CC -Wa,-mx86-used-note=no"
+    set CXX "$CXX -Wa,-mx86-used-note=no"
+}
+
 if { ![ld_compile $CC $srcdir/$subdir/sr1.c tmpdir/sr1.o] \
      || ![ld_compile $CC $srcdir/$subdir/sr2.c tmpdir/sr2.o] } {
     unresolved $test1
@@ -420,6 +425,9 @@ setup_xfail "bfin-*-linux-uclibc"
 # generate the format if need be).
 setup_xfail "tile*-*-*"
 
+# The S-record linker is not supported for C-SKY.
+setup_xfail "csky*-*-*"
+
 run_srec_test $test1 "tmpdir/sr1.o tmpdir/sr2.o"
 
 # Now try linking a C++ program with global constructors and
@@ -455,6 +463,7 @@ setup_xfail "*-*-cygwin*" "*-*-mingw*" "*-*-pe*" "*-*-winnt*"
 setup_xfail "score-*-*"
 setup_xfail "bfin-*-linux-uclibc"
 setup_xfail "tile*-*-*"
+setup_xfail "csky*-*-*"
 
 run_srec_test $test2 "tmpdir/sr3.o"
 

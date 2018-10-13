@@ -1,6 +1,6 @@
 /* Debug logging for the symbol file functions for the GNU debugger, GDB.
 
-   Copyright (C) 2013-2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -28,7 +28,7 @@
 #include "defs.h"
 #include "gdbcmd.h"
 #include "objfiles.h"
-#include "observer.h"
+#include "observable.h"
 #include "source.h"
 #include "symtab.h"
 #include "symfile.h"
@@ -191,23 +191,6 @@ debug_qf_dump (struct objfile *objfile)
 		    objfile_debug_name (objfile));
 
   debug_data->real_sf->qf->dump (objfile);
-}
-
-static void
-debug_qf_relocate (struct objfile *objfile,
-		   const struct section_offsets *new_offsets,
-		   const struct section_offsets *delta)
-{
-  const struct debug_sym_fns_data *debug_data
-    = ((const struct debug_sym_fns_data *)
-       objfile_data (objfile, symfile_debug_objfile_data_key));
-
-  fprintf_filtered (gdb_stdlog, "qf->relocate (%s, %s, %s)\n",
-		    objfile_debug_name (objfile),
-		    host_address_to_string (new_offsets),
-		    host_address_to_string (delta));
-
-  debug_data->real_sf->qf->relocate (objfile, new_offsets, delta);
 }
 
 static void
@@ -401,7 +384,6 @@ static const struct quick_symbol_functions debug_sym_quick_functions =
   debug_qf_lookup_symbol,
   debug_qf_print_stats,
   debug_qf_dump,
-  debug_qf_relocate,
   debug_qf_expand_symtabs_for_function,
   debug_qf_expand_all_symtabs,
   debug_qf_expand_symtabs_with_fullname,
@@ -506,7 +488,7 @@ debug_sym_finish (struct objfile *objfile)
 
 static void
 debug_sym_offsets (struct objfile *objfile,
-		   const struct section_addr_info *info)
+		   const section_addr_info &info)
 {
   const struct debug_sym_fns_data *debug_data
     = ((const struct debug_sym_fns_data *)
@@ -514,7 +496,7 @@ debug_sym_offsets (struct objfile *objfile,
 
   fprintf_filtered (gdb_stdlog, "sf->sym_offsets (%s, %s)\n",
 		    objfile_debug_name (objfile),
-		    host_address_to_string (info));
+		    host_address_to_string (&info));
 
   debug_data->real_sf->sym_offsets (objfile, info);
 }

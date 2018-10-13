@@ -1,6 +1,6 @@
 /* Process record and replay target for GDB, the GNU debugger.
 
-   Copyright (C) 2008-2017 Free Software Foundation, Inc.
+   Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,7 +21,7 @@
 #include "gdbcmd.h"
 #include "completer.h"
 #include "record.h"
-#include "observer.h"
+#include "observable.h"
 #include "inferior.h"
 #include "common/common-utils.h"
 #include "cli/cli-utils.h"
@@ -154,9 +154,9 @@ record_read_memory (struct gdbarch *gdbarch,
 static void
 record_stop (struct target_ops *t)
 {
-  DEBUG ("stop %s", t->to_shortname);
+  DEBUG ("stop %s", t->shortname ());
 
-  t->to_stop_recording (t);
+  t->stop_recording ();
 }
 
 /* Unpush the record target.  */
@@ -164,7 +164,7 @@ record_stop (struct target_ops *t)
 static void
 record_unpush (struct target_ops *t)
 {
-  DEBUG ("unpush %s", t->to_shortname);
+  DEBUG ("unpush %s", t->shortname ());
 
   unpush_target (t);
 }
@@ -176,7 +176,7 @@ record_disconnect (struct target_ops *t, const char *args, int from_tty)
 {
   gdb_assert (t->to_stratum == record_stratum);
 
-  DEBUG ("disconnect %s", t->to_shortname);
+  DEBUG ("disconnect %s", t->shortname ());
 
   record_stop (t);
   record_unpush (t);
@@ -187,16 +187,16 @@ record_disconnect (struct target_ops *t, const char *args, int from_tty)
 /* See record.h.  */
 
 void
-record_detach (struct target_ops *t, const char *args, int from_tty)
+record_detach (struct target_ops *t, inferior *inf, int from_tty)
 {
   gdb_assert (t->to_stratum == record_stratum);
 
-  DEBUG ("detach %s", t->to_shortname);
+  DEBUG ("detach %s", t->shortname ());
 
   record_stop (t);
   record_unpush (t);
 
-  target_detach (args, from_tty);
+  target_detach (inf, from_tty);
 }
 
 /* See record.h.  */
@@ -206,7 +206,7 @@ record_mourn_inferior (struct target_ops *t)
 {
   gdb_assert (t->to_stratum == record_stratum);
 
-  DEBUG ("mourn inferior %s", t->to_shortname);
+  DEBUG ("mourn inferior %s", t->shortname ());
 
   /* It is safer to not stop recording.  Resources will be freed when
      threads are discarded.  */
@@ -222,7 +222,7 @@ record_kill (struct target_ops *t)
 {
   gdb_assert (t->to_stratum == record_stratum);
 
-  DEBUG ("kill %s", t->to_shortname);
+  DEBUG ("kill %s", t->shortname ());
 
   /* It is safer to not stop recording.  Resources will be freed when
      threads are discarded.  */
@@ -311,7 +311,7 @@ cmd_record_stop (const char *args, int from_tty)
   printf_unfiltered (_("Process record is stopped and all execution "
 		       "logs are deleted.\n"));
 
-  observer_notify_record_changed (current_inferior (), 0, NULL, NULL);
+  gdb::observers::record_changed.notify (current_inferior (), 0, NULL, NULL);
 }
 
 /* The "set record" command.  */
@@ -320,7 +320,7 @@ static void
 set_record_command (const char *args, int from_tty)
 {
   printf_unfiltered (_("\"set record\" must be followed "
-		       "by an apporpriate subcommand.\n"));
+		       "by an appropriate subcommand.\n"));
   help_list (set_record_cmdlist, "set record ", all_commands, gdb_stdout);
 }
 
@@ -346,8 +346,8 @@ info_record_command (const char *args, int from_tty)
       return;
     }
 
-  printf_filtered (_("Active record target: %s\n"), t->to_shortname);
-  t->to_info_record (t);
+  printf_filtered (_("Active record target: %s\n"), t->shortname ());
+  t->info_record ();
 }
 
 /* The "record save" command.  */
@@ -366,7 +366,7 @@ cmd_record_save (const char *args, int from_tty)
     {
       /* Default recfile name is "gdb_record.PID".  */
       xsnprintf (recfilename_buffer, sizeof (recfilename_buffer),
-                "gdb_record.%d", ptid_get_pid (inferior_ptid));
+                "gdb_record.%d", inferior_ptid.pid ());
       recfilename = recfilename_buffer;
     }
 
@@ -615,14 +615,11 @@ cmd_record_insn_history (const char *arg, int from_tty)
 
 /* Read function-call-history modifiers from an argument string.  */
 
-static int
+static record_print_flags
 get_call_history_modifiers (const char **arg)
 {
-  int modifiers;
-  const char *args;
-
-  modifiers = 0;
-  args = *arg;
+  record_print_flags modifiers = 0;
+  const char *args = *arg;
 
   if (args == NULL)
     return modifiers;
@@ -672,13 +669,11 @@ get_call_history_modifiers (const char **arg)
 static void
 cmd_record_call_history (const char *arg, int from_tty)
 {
-  int flags, size;
-
   require_record_target ();
 
-  flags = get_call_history_modifiers (&arg);
+  record_print_flags flags = get_call_history_modifiers (&arg);
 
-  size = command_size_to_target_size (record_call_history_size);
+  int size = command_size_to_target_size (record_call_history_size);
 
   if (arg == NULL || *arg == 0 || strcmp (arg, "+") == 0)
     target_call_history (size, flags);
@@ -827,8 +822,8 @@ A size of \"unlimited\" means unlimited lines.  The default is 10."),
 
   c = add_cmd ("save", class_obscure, cmd_record_save,
 	       _("Save the execution log to a file.\n\
-Argument is optional filename.\n\
-Default filename is 'gdb_record.<process_id>'."),
+Usage: record save [FILENAME]\n\
+Default filename is 'gdb_record.PROCESS_ID'."),
 	       &record_cmdlist);
   set_cmd_completer (c, filename_completer);
 

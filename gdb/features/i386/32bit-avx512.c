@@ -1,14 +1,14 @@
 /* THIS FILE IS GENERATED.  -*- buffer-read-only: t -*- vi:set ro:
   Original: 32bit-avx512.xml */
 
-#include "arch/tdesc.h"
+#include "common/tdesc.h"
 
 static int
 create_feature_i386_32bit_avx512 (struct target_desc *result, long regnum)
 {
   struct tdesc_feature *feature;
 
-  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.avx512", "32bit-avx512.xml");
+  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.avx512");
   tdesc_type *element_type;
   element_type = tdesc_named_type (feature, "uint128");
   tdesc_create_vector (feature, "v2ui128", element_type, 2);

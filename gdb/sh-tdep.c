@@ -1,6 +1,6 @@
 /* Target-dependent code for Renesas Super-H, for GDB.
 
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -41,7 +41,6 @@
 #include "objfiles.h"
 
 #include "sh-tdep.h"
-#include "sh64-tdep.h"
 
 #include "elf-bfd.h"
 #include "solib-svr4.h"
@@ -1325,7 +1324,7 @@ sh_extract_return_value_nofpu (struct type *type, struct regcache *regcache,
     {
       int i, regnum = R0_REGNUM;
       for (i = 0; i < len; i += 4)
-	regcache_raw_read (regcache, regnum++, valbuf + i);
+	regcache->raw_read (regnum++, valbuf + i);
     }
   else
     error (_("bad size for return value"));
@@ -1342,10 +1341,10 @@ sh_extract_return_value_fpu (struct type *type, struct regcache *regcache,
       int i, regnum = gdbarch_fp0_regnum (gdbarch);
       for (i = 0; i < len; i += 4)
 	if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_LITTLE)
-	  regcache_raw_read (regcache, regnum++,
+	  regcache->raw_read (regnum++,
 			     valbuf + len - 4 - i);
 	else
-	  regcache_raw_read (regcache, regnum++, valbuf + i);
+	  regcache->raw_read (regnum++, valbuf + i);
     }
   else
     sh_extract_return_value_nofpu (type, regcache, valbuf);
@@ -1375,7 +1374,7 @@ sh_store_return_value_nofpu (struct type *type, struct regcache *regcache,
     {
       int i, regnum = R0_REGNUM;
       for (i = 0; i < len; i += 4)
-	regcache_raw_write (regcache, regnum++, valbuf + i);
+	regcache->raw_write (regnum++, valbuf + i);
     }
 }
 
@@ -1390,10 +1389,10 @@ sh_store_return_value_fpu (struct type *type, struct regcache *regcache,
       int i, regnum = gdbarch_fp0_regnum (gdbarch);
       for (i = 0; i < len; i += 4)
 	if (gdbarch_byte_order (gdbarch) == BFD_ENDIAN_LITTLE)
-	  regcache_raw_write (regcache, regnum++,
+	  regcache->raw_write (regnum++,
 			      valbuf + len - 4 - i);
 	else
-	  regcache_raw_write (regcache, regnum++, valbuf + i);
+	  regcache->raw_write (regnum++, valbuf + i);
     }
   else
     sh_store_return_value_nofpu (type, regcache, valbuf);
@@ -1628,7 +1627,7 @@ dr_reg_base_num (struct gdbarch *gdbarch, int dr_regnum)
 
 static enum register_status
 pseudo_register_read_portions (struct gdbarch *gdbarch,
-			       struct regcache *regcache,
+			       readable_regcache *regcache,
 			       int portions,
 			       int base_regnum, gdb_byte *buffer)
 {
@@ -1640,7 +1639,7 @@ pseudo_register_read_portions (struct gdbarch *gdbarch,
       gdb_byte *b;
 
       b = buffer + register_size (gdbarch, base_regnum) * portion;
-      status = regcache_raw_read (regcache, base_regnum + portion, b);
+      status = regcache->raw_read (base_regnum + portion, b);
       if (status != REG_VALID)
 	return status;
     }
@@ -1649,14 +1648,14 @@ pseudo_register_read_portions (struct gdbarch *gdbarch,
 }
 
 static enum register_status
-sh_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+sh_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
 			 int reg_nr, gdb_byte *buffer)
 {
   int base_regnum;
   enum register_status status;
 
   if (reg_nr == PSEUDO_BANK_REGNUM)
-    return regcache_raw_read (regcache, BANK_REGNUM, buffer);
+    return regcache->raw_read (BANK_REGNUM, buffer);
   else if (reg_nr >= DR0_REGNUM && reg_nr <= DR_LAST_REGNUM)
     {
       /* Enough space for two float registers.  */
@@ -1702,9 +1701,9 @@ sh_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
 	 so that a re-read happens next time it's necessary.  */
       int bregnum;
 
-      regcache_raw_write (regcache, BANK_REGNUM, buffer);
+      regcache->raw_write (BANK_REGNUM, buffer);
       for (bregnum = R0_BANK0_REGNUM; bregnum < MACLB_REGNUM; ++bregnum)
-        regcache_invalidate (regcache, bregnum);
+        regcache->invalidate (bregnum);
     }
   else if (reg_nr >= DR0_REGNUM && reg_nr <= DR_LAST_REGNUM)
     {
@@ -1718,7 +1717,7 @@ sh_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
 
       /* Write the real regs for which this one is an alias.  */
       for (portion = 0; portion < 2; portion++)
-	regcache_raw_write (regcache, base_regnum + portion,
+	regcache->raw_write (base_regnum + portion,
 			    (temp_buffer
 			     + register_size (gdbarch,
 					      base_regnum) * portion));
@@ -1729,7 +1728,7 @@ sh_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
 
       /* Write the real regs for which this one is an alias.  */
       for (portion = 0; portion < 4; portion++)
-	regcache_raw_write (regcache, base_regnum + portion,
+	regcache->raw_write (base_regnum + portion,
 			    (buffer
 			     + register_size (gdbarch,
 					      base_regnum) * portion));
@@ -2176,8 +2175,8 @@ sh_corefile_supply_regset (const struct regset *regset,
     {
       if ((regnum == -1 || regnum == regmap[i].regnum)
 	  && regmap[i].offset + 4 <= len)
-	regcache_raw_supply (regcache, regmap[i].regnum,
-			     (char *)regs + regmap[i].offset);
+	regcache->raw_supply
+	  (regmap[i].regnum, (char *) regs + regmap[i].offset);
     }
 }
 
@@ -2202,7 +2201,7 @@ sh_corefile_collect_regset (const struct regset *regset,
     {
       if ((regnum == -1 || regnum == regmap[i].regnum)
 	  && regmap[i].offset + 4 <= len)
-	regcache_raw_collect (regcache, regmap[i].regnum,
+	regcache->raw_collect (regmap[i].regnum,
 			      (char *)regs + regmap[i].offset);
     }
 }
@@ -2233,10 +2232,12 @@ sh_iterate_over_regset_sections (struct gdbarch *gdbarch,
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
   if (tdep->core_gregmap != NULL)
-    cb (".reg", tdep->sizeof_gregset, &sh_corefile_gregset, NULL, cb_data);
+    cb (".reg", tdep->sizeof_gregset, tdep->sizeof_gregset,
+	&sh_corefile_gregset, NULL, cb_data);
 
   if (tdep->core_fpregmap != NULL)
-    cb (".reg2", tdep->sizeof_fpregset, &sh_corefile_fpregset, NULL, cb_data);
+    cb (".reg2", tdep->sizeof_fpregset, tdep->sizeof_fpregset,
+	&sh_corefile_fpregset, NULL, cb_data);
 }
 
 /* This is the implementation of gdbarch method
@@ -2256,10 +2257,6 @@ sh_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 {
   struct gdbarch *gdbarch;
   struct gdbarch_tdep *tdep;
-
-  /* SH5 is handled entirely in sh64-tdep.c.  */
-  if (info.bfd_arch_info->mach == bfd_mach_sh5)
-    return sh64_gdbarch_init (info, arches);
 
   /* If there is already a candidate, use it.  */
   arches = gdbarch_list_lookup_by_info (arches, &info);

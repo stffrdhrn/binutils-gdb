@@ -1,5 +1,5 @@
 /* Base class of intrusively reference-counted objects.
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,6 +49,22 @@ private:
 
   /* The reference count.  */
   int m_refcount = 0;
+};
+
+/* A policy class to interface gdb::ref_ptr with a
+   refcounted_object.  */
+
+struct refcounted_object_ref_policy
+{
+  static void incref (refcounted_object *ptr)
+  {
+    ptr->incref ();
+  }
+
+  static void decref (refcounted_object *ptr)
+  {
+    ptr->decref ();
+  }
 };
 
 #endif /* REFCOUNTED_OBJECT_H */

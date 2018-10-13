@@ -1,5 +1,5 @@
 /* List lines of source files for GDB, the GNU debugger.
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,7 +29,6 @@
 #include "filestuff.h"
 
 #include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include "gdbcore.h"
 #include "gdb_regex.h"
@@ -43,7 +42,9 @@
 #include "ui-out.h"
 #include "readline/readline.h"
 #include "common/enum-flags.h"
+#include "common/scoped_fd.h"
 #include <algorithm>
+#include "common/pathstuff.h"
 
 #define OPEN_MODE (O_RDONLY | O_BINARY)
 #define FDOPEN_MODE FOPEN_RB
@@ -461,10 +462,7 @@ add_path (const char *dirname, char **which_path, int parse_separators)
 {
   char *old = *which_path;
   int prefix = 0;
-  VEC (char_ptr) *dir_vec = NULL;
-  struct cleanup *back_to;
-  int ix;
-  char *name;
+  std::vector<gdb::unique_xmalloc_ptr<char>> dir_vec;
 
   if (dirname == 0)
     return;
@@ -479,13 +477,14 @@ add_path (const char *dirname, char **which_path, int parse_separators)
 	dirnames_to_char_ptr_vec_append (&dir_vec, arg);
     }
   else
-    VEC_safe_push (char_ptr, dir_vec, xstrdup (dirname));
-  back_to = make_cleanup_free_char_ptr_vec (dir_vec);
+    dir_vec.emplace_back (xstrdup (dirname));
 
-  for (ix = 0; VEC_iterate (char_ptr, dir_vec, ix, name); ++ix)
+  for (const gdb::unique_xmalloc_ptr<char> &name_up : dir_vec)
     {
+      char *name = name_up.get ();
       char *p;
       struct stat st;
+      gdb::unique_xmalloc_ptr<char> new_name_holder;
 
       /* Spaces and tabs will have been removed by buildargv().
          NAME is the start of the directory.
@@ -531,16 +530,17 @@ add_path (const char *dirname, char **which_path, int parse_separators)
 	}
 
       if (name[0] == '~')
-	name = tilde_expand (name);
+	new_name_holder.reset (tilde_expand (name));
 #ifdef HAVE_DOS_BASED_FILE_SYSTEM
       else if (IS_ABSOLUTE_PATH (name) && p == name + 2) /* "d:" => "d:." */
-	name = concat (name, ".", (char *)NULL);
+	new_name_holder.reset (concat (name, ".", (char *) NULL));
 #endif
       else if (!IS_ABSOLUTE_PATH (name) && name[0] != '$')
-	name = concat (current_directory, SLASH_STRING, name, (char *)NULL);
+	new_name_holder.reset (concat (current_directory, SLASH_STRING, name,
+				       (char *) NULL));
       else
-	name = savestring (name, p - name);
-      make_cleanup (xfree, name);
+	new_name_holder.reset (savestring (name, p - name));
+      name = new_name_holder.get ();
 
       /* Unless it's a variable, check existence.  */
       if (name[0] != '$')
@@ -630,8 +630,6 @@ add_path (const char *dirname, char **which_path, int parse_separators)
     skip_dup:
       ;
     }
-
-  do_cleanups (back_to);
 }
 
 
@@ -669,39 +667,6 @@ info_source_command (const char *ignore, int from_tty)
 }
 
 
-/* Return True if the file NAME exists and is a regular file.
-   If the result is false then *ERRNO_PTR is set to a useful value assuming
-   we're expecting a regular file.  */
-
-static int
-is_regular_file (const char *name, int *errno_ptr)
-{
-  struct stat st;
-  const int status = stat (name, &st);
-
-  /* Stat should never fail except when the file does not exist.
-     If stat fails, analyze the source of error and return True
-     unless the file does not exist, to avoid returning false results
-     on obscure systems where stat does not work as expected.  */
-
-  if (status != 0)
-    {
-      if (errno != ENOENT)
-	return 1;
-      *errno_ptr = ENOENT;
-      return 0;
-    }
-
-  if (S_ISREG (st.st_mode))
-    return 1;
-
-  if (S_ISDIR (st.st_mode))
-    *errno_ptr = EISDIR;
-  else
-    *errno_ptr = EINVAL;
-  return 0;
-}
-
 /* Open a file named STRING, searching path PATH (dir names sep by some char)
    using mode MODE in the calls to open.  You cannot use this function to
    create files (O_CREAT).
@@ -736,19 +701,16 @@ is_regular_file (const char *name, int *errno_ptr)
 /*  >>>> This should only allow files of certain types,
     >>>>  eg executable, non-directory.  */
 int
-openp (const char *path, int opts, const char *string,
-       int mode, char **filename_opened)
+openp (const char *path, openp_flags opts, const char *string,
+       int mode, gdb::unique_xmalloc_ptr<char> *filename_opened)
 {
   int fd;
   char *filename;
   int alloclen;
-  VEC (char_ptr) *dir_vec;
-  struct cleanup *back_to;
-  int ix;
-  char *dir;
   /* The errno set for the last name we tried to open (and
      failed).  */
   int last_errno = 0;
+  std::vector<gdb::unique_xmalloc_ptr<char>> dir_vec;
 
   /* The open syscall MODE parameter is not specified.  */
   gdb_assert ((mode & O_CREAT) == 0);
@@ -816,10 +778,10 @@ openp (const char *path, int opts, const char *string,
   last_errno = ENOENT;
 
   dir_vec = dirnames_to_char_ptr_vec (path);
-  back_to = make_cleanup_free_char_ptr_vec (dir_vec);
 
-  for (ix = 0; VEC_iterate (char_ptr, dir_vec, ix, dir); ++ix)
+  for (const gdb::unique_xmalloc_ptr<char> &dir_up : dir_vec)
     {
+      char *dir = dir_up.get ();
       size_t len = strlen (dir);
       int reg_file_errno;
 
@@ -889,18 +851,16 @@ openp (const char *path, int opts, const char *string,
 	last_errno = reg_file_errno;
     }
 
-  do_cleanups (back_to);
-
 done:
   if (filename_opened)
     {
       /* If a file was opened, canonicalize its filename.  */
       if (fd < 0)
-	*filename_opened = NULL;
+	filename_opened->reset (NULL);
       else if ((opts & OPF_RETURN_REALPATH) != 0)
-	*filename_opened = gdb_realpath (filename).release ();
+	*filename_opened = gdb_realpath (filename);
       else
-	*filename_opened = gdb_abspath (filename).release ();
+	*filename_opened = gdb_abspath (filename);
     }
 
   errno = last_errno;
@@ -920,7 +880,8 @@ done:
 
    Else, this functions returns 0, and FULL_PATHNAME is set to NULL.  */
 int
-source_full_path_of (const char *filename, char **full_pathname)
+source_full_path_of (const char *filename,
+		     gdb::unique_xmalloc_ptr<char> *full_pathname)
 {
   int fd;
 
@@ -929,7 +890,7 @@ source_full_path_of (const char *filename, char **full_pathname)
 	      filename, O_RDONLY, full_pathname);
   if (fd < 0)
     {
-      *full_pathname = NULL;
+      full_pathname->reset (NULL);
       return 0;
     }
 
@@ -1011,7 +972,7 @@ rewrite_source_path (const char *path)
 int
 find_and_open_source (const char *filename,
 		      const char *dirname,
-		      char **fullname)
+		      gdb::unique_xmalloc_ptr<char> *fullname)
 {
   char *path = source_path;
   const char *p;
@@ -1024,27 +985,21 @@ find_and_open_source (const char *filename,
       /* The user may have requested that source paths be rewritten
          according to substitution rules he provided.  If a substitution
          rule applies to this path, then apply it.  */
-      char *rewritten_fullname = rewrite_source_path (*fullname).release ();
+      gdb::unique_xmalloc_ptr<char> rewritten_fullname
+	= rewrite_source_path (fullname->get ());
 
       if (rewritten_fullname != NULL)
-        {
-          xfree (*fullname);
-          *fullname = rewritten_fullname;
-        }
+	*fullname = std::move (rewritten_fullname);
 
-      result = gdb_open_cloexec (*fullname, OPEN_MODE, 0);
+      result = gdb_open_cloexec (fullname->get (), OPEN_MODE, 0);
       if (result >= 0)
 	{
-	  char *lpath = gdb_realpath (*fullname).release ();
-
-	  xfree (*fullname);
-	  *fullname = lpath;
+	  *fullname = gdb_realpath (fullname->get ());
 	  return result;
 	}
 
       /* Didn't work -- free old one, try again.  */
-      xfree (*fullname);
-      *fullname = NULL;
+      fullname->reset (NULL);
     }
 
   gdb::unique_xmalloc_ptr<char> rewritten_dirname;
@@ -1115,7 +1070,10 @@ open_source_file (struct symtab *s)
   if (!s)
     return -1;
 
-  return find_and_open_source (s->filename, SYMTAB_DIRNAME (s), &s->fullname);
+  gdb::unique_xmalloc_ptr<char> fullname;
+  int fd = find_and_open_source (s->filename, SYMTAB_DIRNAME (s), &fullname);
+  s->fullname = fullname.release ();
+  return fd;
 }
 
 /* Finds the fullname that a symtab represents.
@@ -1135,8 +1093,7 @@ symtab_to_fullname (struct symtab *s)
      to handle cases like the file being moved.  */
   if (s->fullname == NULL)
     {
-      int fd = find_and_open_source (s->filename, SYMTAB_DIRNAME (s),
-				     &s->fullname);
+      int fd = open_source_file (s);
 
       if (fd >= 0)
 	close (fd);
@@ -1186,7 +1143,7 @@ void
 find_source_lines (struct symtab *s, int desc)
 {
   struct stat st;
-  char *data, *p, *end;
+  char *p, *end;
   int nlines = 0;
   int lines_allocated = 1000;
   int *line_charpos;
@@ -1207,23 +1164,20 @@ find_source_lines (struct symtab *s, int desc)
     warning (_("Source file is more recent than executable."));
 
   {
-    struct cleanup *old_cleanups;
-
     /* st_size might be a large type, but we only support source files whose 
        size fits in an int.  */
     size = (int) st.st_size;
 
-    /* Use malloc, not alloca, because this may be pretty large, and we may
-       run into various kinds of limits on stack size.  */
-    data = (char *) xmalloc (size);
-    old_cleanups = make_cleanup (xfree, data);
+    /* Use the heap, not the stack, because this may be pretty large,
+       and we may run into various kinds of limits on stack size.  */
+    gdb::def_vector<char> data (size);
 
     /* Reassign `size' to result of read for systems where \r\n -> \n.  */
-    size = myread (desc, data, size);
+    size = myread (desc, data.data (), size);
     if (size < 0)
       perror_with_name (symtab_to_filename_for_display (s));
-    end = data + size;
-    p = data;
+    end = data.data () + size;
+    p = &data[0];
     line_charpos[0] = 0;
     nlines = 1;
     while (p != end)
@@ -1239,10 +1193,9 @@ find_source_lines (struct symtab *s, int desc)
 		  (int *) xrealloc ((char *) line_charpos,
 				    sizeof (int) * lines_allocated);
 	      }
-	    line_charpos[nlines++] = p - data;
+	    line_charpos[nlines++] = p - data.data ();
 	  }
       }
-    do_cleanups (old_cleanups);
   }
 
   s->nlines = nlines;
@@ -1261,24 +1214,21 @@ find_source_lines (struct symtab *s, int desc)
 static int
 get_filename_and_charpos (struct symtab *s, char **fullname)
 {
-  int desc, linenums_changed = 0;
-  struct cleanup *cleanups;
+  int linenums_changed = 0;
 
-  desc = open_source_file (s);
-  if (desc < 0)
+  scoped_fd desc (open_source_file (s));
+  if (desc.get () < 0)
     {
       if (fullname)
 	*fullname = NULL;
       return 0;
     }
-  cleanups = make_cleanup_close (desc);
   if (fullname)
     *fullname = s->fullname;
   if (s->line_charpos == 0)
     linenums_changed = 1;
   if (linenums_changed)
-    find_source_lines (s, desc);
-  do_cleanups (cleanups);
+    find_source_lines (s, desc.get ());
   return linenums_changed;
 }
 
@@ -1587,10 +1537,8 @@ static void
 forward_search_command (const char *regex, int from_tty)
 {
   int c;
-  int desc;
   int line;
   char *msg;
-  struct cleanup *cleanups;
 
   line = last_line_listed + 1;
 
@@ -1601,22 +1549,21 @@ forward_search_command (const char *regex, int from_tty)
   if (current_source_symtab == 0)
     select_source_symtab (0);
 
-  desc = open_source_file (current_source_symtab);
-  if (desc < 0)
+  scoped_fd desc (open_source_file (current_source_symtab));
+  if (desc.get () < 0)
     perror_with_name (symtab_to_filename_for_display (current_source_symtab));
-  cleanups = make_cleanup_close (desc);
 
   if (current_source_symtab->line_charpos == 0)
-    find_source_lines (current_source_symtab, desc);
+    find_source_lines (current_source_symtab, desc.get ());
 
   if (line < 1 || line > current_source_symtab->nlines)
     error (_("Expression not found"));
 
-  if (lseek (desc, current_source_symtab->line_charpos[line - 1], 0) < 0)
+  if (lseek (desc.get (), current_source_symtab->line_charpos[line - 1], 0)
+      < 0)
     perror_with_name (symtab_to_filename_for_display (current_source_symtab));
 
-  discard_cleanups (cleanups);
-  gdb_file_up stream (fdopen (desc, FDOPEN_MODE));
+  gdb_file_up stream (fdopen (desc.release (), FDOPEN_MODE));
   clearerr (stream.get ());
   while (1)
     {
@@ -1672,10 +1619,8 @@ static void
 reverse_search_command (const char *regex, int from_tty)
 {
   int c;
-  int desc;
   int line;
   char *msg;
-  struct cleanup *cleanups;
 
   line = last_line_listed - 1;
 
@@ -1686,22 +1631,21 @@ reverse_search_command (const char *regex, int from_tty)
   if (current_source_symtab == 0)
     select_source_symtab (0);
 
-  desc = open_source_file (current_source_symtab);
-  if (desc < 0)
+  scoped_fd desc (open_source_file (current_source_symtab));
+  if (desc.get () < 0)
     perror_with_name (symtab_to_filename_for_display (current_source_symtab));
-  cleanups = make_cleanup_close (desc);
 
   if (current_source_symtab->line_charpos == 0)
-    find_source_lines (current_source_symtab, desc);
+    find_source_lines (current_source_symtab, desc.get ());
 
   if (line < 1 || line > current_source_symtab->nlines)
     error (_("Expression not found"));
 
-  if (lseek (desc, current_source_symtab->line_charpos[line - 1], 0) < 0)
+  if (lseek (desc.get (), current_source_symtab->line_charpos[line - 1], 0)
+      < 0)
     perror_with_name (symtab_to_filename_for_display (current_source_symtab));
 
-  discard_cleanups (cleanups);
-  gdb_file_up stream (fdopen (desc, FDOPEN_MODE));
+  gdb_file_up stream (fdopen (desc.release (), FDOPEN_MODE));
   clearerr (stream.get ());
   while (line > 1)
     {

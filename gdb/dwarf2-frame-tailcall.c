@@ -1,6 +1,6 @@
 /* Virtual tail call frames unwinder for GDB.
 
-   Copyright (C) 2010-2017 Free Software Foundation, Inc.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -317,6 +317,9 @@ tailcall_frame_sniffer (const struct frame_unwind *self,
   struct frame_info *next_frame;
   int next_levels;
   struct tailcall_cache *cache;
+
+  if (!dwarf2_frame_unwinders_enabled_p)
+    return 0;
 
   /* Inner tail call element does not make sense for a sentinel frame.  */
   next_frame = get_next_frame (this_frame);

@@ -1,6 +1,6 @@
 /* C language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,6 +25,7 @@
 #include "language.h"
 #include "varobj.h"
 #include "c-lang.h"
+#include "c-support.h"
 #include "valprint.h"
 #include "macroscope.h"
 #include "charset.h"
@@ -233,7 +234,7 @@ c_printstr (struct ui_file *stream, struct type *type,
    target charset.  */
 
 void
-c_get_string (struct value *value, gdb_byte **buffer,
+c_get_string (struct value *value, gdb::unique_xmalloc_ptr<gdb_byte> *buffer,
 	      int *length, struct type **char_type,
 	      const char **charset)
 {
@@ -299,8 +300,8 @@ c_get_string (struct value *value, gdb_byte **buffer,
       /* I is now either a user-defined length, the number of non-null
  	 characters, or FETCHLIMIT.  */
       *length = i * width;
-      *buffer = (gdb_byte *) xmalloc (*length);
-      memcpy (*buffer, contents, *length);
+      buffer->reset ((gdb_byte *) xmalloc (*length));
+      memcpy (buffer->get (), contents, *length);
       err = 0;
     }
   else
@@ -325,10 +326,7 @@ c_get_string (struct value *value, gdb_byte **buffer,
       err = read_string (addr, *length, width, fetchlimit,
 			 byte_order, buffer, length);
       if (err != 0)
-	{
-	  xfree (*buffer);
-	  memory_error (TARGET_XFER_E_IO, addr);
-	}
+	memory_error (TARGET_XFER_E_IO, addr);
     }
 
   /* If the LENGTH is specified at -1, we want to return the string
@@ -338,7 +336,7 @@ c_get_string (struct value *value, gdb_byte **buffer,
   if (req_length == -1)
     /* If the last character is null, subtract it from LENGTH.  */
     if (*length > 0
- 	&& extract_unsigned_integer (*buffer + *length - width,
+	&& extract_unsigned_integer (buffer->get () + *length - width,
 				     width, byte_order) == 0)
       *length -= width;
   
@@ -382,7 +380,7 @@ convert_ucn (char *p, char *limit, const char *dest_charset,
   gdb_byte data[4];
   int i;
 
-  for (i = 0; i < length && p < limit && isxdigit (*p); ++i, ++p)
+  for (i = 0; i < length && p < limit && ISXDIGIT (*p); ++i, ++p)
     result = (result << 4) + host_hex_value (*p);
 
   for (i = 3; i >= 0; --i)
@@ -424,7 +422,7 @@ convert_octal (struct type *type, char *p,
   unsigned long value = 0;
 
   for (i = 0;
-       i < 3 && p < limit && isdigit (*p) && *p != '8' && *p != '9';
+       i < 3 && p < limit && ISDIGIT (*p) && *p != '8' && *p != '9';
        ++i)
     {
       value = 8 * value + host_hex_value (*p);
@@ -447,7 +445,7 @@ convert_hex (struct type *type, char *p,
 {
   unsigned long value = 0;
 
-  while (p < limit && isxdigit (*p))
+  while (p < limit && ISXDIGIT (*p))
     {
       value = 16 * value + host_hex_value (*p);
       ++p;
@@ -488,7 +486,7 @@ convert_escape (struct type *type, const char *dest_charset,
 
     case 'x':
       ADVANCE;
-      if (!isxdigit (*p))
+      if (!ISXDIGIT (*p))
 	error (_("\\x used with no following hex digits."));
       p = convert_hex (type, p, limit, output);
       break;
@@ -510,7 +508,7 @@ convert_escape (struct type *type, const char *dest_charset,
 	int length = *p == 'u' ? 4 : 8;
 
 	ADVANCE;
-	if (!isxdigit (*p))
+	if (!ISXDIGIT (*p))
 	  error (_("\\u used with no following hex digits"));
 	p = convert_ucn (p, limit, dest_charset, output, length);
       }
@@ -751,6 +749,7 @@ const struct op_print c_op_print_tab[] =
   {"*", UNOP_IND, PREC_PREFIX, 0},
   {"&", UNOP_ADDR, PREC_PREFIX, 0},
   {"sizeof ", UNOP_SIZEOF, PREC_PREFIX, 0},
+  {"alignof ", UNOP_ALIGNOF, PREC_PREFIX, 0},
   {"++", UNOP_PREINCREMENT, PREC_PREFIX, 0},
   {"--", UNOP_PREDECREMENT, PREC_PREFIX, 0},
   {NULL, OP_NULL, PREC_PREFIX, 0}
@@ -841,7 +840,6 @@ extern const struct language_defn c_language_defn =
   c_extensions,
   &exp_descriptor_c,
   c_parse,
-  c_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant */
   c_printstr,			/* Function to print string constant */
@@ -853,6 +851,7 @@ extern const struct language_defn c_language_defn =
   default_read_var_value,	/* la_read_var_value */
   NULL,				/* Language specific skip_trampoline */
   NULL,				/* name_of_this */
+  true,				/* la_store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   NULL,				/* Language specific symbol demangler */
@@ -986,7 +985,6 @@ extern const struct language_defn cplus_language_defn =
   cplus_extensions,
   &exp_descriptor_c,
   c_parse,
-  c_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant */
   c_printstr,			/* Function to print string constant */
@@ -998,6 +996,7 @@ extern const struct language_defn cplus_language_defn =
   default_read_var_value,	/* la_read_var_value */
   cplus_skip_trampoline,	/* Language specific skip_trampoline */
   "this",                       /* name_of_this */
+  false,			/* la_store_sym_names_in_linkage_form_p */
   cp_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   cp_lookup_transparent_type,   /* lookup_transparent_type */
   gdb_demangle,			/* Language specific symbol demangler */
@@ -1018,8 +1017,8 @@ extern const struct language_defn cplus_language_defn =
   iterate_over_symbols,
   cp_search_name_hash,
   &cplus_varobj_ops,
-  NULL,
-  NULL,
+  cplus_get_compile_context,
+  cplus_compute_program,
   LANG_MAGIC
 };
 
@@ -1040,7 +1039,6 @@ extern const struct language_defn asm_language_defn =
   asm_extensions,
   &exp_descriptor_c,
   c_parse,
-  c_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant */
   c_printstr,			/* Function to print string constant */
@@ -1052,6 +1050,7 @@ extern const struct language_defn asm_language_defn =
   default_read_var_value,	/* la_read_var_value */
   NULL,				/* Language specific skip_trampoline */
   NULL,				/* name_of_this */
+  true,				/* la_store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   NULL,				/* Language specific symbol demangler */
@@ -1094,7 +1093,6 @@ extern const struct language_defn minimal_language_defn =
   NULL,
   &exp_descriptor_c,
   c_parse,
-  c_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant */
   c_printstr,			/* Function to print string constant */
@@ -1106,6 +1104,7 @@ extern const struct language_defn minimal_language_defn =
   default_read_var_value,	/* la_read_var_value */
   NULL,				/* Language specific skip_trampoline */
   NULL,				/* name_of_this */
+  true,				/* la_store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   NULL,				/* Language specific symbol demangler */

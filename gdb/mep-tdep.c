@@ -1,6 +1,6 @@
 /* Target-dependent code for the Toshiba MeP for GDB, the GNU debugger.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
 
    Contributed by Red Hat, Inc.
 
@@ -48,8 +48,8 @@
 
 /* Get the user's customized MeP coprocessor register names from
    libopcodes.  */
-#include "opcodes/mep-desc.h"
-#include "opcodes/mep-opc.h"
+#include "../opcodes/mep-desc.h"
+#include "../opcodes/mep-opc.h"
 
 
 /* The gdbarch_tdep structure.  */
@@ -1112,18 +1112,9 @@ mep_register_type (struct gdbarch *gdbarch, int reg_nr)
     return builtin_type (gdbarch)->builtin_uint32;
 }
 
-
-static CORE_ADDR
-mep_read_pc (struct regcache *regcache)
-{
-  ULONGEST pc;
-  regcache_cooked_read_unsigned (regcache, MEP_PC_REGNUM, &pc);
-  return pc;
-}
-
 static enum register_status
 mep_pseudo_cr32_read (struct gdbarch *gdbarch,
-                      struct regcache *regcache,
+		      readable_regcache *regcache,
                       int cookednum,
                       gdb_byte *buf)
 {
@@ -1136,7 +1127,7 @@ mep_pseudo_cr32_read (struct gdbarch *gdbarch,
 
   gdb_assert (TYPE_LENGTH (register_type (gdbarch, rawnum)) == sizeof (buf64));
   gdb_assert (TYPE_LENGTH (register_type (gdbarch, cookednum)) == 4);
-  status = regcache_raw_read (regcache, rawnum, buf64);
+  status = regcache->raw_read (rawnum, buf64);
   if (status == REG_VALID)
     {
       /* Slow, but legible.  */
@@ -1149,23 +1140,23 @@ mep_pseudo_cr32_read (struct gdbarch *gdbarch,
 
 static enum register_status
 mep_pseudo_cr64_read (struct gdbarch *gdbarch,
-                      struct regcache *regcache,
+                      readable_regcache *regcache,
                       int cookednum,
                       gdb_byte *buf)
 {
-  return regcache_raw_read (regcache, mep_pseudo_to_raw[cookednum], buf);
+  return regcache->raw_read (mep_pseudo_to_raw[cookednum], buf);
 }
 
 
 static enum register_status
 mep_pseudo_register_read (struct gdbarch *gdbarch,
-                          struct regcache *regcache,
+			  readable_regcache *regcache,
                           int cookednum,
                           gdb_byte *buf)
 {
   if (IS_CSR_REGNUM (cookednum)
       || IS_CCR_REGNUM (cookednum))
-    return regcache_raw_read (regcache, mep_pseudo_to_raw[cookednum], buf);
+    return regcache->raw_read (mep_pseudo_to_raw[cookednum], buf);
   else if (IS_CR32_REGNUM (cookednum)
            || IS_FP_CR32_REGNUM (cookednum))
     return mep_pseudo_cr32_read (gdbarch, regcache, cookednum, buf);
@@ -1225,7 +1216,7 @@ mep_pseudo_cr32_write (struct gdbarch *gdbarch,
   /* Slow, but legible.  */
   store_unsigned_integer (buf64, 8, byte_order,
 			  extract_unsigned_integer (buf, 4, byte_order));
-  regcache_raw_write (regcache, rawnum, buf64);
+  regcache->raw_write (rawnum, buf64);
 }
 
 
@@ -1235,7 +1226,7 @@ mep_pseudo_cr64_write (struct gdbarch *gdbarch,
                      int cookednum,
                      const gdb_byte *buf)
 {
-  regcache_raw_write (regcache, mep_pseudo_to_raw[cookednum], buf);
+  regcache->raw_write (mep_pseudo_to_raw[cookednum], buf);
 }
 
 
@@ -1254,7 +1245,7 @@ mep_pseudo_register_write (struct gdbarch *gdbarch,
            || IS_FP_CR64_REGNUM (cookednum))
     mep_pseudo_cr64_write (gdbarch, regcache, cookednum, buf);
   else if (IS_CCR_REGNUM (cookednum))
-    regcache_raw_write (regcache, mep_pseudo_to_raw[cookednum], buf);
+    regcache->raw_write (mep_pseudo_to_raw[cookednum], buf);
   else
     gdb_assert_not_reached ("unexpected pseudo register");
 }
@@ -1670,14 +1661,13 @@ mep_analyze_prologue (struct gdbarch *gdbarch,
 {
   CORE_ADDR pc;
   unsigned long insn;
-  int rn;
   pv_t reg[MEP_NUM_REGS];
   CORE_ADDR after_last_frame_setup_insn = start_pc;
 
   memset (result, 0, sizeof (*result));
   result->gdbarch = gdbarch;
 
-  for (rn = 0; rn < MEP_NUM_REGS; rn++)
+  for (int rn = 0; rn < MEP_NUM_REGS; rn++)
     {
       reg[rn] = pv_register (rn, 0);
       result->reg_offset[rn] = 1;
@@ -2014,7 +2004,6 @@ mep_frame_prev_register (struct frame_info *this_frame,
 				       MEP_LP_REGNUM);
       lp = value_as_long (value);
       release_value (value);
-      value_free (value);
 
       return frame_unwind_got_constant (this_frame, regnum, lp & ~1);
     }
@@ -2045,13 +2034,11 @@ mep_frame_prev_register (struct frame_info *this_frame,
 
 	  psw = value_as_long (value);
 	  release_value (value);
-	  value_free (value);
 
           /* Get the LP's value, too.  */
 	  value = get_frame_register_value (this_frame, MEP_LP_REGNUM);
 	  lp = value_as_long (value);
 	  release_value (value);
-	  value_free (value);
 
           /* If LP.LTOM is set, then toggle PSW.OM.  */
 	  if (lp & 0x1)
@@ -2125,9 +2112,8 @@ mep_extract_return_value (struct gdbarch *arch,
     offset = 0;
 
   /* Return values that do fit in a single register are returned in R0.  */
-  regcache_cooked_read_part (regcache, MEP_R0_REGNUM,
-                             offset, TYPE_LENGTH (type),
-                             valbuf);
+  regcache->cooked_read_part (MEP_R0_REGNUM, offset, TYPE_LENGTH (type),
+			      valbuf);
 }
 
 
@@ -2152,9 +2138,8 @@ mep_store_return_value (struct gdbarch *arch,
       else
         offset = 0;
 
-      regcache_cooked_write_part (regcache, MEP_R0_REGNUM,
-                                  offset, TYPE_LENGTH (type),
-                                  valbuf);
+      regcache->cooked_write_part (MEP_R0_REGNUM, offset, TYPE_LENGTH (type),
+				   valbuf);
     }
 
   /* Return values larger than a single register are returned in
@@ -2278,7 +2263,6 @@ mep_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR *copy = (CORE_ADDR *) alloca (argc * sizeof (copy[0]));
-  CORE_ADDR func_addr = find_function_addr (function, NULL);
   int i;
 
   /* The number of the next register available to hold an argument.  */
@@ -2446,7 +2430,6 @@ mep_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   tdep->me_module = me_module;
 
   /* Register set.  */
-  set_gdbarch_read_pc (gdbarch, mep_read_pc);
   set_gdbarch_num_regs (gdbarch, MEP_NUM_RAW_REGS);
   set_gdbarch_pc_regnum (gdbarch, MEP_PC_REGNUM);
   set_gdbarch_sp_regnum (gdbarch, MEP_SP_REGNUM);

@@ -1,5 +1,5 @@
 /* Disassembler code for CRX.
-   Copyright (C) 2004-2017 Free Software Foundation, Inc.
+   Copyright (C) 2004-2018 Free Software Foundation, Inc.
    Contributed by Tomer Levi, NSC, Israel.
    Written by Tomer Levi.
 
@@ -244,7 +244,7 @@ powerof2 (int x)
 void
 getregliststring (int mask, char *string, enum REG_ARG_TYPE core_cop)
 {
-  char temp_string[5];
+  char temp_string[16];
   int i;
 
   string[0] = '{';

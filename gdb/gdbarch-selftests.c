@@ -1,6 +1,6 @@
 /* Self tests for gdbarch for GDB, the GNU debugger.
 
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -71,8 +71,8 @@ register_to_value_test (struct gdbarch *gdbarch)
 
   /* Error out if debugging something, because we're going to push the
      test target, which would pop any existing target.  */
-  if (current_target.to_stratum >= process_stratum)
-    error (_("target already pushed"));
+  if (current_top_target ()->to_stratum >= process_stratum)
+   error (_("target already pushed"));
 
   /* Create a mock environment.  An inferior with a thread, with a
      process_stratum target pushed.  */

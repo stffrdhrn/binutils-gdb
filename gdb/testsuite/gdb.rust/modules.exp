@@ -1,4 +1,4 @@
-# Copyright (C) 2016-2017 Free Software Foundation, Inc.
+# Copyright (C) 2016-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,3 +89,5 @@ foreach mod {mod1::inner::innest mod1::inner mod1 {}} {
     gdb_breakpoint modules::${mod}f2 message
     gdb_breakpoint "*::${mod}f2" message
 }
+
+gdb_test "print ::TWENTY_THREE" " = 23"

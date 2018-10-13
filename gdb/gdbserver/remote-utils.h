@@ -1,5 +1,5 @@
 /* Remote utility routines for the remote server for GDB.
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,8 +20,6 @@
 #define REMOTE_UTILS_H
 
 extern int remote_debug;
-extern int noack_mode;
-extern int transport_is_reliable;
 
 int gdb_connected (void);
 

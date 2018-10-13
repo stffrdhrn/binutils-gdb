@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2017 Free Software Foundation, Inc.
+# Copyright (C) 2014-2018 Free Software Foundation, Inc.
 #
 # Copying and distribution of this file, with or without modification,
 # are permitted in any medium without royalty provided the copyright
@@ -245,6 +245,12 @@ test "${LARGE_SECTIONS}" = "yes" && LARGE_SECTIONS="
     *(.ldata${RELOCATING+ .ldata.* .gnu.linkonce.l.*})
     ${RELOCATING+. = ALIGN(. != 0 ? ${ALIGNMENT} : 1);}
   }"
+PREINIT_ARRAY=".preinit_array   ${RELOCATING-0} :
+  {
+    ${RELOCATING+${CREATE_SHLIB-PROVIDE_HIDDEN (${USER_LABEL_PREFIX}__preinit_array_start = .);}}
+    KEEP (*(.preinit_array))
+    ${RELOCATING+${CREATE_SHLIB-PROVIDE_HIDDEN (${USER_LABEL_PREFIX}__preinit_array_end = .);}}
+  }"
 if test "${ENABLE_INITFINI_ARRAY}" = "yes"; then
   SORT_INIT_ARRAY="KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))"
   SORT_FINI_ARRAY="KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))"
@@ -316,6 +322,17 @@ STACK=".stack        ${RELOCATING-0}${RELOCATING+${STACK_ADDR}} :
 TEXT_START_ADDR="SEGMENT_START(\"text-segment\", ${TEXT_START_ADDR})"
 SHLIB_TEXT_START_ADDR="SEGMENT_START(\"text-segment\", ${SHLIB_TEXT_START_ADDR:-0})"
 
+# Don't bother with separate code segment when there are data sections
+# between .plt and .text.
+if test -z "$TINY_READONLY_SECTION"; then
+  case "$LD_FLAG" in
+    *textonly*)
+      SEPARATE_TEXT=yes
+      TEXT_SEGMENT_ALIGN=". = ALIGN(${MAXPAGESIZE});"
+      ;;
+  esac
+fi
+
 if [ -z "$SEPARATE_CODE" ]; then
   SIZEOF_HEADERS_CODE=" + SIZEOF_HEADERS"
 else
@@ -330,7 +347,7 @@ else
 fi
 
 cat <<EOF
-/* Copyright (C) 2014-2017 Free Software Foundation, Inc.
+/* Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    Copying and distribution of this script, with or without modification,
    are permitted in any medium without royalty provided the copyright
@@ -342,7 +359,7 @@ OUTPUT_ARCH(${OUTPUT_ARCH})
 ${RELOCATING+ENTRY(${ENTRY})}
 
 ${RELOCATING+${LIB_SEARCH_DIRS}}
-${RELOCATING+${EXECUTABLE_SYMBOLS}}
+${RELOCATING+${CREATE_SHLIB-${EXECUTABLE_SYMBOLS}}}
 ${RELOCATING+${INPUT_FILES}}
 ${RELOCATING- /* For some reason, the Solaris linker makes bad executables
   if gld -r is used and the intermediate file has sections starting
@@ -478,6 +495,8 @@ emit_dyn()
 test -n "${NON_ALLOC_DYN}${SEPARATE_CODE}" || emit_dyn
 
 cat <<EOF
+  ${RELOCATING+${TEXT_SEGMENT_ALIGN}}
+
   .init         ${RELOCATING-0}${RELOCATING+${INIT_ADDR}} :
   {
     ${RELOCATING+${INIT_START}}
@@ -508,9 +527,10 @@ cat <<EOF
   ${RELOCATING+PROVIDE (__${ETEXT_NAME} = .);}
   ${RELOCATING+PROVIDE (_${ETEXT_NAME} = .);}
   ${RELOCATING+PROVIDE (${ETEXT_NAME} = .);}
+  ${RELOCATING+${TEXT_SEGMENT_ALIGN}}
 EOF
 
-if test -n "${SEPARATE_CODE}"; then
+if test -n "${SEPARATE_CODE}${SEPARATE_TEXT}"; then
   if test -n "${RODATA_ADDR}"; then
     RODATA_ADDR="\
 SEGMENT_START(\"rodata-segment\", ${RODATA_ADDR}) + SIZEOF_HEADERS"
@@ -522,8 +542,8 @@ SEGMENT_START(\"rodata-segment\", ${RODATA_ADDR}) + SIZEOF_HEADERS"
     SHLIB_RODATA_ADDR="\
 SEGMENT_START(\"rodata-segment\", ${SHLIB_RODATA_ADDR}) + SIZEOF_HEADERS"
   else
-    SHLIB_RODATA_ADDR="SEGMENT_START(\"rodata-segment\", ${SHLIB_RODATA_ADDR})"
     SHLIB_RODATA_ADDR="ALIGN(${SEGMENT_SIZE}) + (. & (${MAXPAGESIZE} - 1))"
+    SHLIB_RODATA_ADDR="SEGMENT_START(\"rodata-segment\", ${SHLIB_RODATA_ADDR})"
   fi
   cat <<EOF
   /* Adjust the address for the rodata segment.  We want to adjust up to
@@ -532,8 +552,10 @@ SEGMENT_START(\"rodata-segment\", ${SHLIB_RODATA_ADDR}) + SIZEOF_HEADERS"
   ${CREATE_SHLIB+${RELOCATING+. = ${SHLIB_RODATA_ADDR};}}
   ${CREATE_PIE+${RELOCATING+. = ${SHLIB_RODATA_ADDR};}}
 EOF
-  emit_early_ro
-  emit_dyn
+  if test -n "${SEPARATE_CODE}"; then
+    emit_early_ro
+    emit_dyn
+  fi
 fi
 
 cat <<EOF
@@ -565,15 +587,14 @@ cat <<EOF
   .exception_ranges ${RELOCATING-0} : ONLY_IF_RW { *(.exception_ranges .exception_ranges*) }
 
   /* Thread Local Storage sections  */
-  .tdata	${RELOCATING-0} : { *(.tdata${RELOCATING+ .tdata.* .gnu.linkonce.td.*}) }
+  .tdata	${RELOCATING-0} :
+   {
+     ${RELOCATING+${CREATE_SHLIB-PROVIDE_HIDDEN (${USER_LABEL_PREFIX}__tdata_start = .);}}
+     *(.tdata${RELOCATING+ .tdata.* .gnu.linkonce.td.*})
+   }
   .tbss		${RELOCATING-0} : { *(.tbss${RELOCATING+ .tbss.* .gnu.linkonce.tb.*})${RELOCATING+ *(.tcommon)} }
 
-  .preinit_array   ${RELOCATING-0} :
-  {
-    ${RELOCATING+${CREATE_SHLIB-PROVIDE_HIDDEN (${USER_LABEL_PREFIX}__preinit_array_start = .);}}
-    KEEP (*(.preinit_array))
-    ${RELOCATING+${CREATE_SHLIB-PROVIDE_HIDDEN (${USER_LABEL_PREFIX}__preinit_array_end = .);}}
-  }
+  ${RELOCATING+${PREINIT_ARRAY}}
   ${RELOCATING+${INIT_ARRAY}}
   ${RELOCATING+${FINI_ARRAY}}
   ${SMALL_DATA_CTOR-${RELOCATING+${CTOR}}}
@@ -616,9 +637,9 @@ cat <<EOF
   ${SDATA_GOT+${OTHER_GOT_SECTIONS}}
   ${DATA_SDATA-${SDATA}}
   ${DATA_SDATA-${OTHER_SDATA_SECTIONS}}
-  ${RELOCATING+${DATA_END_SYMBOLS-${USER_LABEL_PREFIX}_edata = .; PROVIDE (${USER_LABEL_PREFIX}edata = .);}}
+  ${RELOCATING+${DATA_END_SYMBOLS-${CREATE_SHLIB+PROVIDE (}${USER_LABEL_PREFIX}_edata = .${CREATE_SHLIB+)}; PROVIDE (${USER_LABEL_PREFIX}edata = .);}}
   ${RELOCATING+. = .;}
-  ${RELOCATING+${USER_LABEL_PREFIX}__bss_start = .;}
+  ${RELOCATING+${CREATE_SHLIB+PROVIDE (}${USER_LABEL_PREFIX}__bss_start = .${CREATE_SHLIB+)};}
   ${RELOCATING+${OTHER_BSS_SYMBOLS}}
   ${DATA_SDATA-${SBSS}}
   ${BSS_PLT+${PLT}}
@@ -651,7 +672,7 @@ cat <<EOF
   ${LARGE_BSS_AFTER_BSS-${LARGE_BSS}}
   ${RELOCATING+. = ALIGN(${ALIGNMENT});}
   ${RELOCATING+${OTHER_END_SYMBOLS}}
-  ${RELOCATING+${END_SYMBOLS-${USER_LABEL_PREFIX}_end = .; PROVIDE (${USER_LABEL_PREFIX}end = .);}}
+  ${RELOCATING+${END_SYMBOLS-${CREATE_SHLIB+PROVIDE (}${USER_LABEL_PREFIX}_end = .${CREATE_SHLIB+)}; PROVIDE (${USER_LABEL_PREFIX}end = .);}}
   ${RELOCATING+${DATA_SEGMENT_END}}
   ${TINY_DATA_SECTION}
   ${TINY_BSS_SECTION}
@@ -670,6 +691,8 @@ cat <<EOF
   .stab.indexstr 0 : { *(.stab.indexstr) }
 
   .comment       0 : { *(.comment) }
+
+  .gnu.build.attributes : { *(.gnu.build.attributes .gnu.build.attributes.*) }
 
 EOF
 

@@ -1,6 +1,6 @@
 /* C language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -35,7 +35,7 @@ struct parser_state;
 /* The various kinds of C string and character.  Note that these
    values are chosen so that they may be or'd together in certain
    ways.  */
-enum c_string_type_values
+enum c_string_type_values : unsigned
   {
     /* An ordinary string: "value".  */
     C_STRING = 0,
@@ -63,13 +63,18 @@ DEF_ENUM_FLAGS_TYPE (enum c_string_type_values, c_string_type);
 
 extern int c_parse (struct parser_state *);
 
-extern void c_yyerror (const char *);
-
 extern int c_parse_escape (const char **, struct obstack *);
 
 /* Defined in c-typeprint.c */
 extern void c_print_type (struct type *, const char *,
 			  struct ui_file *, int, int,
+			  const struct type_print_options *);
+
+/* Print a type but allow the precise language to be specified.  */
+
+extern void c_print_type (struct type *, const char *,
+			  struct ui_file *, int, int,
+			  enum language,
 			  const struct type_print_options *);
 
 extern void c_print_typedef (struct type *,
@@ -153,7 +158,15 @@ extern int c_textual_element_type (struct type *, char);
    exception on failure.  This is suitable for use as the
    la_get_compile_instance language method.  */
 
-extern struct compile_instance *c_get_compile_context (void);
+extern compile_instance *c_get_compile_context (void);
+
+/* Create a new instance of the C++ compiler and return it.  The new
+   compiler is owned by the caller and must be freed using the destroy
+   method.  This function never returns NULL, but rather throws an
+   exception on failure.  This is suitable for use as the
+   la_get_compile_instance language method.  */
+
+extern compile_instance *cplus_get_compile_context ();
 
 /* This takes the user-supplied text and returns a new bit of code to
    compile.
@@ -161,10 +174,21 @@ extern struct compile_instance *c_get_compile_context (void);
    This is used as the la_compute_program language method; see that
    for a description of the arguments.  */
 
-extern std::string c_compute_program (struct compile_instance *inst,
+extern std::string c_compute_program (compile_instance *inst,
 				      const char *input,
 				      struct gdbarch *gdbarch,
 				      const struct block *expr_block,
 				      CORE_ADDR expr_pc);
+
+/* This takes the user-supplied text and returns a new bit of code to compile.
+
+   This is used as the la_compute_program language method; see that
+   for a description of the arguments.  */
+
+extern std::string cplus_compute_program (compile_instance *inst,
+					  const char *input,
+					  struct gdbarch *gdbarch,
+					  const struct block *expr_block,
+					  CORE_ADDR expr_pc);
 
 #endif /* !defined (C_LANG_H) */

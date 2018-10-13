@@ -1,6 +1,6 @@
 /* Python interface to types.
 
-   Copyright (C) 2008-2017 Free Software Foundation, Inc.
+   Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -416,10 +416,16 @@ static PyObject *
 typy_get_tag (PyObject *self, void *closure)
 {
   struct type *type = ((type_object *) self)->type;
+  const char *tagname = nullptr;
 
-  if (!TYPE_TAG_NAME (type))
+  if (TYPE_CODE (type) == TYPE_CODE_STRUCT
+      || TYPE_CODE (type) == TYPE_CODE_UNION
+      || TYPE_CODE (type) == TYPE_CODE_ENUM)
+    tagname = TYPE_NAME (type);
+
+  if (tagname == nullptr)
     Py_RETURN_NONE;
-  return PyString_FromString (TYPE_TAG_NAME (type));
+  return PyString_FromString (tagname);
 }
 
 /* Return the type, stripped of typedefs. */
@@ -730,6 +736,28 @@ typy_get_sizeof (PyObject *self, void *closure)
   return gdb_py_long_from_longest (TYPE_LENGTH (type));
 }
 
+/* Return the alignment of the type represented by SELF, in bytes.  */
+static PyObject *
+typy_get_alignof (PyObject *self, void *closure)
+{
+  struct type *type = ((type_object *) self)->type;
+
+  ULONGEST align = 0;
+  TRY
+    {
+      align = type_align (type);
+    }
+  CATCH (except, RETURN_MASK_ALL)
+    {
+      align = 0;
+    }
+  END_CATCH
+
+  /* Ignore exceptions.  */
+
+  return gdb_py_object_from_ulongest (align);
+}
+
 static struct type *
 typy_lookup_typename (const char *type_name, const struct block *block)
 {
@@ -831,7 +859,7 @@ typy_legacy_template_argument (struct type *type, const struct block *block,
   int i;
   struct demangle_component *demangled;
   std::unique_ptr<demangle_parse_info> info;
-  const char *err;
+  std::string err;
   struct type *argtype;
 
   if (TYPE_NAME (type) == NULL)
@@ -853,7 +881,7 @@ typy_legacy_template_argument (struct type *type, const struct block *block,
 
   if (! info)
     {
-      PyErr_SetString (PyExc_RuntimeError, err);
+      PyErr_SetString (PyExc_RuntimeError, err.c_str ());
       return NULL;
     }
   demangled = info->tree;
@@ -901,6 +929,13 @@ typy_template_argument (PyObject *self, PyObject *args)
 
   if (! PyArg_ParseTuple (args, "i|O", &argno, &block_obj))
     return NULL;
+
+  if (argno < 0)
+    {
+      PyErr_SetString (PyExc_RuntimeError,
+		       _("Template argument number must be non-negative"));
+      return NULL;
+    }
 
   if (block_obj)
     {
@@ -986,7 +1021,7 @@ typy_str (PyObject *self)
 static PyObject *
 typy_richcompare (PyObject *self, PyObject *other, int op)
 {
-  int result = Py_NE;
+  bool result = false;
   struct type *type1 = type_object_to_type (self);
   struct type *type2 = type_object_to_type (other);
 
@@ -999,7 +1034,7 @@ typy_richcompare (PyObject *self, PyObject *other, int op)
     }
 
   if (type1 == type2)
-    result = Py_EQ;
+    result = true;
   else
     {
       TRY
@@ -1410,6 +1445,8 @@ gdbpy_initialize_types (void)
 
 static gdb_PyGetSetDef type_object_getset[] =
 {
+  { "alignof", typy_get_alignof, NULL,
+    "The alignment of this type, in bytes.", NULL },
   { "code", typy_get_code, NULL,
     "The code for this type.", NULL },
   { "name", typy_get_name, NULL,

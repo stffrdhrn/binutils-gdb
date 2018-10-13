@@ -1,5 +1,5 @@
 /* Mach-O support for BFD.
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -659,6 +659,7 @@ bfd_boolean bfd_mach_o_bfd_copy_private_section_data (bfd *, asection *,
 						      bfd *, asection *);
 bfd_boolean bfd_mach_o_bfd_copy_private_header_data (bfd *, bfd *);
 bfd_boolean bfd_mach_o_bfd_set_private_flags (bfd *, flagword);
+bfd_boolean bfd_mach_o_bfd_print_private_bfd_data (bfd *, void *);
 long bfd_mach_o_get_symtab_upper_bound (bfd *);
 long bfd_mach_o_canonicalize_symtab (bfd *, asymbol **);
 long bfd_mach_o_get_synthetic_symtab (bfd *, long, asymbol **, long,

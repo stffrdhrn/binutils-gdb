@@ -1,5 +1,5 @@
 # Expect script for tests for >64k sections
-#   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -31,7 +31,6 @@ if ![is_elf_format] {
 # before local symbols, so don't bother testing them.
 if { [istarget "d30v-*-*"]
      || [istarget "dlx-*-*"]
-     || [istarget "i960-*-*"]
      || [istarget "pj*-*-*"] } {
     return
 }
@@ -41,6 +40,7 @@ if {[istarget "ft32-*-*"]
     || [istarget "h8300-*-*"]
     || [istarget "ip2k-*-*"]
     || [istarget "m68hc1*-*"]
+    || [istarget "s12z-*"]
     || [istarget "xgate-*"] } {
     return
 }
@@ -79,6 +79,8 @@ for { set i 0 } { $i < $max_sec / $secs_per_file } { incr i } {
 	puts $ofd "__start:"
 	puts $ofd " .global main"
 	puts $ofd "main:"
+	puts $ofd " .global _main"
+	puts $ofd "_main:"
 	puts $ofd " .global foo_0"
 	puts $ofd "foo_0: .dc.a 0"
     }
@@ -177,6 +179,8 @@ if { ![istarget "d10v-*-*"]
     foreach sfile $sfiles { puts $ofd "#source: $sfile" }
     if { [istarget spu*-*-*] } {
 	puts $ofd "#ld: --local-store 0:0"
+    } elseif { [istarget "i?86-*-linux*"] || [istarget "x86_64-*-linux*"] } {
+	puts $ofd "#ld: -z noseparate-code"
     } else {
 	puts $ofd "#ld:"
     }

@@ -1,7 +1,7 @@
 /* Target-dependent code for the Texas Instruments MSP430 for GDB, the
    GNU debugger.
 
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    Contributed by Red Hat, Inc.
 
@@ -218,7 +218,7 @@ msp430_register_reggroup_p (struct gdbarch *gdbarch, int regnum,
 
 static enum register_status
 msp430_pseudo_register_read (struct gdbarch *gdbarch,
-			     struct regcache *regcache,
+			     readable_regcache *regcache,
 			     int regnum, gdb_byte *buffer)
 {
   if (MSP430_NUM_REGS <= regnum && regnum < MSP430_NUM_TOTAL_REGS)
@@ -229,7 +229,7 @@ msp430_pseudo_register_read (struct gdbarch *gdbarch,
       int regsize = register_size (gdbarch, regnum);
       int raw_regnum = regnum - MSP430_NUM_REGS;
 
-      status = regcache_raw_read_unsigned (regcache, raw_regnum, &val);
+      status = regcache->raw_read (raw_regnum, &val);
       if (status == REG_VALID)
 	store_unsigned_integer (buffer, regsize, byte_order, val);
 
@@ -715,6 +715,7 @@ msp430_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	  ULONGEST arg_size = TYPE_LENGTH (arg_type);
 	  int offset;
 	  int current_arg_on_stack;
+	  gdb_byte struct_addr_buf[4];
 
 	  current_arg_on_stack = 0;
 
@@ -722,11 +723,9 @@ msp430_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	      || TYPE_CODE (arg_type) == TYPE_CODE_UNION)
 	    {
 	      /* Aggregates of any size are passed by reference.  */
-	      gdb_byte struct_addr[4];
-
-	      store_unsigned_integer (struct_addr, 4, byte_order,
+	      store_unsigned_integer (struct_addr_buf, 4, byte_order,
 				      value_address (arg));
-	      arg_bits = struct_addr;
+	      arg_bits = struct_addr_buf;
 	      arg_size = (code_model == MSP_LARGE_CODE_MODEL) ? 4 : 2;
 	    }
 	  else
@@ -908,8 +907,8 @@ msp430_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 	      code_model = ca_tdep->code_model;
 	      break;
 	    }
-	  /* Otherwise, fall through...  */
 	}
+	/* Fall through.  */
       default:
 	error (_("Unknown msp430 isa"));
 	break;

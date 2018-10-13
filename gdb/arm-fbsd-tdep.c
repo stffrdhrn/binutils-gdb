@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/arm.
 
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -123,11 +123,11 @@ static const struct tramp_frame arm_fbsd_sigframe =
   SIGTRAMP_FRAME,
   4,
   {
-    {0xe1a0000d, -1},		/* mov  r0, sp  */
-    {0xe2800040, -1},		/* add  r0, r0, #SIGF_UC  */
-    {0xe59f700c, -1},		/* ldr  r7, [pc, #12]  */
-    {0xef0001a1, -1},		/* swi  SYS_sigreturn  */
-    {TRAMP_SENTINEL_INSN, -1}
+    {0xe1a0000d, ULONGEST_MAX},		/* mov  r0, sp  */
+    {0xe2800040, ULONGEST_MAX},		/* add  r0, r0, #SIGF_UC  */
+    {0xe59f700c, ULONGEST_MAX},		/* ldr  r7, [pc, #12]  */
+    {0xef0001a1, ULONGEST_MAX},		/* swi  SYS_sigreturn  */
+    {TRAMP_SENTINEL_INSN, ULONGEST_MAX}
   },
   arm_fbsd_sigframe_init
 };
@@ -175,14 +175,15 @@ arm_fbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  cb (".reg", ARM_FBSD_SIZEOF_GREGSET, &arm_fbsd_gregset, NULL, cb_data);
+  cb (".reg", ARM_FBSD_SIZEOF_GREGSET, ARM_FBSD_SIZEOF_GREGSET,
+      &arm_fbsd_gregset, NULL, cb_data);
 
   /* While FreeBSD/arm cores do contain a NT_FPREGSET / ".reg2"
      register set, it is not populated with register values by the
      kernel but just contains all zeroes.  */
   if (tdep->vfp_register_count > 0)
-    cb (".reg-arm-vfp", ARM_FBSD_SIZEOF_VFPREGSET, &arm_fbsd_vfpregset,
-	"VFP floating-point", cb_data);
+    cb (".reg-arm-vfp", ARM_FBSD_SIZEOF_VFPREGSET, ARM_FBSD_SIZEOF_VFPREGSET,
+	&arm_fbsd_vfpregset, "VFP floating-point", cb_data);
 }
 
 /* Lookup a target description from a target's AT_HWCAP auxiliary

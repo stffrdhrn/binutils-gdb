@@ -1,6 +1,6 @@
 /* Common code for ARM software single stepping support.
 
-   Copyright (C) 1988-2017 Free Software Foundation, Inc.
+   Copyright (C) 1988-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,7 +49,7 @@ static std::vector<CORE_ADDR>
 thumb_deal_with_atomic_sequence_raw (struct arm_get_next_pcs *self)
 {
   int byte_order_for_code = self->byte_order_for_code;
-  CORE_ADDR breaks[2] = {-1, -1};
+  CORE_ADDR breaks[2] = {CORE_ADDR_MAX, CORE_ADDR_MAX};
   CORE_ADDR pc = regcache_read_pc (self->regcache);
   CORE_ADDR loc = pc;
   unsigned short insn1, insn2;
@@ -187,7 +187,7 @@ static std::vector<CORE_ADDR>
 arm_deal_with_atomic_sequence_raw (struct arm_get_next_pcs *self)
 {
   int byte_order_for_code = self->byte_order_for_code;
-  CORE_ADDR breaks[2] = {-1, -1};
+  CORE_ADDR breaks[2] = {CORE_ADDR_MAX, CORE_ADDR_MAX};
   CORE_ADDR pc = regcache_read_pc (self->regcache);
   CORE_ADDR loc = pc;
   unsigned int insn;
@@ -271,7 +271,6 @@ thumb_get_next_pcs_raw (struct arm_get_next_pcs *self)
   unsigned long pc_val = ((unsigned long) pc) + 4;	/* PC after prefetch */
   unsigned short inst1;
   CORE_ADDR nextpc = pc + 2;		/* Default is next instruction.  */
-  unsigned long offset;
   ULONGEST status, itstate;
   struct regcache *regcache = self->regcache;
   std::vector<CORE_ADDR> next_pcs;
@@ -409,7 +408,7 @@ thumb_get_next_pcs_raw (struct arm_get_next_pcs *self)
 
       /* Fetch the saved PC from the stack.  It's stored above
          all of the other registers.  */
-      offset = bitcount (bits (inst1, 0, 7)) * INT_REGISTER_SIZE;
+      unsigned long offset = bitcount (bits (inst1, 0, 7)) * INT_REGISTER_SIZE;
       sp = regcache_raw_get_unsigned (regcache, ARM_SP_REGNUM);
       nextpc = self->ops->read_mem_uint (sp + offset, 4, byte_order);
     }
@@ -450,7 +449,7 @@ thumb_get_next_pcs_raw (struct arm_get_next_pcs *self)
 	      j1 = bit (inst2, 13);
 	      j2 = bit (inst2, 11);
 
-	      offset = ((imm1 << 12) + (imm2 << 1));
+	      unsigned long offset = ((imm1 << 12) + (imm2 << 1));
 	      offset ^= ((!j2) << 22) | ((!j1) << 23);
 
 	      nextpc = pc_val + offset;
@@ -477,7 +476,8 @@ thumb_get_next_pcs_raw (struct arm_get_next_pcs *self)
 		  j1 = bit (inst2, 13);
 		  j2 = bit (inst2, 11);
 
-		  offset = (sign << 20) + (j2 << 19) + (j1 << 18);
+		  unsigned long offset
+		    = (sign << 20) + (j2 << 19) + (j1 << 18);
 		  offset += (imm1 << 12) + (imm2 << 1);
 
 		  nextpc = pc_val + offset;

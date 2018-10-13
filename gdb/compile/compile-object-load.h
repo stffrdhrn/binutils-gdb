@@ -1,5 +1,5 @@
 /* Header file to load module for 'compile' command.
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,8 +18,31 @@
 #define GDB_COMPILE_OBJECT_LOAD_H
 
 #include "compile-internal.h"
+#include <list>
 
-struct munmap_list;
+struct munmap_list
+{
+public:
+
+  munmap_list () = default;
+  ~munmap_list ();
+
+  DISABLE_COPY_AND_ASSIGN (munmap_list);
+
+  /* Add a region to the list.  */
+  void add (CORE_ADDR addr, CORE_ADDR size);
+
+private:
+
+  /* Track inferior memory reserved by inferior mmap.  */
+
+  struct munmap_item
+  {
+    CORE_ADDR addr, size;
+  };
+
+  std::vector<munmap_item> items;
+};
 
 struct compile_module
 {

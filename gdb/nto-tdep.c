@@ -1,6 +1,6 @@
 /* nto-tdep.c - general QNX Neutrino target functionality.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    Contributed by QNX Software Systems Ltd.
 
@@ -31,6 +31,8 @@
 #include "solib-svr4.h"
 #include "gdbcore.h"
 #include "objfiles.h"
+#include "source.h"
+#include "common/pathstuff.h"
 
 #define QNX_NOTE_NAME	"QNX"
 #define QNX_INFO_SECT_NAME "QNX_info"
@@ -88,7 +90,7 @@ nto_map_arch_to_cputype (const char *arch)
 
 int
 nto_find_and_open_solib (const char *solib, unsigned o_flags,
-			 char **temp_pathname)
+			 gdb::unique_xmalloc_ptr<char> *temp_pathname)
 {
   char *buf, *arch_path, *nto_root;
   const char *endian;
@@ -142,9 +144,9 @@ nto_find_and_open_solib (const char *solib, unsigned o_flags,
       if (temp_pathname)
 	{
 	  if (ret >= 0)
-	    *temp_pathname = gdb_realpath (arch_path).release ();
+	    *temp_pathname = gdb_realpath (arch_path);
 	  else
-	    *temp_pathname = NULL;
+	    temp_pathname->reset (NULL);
 	}
     }
   return ret;

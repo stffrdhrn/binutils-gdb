@@ -1,5 +1,5 @@
 # Expect script for TLS tests.
-#   Copyright (C) 2017 Free Software Foundation, Inc.
+#   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -22,13 +22,9 @@
 # Make sure that binutils can correctly handle TLS.
 
 if { ![istarget *-*-linux*]
+     && ![istarget arm*-*-uclinuxfdpiceabi]
      && ![istarget *-*-nacl*]
      && ![istarget *-*-gnu*] } {
-    return
-}
-
-if { [istarget *-*-linux*aout*]
-     || [istarget *-*-linux*oldld*] } {
     return
 }
 
@@ -37,12 +33,18 @@ if { [which $CC] == 0 } {
     return
 }
 
+# This target requires extra GAS options when building PIC/PIE code.
+set AFLAGS_PIC ""
+if [istarget "sparc*-*-*"] {
+    append AFLAGS_PIC " -K PIC"
+}
+
 run_ld_link_tests [list \
     [list \
 	"Build pr22263-1" \
 	"-pie -e _start -z text" \
 	"" \
-	"" \
+	"$AFLAGS_PIC" \
 	{ pr22263-1a.c pr22263-1b.c } \
 	{{readelf -r pr22263-1.rd}} \
 	"pr22263-1" \

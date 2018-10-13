@@ -1,17 +1,17 @@
 /* THIS FILE IS GENERATED.  -*- buffer-read-only: t -*- vi:set ro:
   Original: 32bit-mpx.xml */
 
-#include "arch/tdesc.h"
+#include "common/tdesc.h"
 
 static int
 create_feature_i386_32bit_mpx (struct target_desc *result, long regnum)
 {
   struct tdesc_feature *feature;
 
-  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.mpx", "32bit-mpx.xml");
+  feature = tdesc_create_feature (result, "org.gnu.gdb.i386.mpx");
   tdesc_type_with_fields *type_with_fields;
-  tdesc_type *field_type;
   type_with_fields = tdesc_create_struct (feature, "br128");
+  tdesc_type *field_type;
   field_type = tdesc_named_type (feature, "uint64");
   tdesc_add_field (type_with_fields, "lbound", field_type);
   field_type = tdesc_named_type (feature, "uint64");

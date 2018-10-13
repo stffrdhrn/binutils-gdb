@@ -1,6 +1,6 @@
 /* CLI Definitions for GDB, the GNU debugger.
 
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -26,9 +26,10 @@
 #include "top.h"		/* for "execute_command" */
 #include "event-top.h"
 #include "infrun.h"
-#include "observer.h"
+#include "observable.h"
 #include "gdbthread.h"
 #include "thread-fsm.h"
+#include "inferior.h"
 
 cli_interp_base::cli_interp_base (const char *name)
   : interp (name)
@@ -73,9 +74,7 @@ struct cli_suppress_notification cli_suppress_notification =
 static struct cli_interp *
 as_cli_interp (struct interp *interp)
 {
-  if (strcmp (interp_name (interp), INTERP_CONSOLE) == 0)
-    return (struct cli_interp *) interp;
-  return NULL;
+  return dynamic_cast<cli_interp *> (interp);
 }
 
 /* Longjmp-safe wrapper for "execute_command".  */
@@ -356,11 +355,10 @@ safe_execute_command (struct ui_out *command_uiout, const char *command,
 		      int from_tty)
 {
   struct gdb_exception e = exception_none;
-  struct ui_out *saved_uiout;
 
   /* Save and override the global ``struct ui_out'' builder.  */
-  saved_uiout = current_uiout;
-  current_uiout = command_uiout;
+  scoped_restore saved_uiout = make_scoped_restore (&current_uiout,
+						    command_uiout);
 
   TRY
     {
@@ -371,9 +369,6 @@ safe_execute_command (struct ui_out *command_uiout, const char *command,
       e = exception;
     }
   END_CATCH
-
-  /* Restore the global builder.  */
-  current_uiout = saved_uiout;
 
   /* FIXME: cagney/2005-01-13: This shouldn't be needed.  Instead the
      caller should print the exception.  */
@@ -461,14 +456,14 @@ _initialize_cli_interp (void)
   interp_factory_register (INTERP_CONSOLE, cli_interp_factory);
 
   /* If changing this, remember to update tui-interp.c as well.  */
-  observer_attach_normal_stop (cli_on_normal_stop);
-  observer_attach_end_stepping_range (cli_on_end_stepping_range);
-  observer_attach_signal_received (cli_on_signal_received);
-  observer_attach_signal_exited (cli_on_signal_exited);
-  observer_attach_exited (cli_on_exited);
-  observer_attach_no_history (cli_on_no_history);
-  observer_attach_sync_execution_done (cli_on_sync_execution_done);
-  observer_attach_command_error (cli_on_command_error);
-  observer_attach_user_selected_context_changed
+  gdb::observers::normal_stop.attach (cli_on_normal_stop);
+  gdb::observers::end_stepping_range.attach (cli_on_end_stepping_range);
+  gdb::observers::signal_received.attach (cli_on_signal_received);
+  gdb::observers::signal_exited.attach (cli_on_signal_exited);
+  gdb::observers::exited.attach (cli_on_exited);
+  gdb::observers::no_history.attach (cli_on_no_history);
+  gdb::observers::sync_execution_done.attach (cli_on_sync_execution_done);
+  gdb::observers::command_error.attach (cli_on_command_error);
+  gdb::observers::user_selected_context_changed.attach
     (cli_on_user_selected_context_changed);
 }

@@ -1,6 +1,6 @@
 # Expect script for linker support of STB_GNU_UNIQUE symbols
 #
-#   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 #   Contributed by Red Hat.
 #
 # This file is part of the GNU Binutils.
@@ -229,7 +229,7 @@ if {[contains_unique_symbol tmpdir/unique_shared.o] != 1} {
 }
 
 if { $fails == 0 } {
-  pass "Checking unique PIC object"
+  pass "Checking unique PIC object 1"
 }
 
 # Check the unique shared library.
@@ -255,7 +255,7 @@ if {[contains_unique_symbol tmpdir/libunique_shared_ref.so] != 1} {
 }
 
 if { $fails == 0 } {
-  pass "Checking unique PIC object"
+  pass "Checking unique PIC object 2"
 }
 
 # Check the empty executable linked against unique shared library.

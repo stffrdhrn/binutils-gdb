@@ -1,6 +1,6 @@
 #! /bin/sh
 
-# Copyright (C) 2011-2017 Free Software Foundation, Inc.
+# Copyright (C) 2011-2018 Free Software Foundation, Inc.
 #
 # This file is part of GDB.
 #
@@ -39,11 +39,14 @@ IMPORTED_GNULIB_MODULES="\
     frexpl \
     getcwd \
     glob \
+    inet_ntop
     inttypes \
     lstat \
     limits-h \
     memchr \
     memmem \
+    mkdir \
+    mkstemp \
     pathmax \
     rawmemchr \
     readlink \
@@ -66,8 +69,8 @@ GNULIB_COMMIT_SHA1="38237baf99386101934cd93278023aa4ae523ec0"
 
 # The expected version number for the various auto tools we will
 # use after the import.
-AUTOCONF_VERSION="2.64"
-AUTOMAKE_VERSION="1.11.1"
+AUTOCONF_VERSION="2.69"
+AUTOMAKE_VERSION="1.15.1"
 ACLOCAL_VERSION="$AUTOMAKE_VERSION"
 
 if [ $# -ne 1 ]; then
@@ -106,7 +109,8 @@ fi
 # Verify that we have the correct version of autoconf.
 ver=`autoconf --version 2>&1 | head -1 | sed 's/.*) //'`
 if [ "$ver" != "$AUTOCONF_VERSION" ]; then
-   echo "Error: Wrong autoconf version: $ver. Aborting."
+   echo "Error: Wrong autoconf version ($ver), we need $AUTOCONF_VERSION."
+   echo "Aborting."
    exit 1
 fi
 
@@ -137,7 +141,8 @@ fi
 #
 ver=`aclocal --version 2>&1 | grep -v "called too early to check prototype" | head -1 | sed 's/.*) //'`
 if [ "$ver" != "$ACLOCAL_VERSION" ]; then
-   echo "Error: Wrong aclocal version: $ver. Aborting."
+   echo "Error: Wrong aclocal version ($ver), we need $ACLOCAL_VERSION."
+   echo "Aborting."
    exit 1
 fi
 
@@ -153,6 +158,18 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
+# Apply our local patches.
+apply_patches ()
+{
+    patch -p3 -f -i "$1"
+    if [ $? -ne 0 ]; then
+        echo "Failed to apply some patches.  Aborting."
+        exit 1
+    fi
+}
+
+apply_patches "patches/0001-Fix-PR-gdb-23558-Use-system-s-getcwd-when-cross-comp.patch"
+
 # Regenerate all necessary files...
 aclocal -Iimport/m4 &&
 autoconf &&
@@ -163,3 +180,14 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
+# Update aclocal-m4-deps.mk
+ACLOCAL_M4_DEPS_FILE=aclocal-m4-deps.mk
+cat > ${ACLOCAL_M4_DEPS_FILE}.tmp <<EOF
+# THIS FILE IS GENERATED.  -*- buffer-read-only: t -*- vi :set ro:
+aclocal_m4_deps = \\
+$(find import/m4 -type f -name "*.m4" | LC_COLLATE=C sort | \
+  sed 's/^/	/; s/$/ \\/; $s/ \\//g')
+EOF
+
+../../move-if-change ${ACLOCAL_M4_DEPS_FILE}.tmp ${ACLOCAL_M4_DEPS_FILE}
+rm -f ${ACLOCAL_M4_DEPS_FILE}.tmp

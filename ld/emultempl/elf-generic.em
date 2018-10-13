@@ -1,5 +1,5 @@
 # This shell script emits a C file. -*- C -*-
-#   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -66,6 +66,6 @@ gld${EMULATION_NAME}_map_segments (bfd_boolean need_layout)
   while (need_layout && --tries);
 
   if (tries == 0)
-    einfo (_("%P%F: looping in map_segments"));
+    einfo (_("%F%P: looping in map_segments"));
 }
 EOF

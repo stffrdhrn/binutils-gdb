@@ -1,6 +1,6 @@
 /* Header file for command creation.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -148,6 +148,12 @@ extern struct cmd_list_element *add_cmd (const char *, enum command_class,
 					 const char *,
 					 struct cmd_list_element **);
 
+extern struct cmd_list_element *add_cmd_suppress_notification
+			(const char *name, enum command_class theclass,
+			 cmd_const_cfunc_ftype *fun, const char *doc,
+			 struct cmd_list_element **list,
+			 int *suppress_notification);
+
 extern struct cmd_list_element *add_alias_cmd (const char *, const char *,
 					       enum command_class, int,
 					       struct cmd_list_element **);
@@ -164,6 +170,14 @@ extern struct cmd_list_element *add_prefix_cmd (const char *, enum command_class
 						struct cmd_list_element **,
 						const char *, int,
 						struct cmd_list_element **);
+
+extern struct cmd_list_element *add_prefix_cmd_suppress_notification
+			(const char *name, enum command_class theclass,
+			 cmd_const_cfunc_ftype *fun,
+			 const char *doc, struct cmd_list_element **prefixlist,
+			 const char *prefixname, int allow_unknown,
+			 struct cmd_list_element **list,
+			 int *suppress_notification);
 
 extern struct cmd_list_element *add_abbrev_prefix_cmd (const char *,
 						       enum command_class,

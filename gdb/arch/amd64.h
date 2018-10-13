@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 Free Software Foundation, Inc.
+/* Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -15,8 +15,8 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-#include "tdesc.h"
+#include "common/tdesc.h"
 #include <stdint.h>
 
 target_desc *amd64_create_target_description (uint64_t xcr0, bool is_x32,
-					      bool is_linux);
+					      bool is_linux, bool segments);

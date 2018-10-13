@@ -1,3 +1,398 @@
+2018-10-09  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Inferiors In Python): Link to "Frames In Python",
+	not "Unwinding Frames in Python".
+
+2018-10-09  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Configure Options): Update --enable-ubsan
+	documentation.
+
+2018-10-08  John Baldwin  <jhb@FreeBSD.org>
+
+	* gdb.texinfo (Contributors): Add SRI International and University
+	of Cambridge for FreeBSD/riscv.
+
+2018-10-06  Tom Tromey  <tom@tromey.com>
+
+	PR python/19399:
+	* python.texi (Inferiors In Python): Document
+	Inferior.Architecture.
+
+2018-10-06  Tom Tromey  <tom@tromey.com>
+
+	PR python/21765:
+	* python.texi (Symbols In Python): Document the module and
+	common-block domains.  Remove documentation for incorrect
+	domains.
+
+2018-10-03  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Configure Options): Document --enable-ubsan.
+
+2018-10-02  John Darrington <john@darrington.wattle.id.au>
+
+        * gdb.texinfo (Remote Connection Commands): Describe
+	  the changes to target remote and target extended-remote
+	  relating to Unix domain sockets.
+
+2018-10-01  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Configure Options): Document configure options.
+
+2018-09-29  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Requirements): Mention C++, GNU make.
+	(Requirements): Sort the table.  Add more libraries.
+	(Running Configure): Remove obsolete text.
+	(Separate Objdir): Likewise.
+	(Configure Options): Likewise.
+
+2018-09-28  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* gdb.texinfo (Frames): Rewrite the description of 'frame number'
+	to highlight that the number is also the frame's level.
+	(Selection): Rewrite documentation for 'frame' and 'select-frame'
+	commands.
+	(Frame Info): Rewrite documentation for 'info frame' command.
+
+2018-09-23  Tom Tromey  <tom@tromey.com>
+
+	PR python/18852:
+	* python.texi (Parameters In Python): Document exception behavior
+	of get_set_string.
+
+2018-09-18  John Baldwin  <jhb@FreeBSD.org>
+
+	* gdb.texinfo (info proc): Remove "running".
+	(info proc mappings): Replace "program" with "process".
+
+2018-09-18  John Baldwin  <jhb@FreeBSD.org>
+
+	* gdb.texinfo (Process Information): Document "info proc files"
+	command.
+
+2018-09-17  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Index Files): Update for cache directory change on
+	macOS.
+
+2018-09-16  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Basic Python): Update docs for find_pc_line,
+	solib_name.
+	(Progspaces In Python): Update docs for current_progspace.
+	Document block_for_pc, find_pc_line, is_valid, nsolib_name.
+	Move method documentation before example.
+
+2018-09-13  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* python.texi (Objfiles In Python): Update gdb.objfiles() doc.
+
+2018-09-13  Simon Marchi  <simon.marchi@ericsson.com>
+2018-09-13  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Program Spaces In Python): Document the
+	Progspace.objfiles method.
+	(Objfiles In Python): Mention that gdb.objfiles() is identical
+	to gdb.selected_inferior().progspace.objfiles().
+
+2018-09-13  Simon Marchi  <simon.marchi@ericsson.com>
+2018-09-13  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Inferiors In Python): Document
+	Inferior.progspace.
+	(Program Spaces In Python): Document that
+	gdb.current_progspace() is the same as
+	gdb.selected_inferior().progspace.
+
+2018-09-13  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* python.texi (Basic Python): Mention the string representation
+	of GDB Python objects.
+
+2018-09-12  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* gdb.texinfo (Skipping Over Functions and Files): Document
+	set/show debug skip.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Frames In Python, Blocks In Python)
+	(Symbols In Python, Symbol Tables In Python)
+	(Lazy Strings In Python): Remove periods from section titles.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Pretty Printing API): Swap sentence order.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/16461:
+	* python.texi (Values From Inferior): Mention use of virtual
+	table.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Basic Python): Parenthesize argument to
+	decode_line.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Python): Mention Python versions.  Don't mention
+	execfile.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/19808:
+	* python.texi (Unwinding Frames in Python): Rewrite
+	create_unwind_info documentation.  Update read_register
+	documentation and add a note about unwinder caution.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/18909:
+	* python.texi (Events In Python): Fix inferior_call
+	documentation.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/17752:
+	* python.texi (Frame Filter API): Remove period from subsection
+	title.  Mention 100 as good default priority.
+	(Frame Decorator API): Remove period from subsection title.
+	Mention FrameDecorator module.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/23108:
+	* python.texi (Exception Handling): Rearrange gdb.GdbError text
+	and add a table.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Compilation): Use "gcc", not "gcc.info", in @xref.
+	(Machine Code): Use "binutils", not "binutils.info", in @pxref.
+	(Separate Debug Files): Use "ld", not "ld.info", in @ref.
+	* python.texi (Objfiles In Python): Use "ld", not "ld.info", in @ref.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/16484:
+	* python.texi (Frames In Python): Document that Frame.block can
+	throw.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/23487:
+	* gdb.texinfo (Pretty-Printer Commands): Fix typo in example.
+
+2018-09-10  Tom Tromey  <tom@tromey.com>
+
+	PR python/16033:
+	* python.texi (Blocks In Python): Document that Block.end is
+	exclusive.
+
+2018-08-29  Keith Seitz  <keiths@redhat.com>
+
+	* gdb.texinfo (Compiling and injecting code in GDB): Document
+	set/show "compile-oracle" and "compile-cplus-types" commands.
+
+2018-08-22  Jan Vrany  <jan.vrany@fit.cvut.cz>
+
+	* gdb.texinfo (The -stack-list-frames Command): Update description
+	to mention "arch".
+	Update MI examples throughout the document to contain "arch" in
+	frame output.
+
+2018-08-21  Alan Hayward  <alan.hayward@arm.com>
+
+	* gdb.texinfo (AArch64 SVE): New subsubsection.
+
+2018-08-14  Jan Vrany  <jan.vrany@fit.cvut.cz>
+
+	* gdb.texinfo (GDB/MI Data Manipulation): Document
+	"-data-disassemble -a addr".
+	(GDB/MI Support Commands): Document "data-disassemble-a-option"
+	feature.
+
+2018-08-07  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* gdb.texinfo (Index Files Speed Up GDB): Add section about
+	symbol index cache.
+
+2018-07-27  Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	* gdb.texinfo (gcore man): Rewrite "Description" and "-o"
+	option sections to further clarify that gcore can take more
+	than one PID, and that "-o" is used to specify a prefix, not a
+	filename.
+
+2018-07-26  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* gdb.texinfo (Maintenance Commands): Add description of
+	maintenance command to control dwarf unwinders.
+
+2018-07-12  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* gdb.texinfo (Debugging Programs with Multiple Threads):
+	Document changes to 'thread apply'.  Document 'taas'.
+	Document 'tfaas'.
+	(Examining the Stack): Document 'frame apply'.  Document 'faas'.
+
+2018-07-11  Sergio Durigan Junior  <sergiodj@redhat.com>
+	    Jan Kratochvil  <jan.kratochvil@redhat.com>
+	    Paul Fertser  <fercerpav@gmail.com>
+	    Tsutomu Seki  <sekiriki@gmail.com>
+
+	* gdb.texinfo (Remote Connection Commands): Add explanation
+	about new IPv6 support.  Add new connection prefixes.
+
+2018-07-09  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* gdb.texinfo (Remote Configuration): Update descriptions for
+	set/show of hardware-watchpoint-limit, hardware-breakpoint-limit,
+	and hardware-watchpoint-length-limit variables.
+
+2018-07-02  Maciej W. Rozycki  <macro@mips.com>
+
+	PR tdep/8282
+	* gdb.texinfo (Source and Machine Code): Document `set
+	disassembler-options' support for the MIPS target.
+
+2018-06-28  Petr Tesarik  <ptesarik@suse.cz>
+
+	* gdb.texinfo (Files): Document "add-symbol-file -o offset".
+
+2018-06-28  Petr Tesarik  <ptesarik@suse.cz>
+
+	* gdb.texinfo (Files): The address argument for "add-symbol-file"
+	is no longer mandatory.
+
+2018-06-28  Petr Tesarik  <ptesarik@suse.cz>
+
+	* gdb.texinfo (Files): Document "symbol-file -o offset".
+
+2018-06-14  Tom de Vries  <tdevries@suse.de>
+
+	* gdb.texinfo (Background Execution): Add @cindex for '&'.
+
+2018-06-11  Eli Zaretskii  <eliz@gnu.org>
+
+	* gdb.texinfo (Maintenance Commands): Add a missing @anchor.
+
+2018-06-08  Gary Benson <gbenson@redhat.com>
+
+	* gdb.texinfo (Maintenance Commands): Document "maint check
+	libthread-db" and "maint set/show check-libthread-db".
+
+2018-06-05  Tom Tromey	<tom@tromey.com>
+
+	PR cli/12326:
+	* gdb.texinfo (Screen Size): Document "c" response to pagination
+	prompt.
+
+2018-05-31  Maciej W. Rozycki  <macro@mips.com>
+
+	* gdb.texinfo (Choosing Target Byte Order): Document endianness
+	selection details with the `set endian auto' mode.
+
+2018-05-04  Tom Tromey  <tom@tromey.com>
+
+	PR python/22731:
+	* python.texi (Breakpoints In Python): Mention that "commands" is
+	writable.
+
+2018-05-02  Tom Tromey  <tom@tromey.com>
+
+	PR python/20084:
+	* python.texi (Parameters In Python): Document PARAM_ZUINTEGER and
+	PARAM_ZUINTEGER_UNLIMITED.
+
+2018-04-30  Tom Tromey  <tom@tromey.com>
+
+	* python.texi (Types In Python): Document Type.align.
+
+2018-04-13  Andreas Arnez  <arnez@linux.vnet.ibm.com>
+
+	* gdb.texinfo (Symbols): Mention the fact that "info
+	variables/functions/types" show source files and line numbers.
+
+2018-04-13  Markus Metzger  <markus.t.metzger@intel.com>
+
+	* gdb.texinfo: Document set/show record btrace cpu.
+
+2018-03-27  Joel Brobecker  <brobecker@adacore.com>
+
+	* gdb.texinfo (Ada Settings): New subsubsection.
+
+2018-03-26  Tom Tromey  <tom@tromey.com>
+
+	PR backtrace/15582:
+	* gdb.texinfo (Backtrace): Mention "hide" argument.
+
+2018-03-26  Tom Tromey  <tom@tromey.com>
+
+	* gdb.texinfo (Backtrace): Describe options individually.
+
+2018-03-19  Tom Tromey  <tom@tromey.com>
+
+	* observer.texi: Remove.
+
+2018-03-04  John Baldwin  <jhb@FreeBSD.org>
+
+	* gdb.texinfo (Debugging Output): Document "set/show debug
+	fbsd-nat".
+
+2018-02-19  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* gdb.texinfo (Machine Code): Additional information about "info
+	line" command.
+
+2018-01-15  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+
+	* gdb.texinfo (gdb-add-index man): Add pindex.
+
+2018-01-15  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+
+	* gdb.texinfo (set cwd): Add period.
+	(gdb-add-index man): Move anchor.
+
+2017-01-12  Tom Tromey  <tom@tromey.com>
+	    Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	* gdb.texinfo (Index Files): Mention gdb-add-index.
+	(gdb-add-index man): New section.
+	* Makefile.in (gdb-add-index.1): New rule to generate manpage
+	from gdb.texinfo.
+
+2018-01-11  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+
+	* gdb.texinfo (pwd): Fix whitespace.
+
+2018-01-09  John Baldwin  <jhb@FreeBSD.org>
+
+	* gdb.texinfo (pwd): Update cross-reference for Process Information
+	node and remove explicit /proc reference.
+	(Native): Rename subsection from SVR4 Process Information to
+	Process Information.
+	(Process Information): Reword introduction to be less /proc
+	centric.  Document support for "info proc" on FreeBSD.
+
+2018-01-03  Xavier Roirand  <roirand@adacore.com>
+
+	* gdb.texinfo (Set Catchpoints): Add documentation for new
+	"catch handlers" action.
+
+2017-12-27  Stafford Horne  <shorne@gmail.com>
+
+	* gdb.texinfo (Target Description Format): Explain that arbitrary
+	strings are now allowed for register groups.
+
+2017-12-27  Stafford Horne  <shorne@gmail.com>
+
+	* gdb.texinfo (Registers): Document info reg $reggroup feature.
+
 2017-12-15  Sergio Durigan Junior  <sergiodj@redhat.com>
 
 	PR cli/16224

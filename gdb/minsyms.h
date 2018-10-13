@@ -1,6 +1,6 @@
 /* Minimal symbol table definitions for GDB.
 
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2011-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -202,11 +202,6 @@ struct bound_minimal_symbol lookup_minimal_symbol (const char *,
 
 struct bound_minimal_symbol lookup_bound_minimal_symbol (const char *);
 
-/* Find the minimal symbol named NAME, and return both the minsym
-   struct and its objfile.  This only checks the linkage name.  */
-
-struct bound_minimal_symbol lookup_minimal_symbol_and_objfile (const char *);
-
 /* Look through all the current minimal symbol tables and find the
    first minimal symbol that matches NAME and has text type.  If OBJF
    is non-NULL, limit the search to that objfile.  Returns a bound
@@ -238,6 +233,22 @@ struct bound_minimal_symbol lookup_minimal_symbol_solib_trampoline
 struct minimal_symbol *lookup_minimal_symbol_by_pc_name
     (CORE_ADDR, const char *, struct objfile *);
 
+enum class lookup_msym_prefer
+{
+  /* Prefer mst_text symbols.  */
+  TEXT,
+
+  /* Prefer mst_solib_trampoline symbols when there are text and
+     trampoline symbols at the same address.  Otherwise prefer
+     mst_text symbols.  */
+  TRAMPOLINE,
+
+  /* Prefer mst_text_gnu_ifunc symbols when there are text and ifunc
+     symbols at the same address.  Otherwise prefer mst_text
+     symbols.  */
+  GNU_IFUNC,
+};
+
 /* Search through the minimal symbol table for each objfile and find
    the symbol whose address is the largest address that is still less
    than or equal to PC, and which matches SECTION.
@@ -246,11 +257,15 @@ struct minimal_symbol *lookup_minimal_symbol_by_pc_name
    instead.
 
    The result has a non-NULL 'minsym' member if such a symbol is
-   found, or NULL if PC is not in a suitable range.  */
+   found, or NULL if PC is not in a suitable range.
+
+   See definition of lookup_msym_prefer for description of PREFER.  By
+   default mst_text symbols are preferred.  */
 
 struct bound_minimal_symbol lookup_minimal_symbol_by_pc_section
-    (CORE_ADDR,
-     struct obj_section *);
+  (CORE_ADDR,
+   struct obj_section *,
+   lookup_msym_prefer prefer = lookup_msym_prefer::TEXT);
 
 /* Backward compatibility: search through the minimal symbol table 
    for a matching PC (no section given).
@@ -265,14 +280,11 @@ struct bound_minimal_symbol lookup_minimal_symbol_by_pc (CORE_ADDR);
    are considered.  The caller is responsible for canonicalizing NAME,
    should that need to be done.
 
-   For each matching symbol, CALLBACK is called with the symbol and
-   USER_DATA as arguments.  */
+   For each matching symbol, CALLBACK is called with the symbol.  */
 
-void iterate_over_minimal_symbols (struct objfile *objf,
-				   const lookup_name_info &name,
-				   void (*callback) (struct minimal_symbol *,
-						     void *),
-				   void *user_data);
+void iterate_over_minimal_symbols
+    (struct objfile *objf, const lookup_name_info &name,
+     gdb::function_view<bool (struct minimal_symbol *)> callback);
 
 /* Compute the upper bound of MINSYM.  The upper bound is the last
    address thought to be part of the symbol.  If the symbol has a

@@ -1,6 +1,6 @@
 /* Parse a printf-style format string.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -55,6 +55,9 @@ format_pieces::format_pieces (const char **arg)
 	      break;
 	    case 'b':
 	      *f++ = '\b';
+	      break;
+	    case 'e':
+	      *f++ = '\e';
 	      break;
 	    case 'f':
 	      *f++ = '\f';

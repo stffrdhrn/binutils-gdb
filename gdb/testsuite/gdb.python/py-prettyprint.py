@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2017 Free Software Foundation, Inc.
+# Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,6 +83,25 @@ class NoStringContainerPrinter (object):
 
     def children(self):
         return _iterator_except (self.val['elements'], self.val['len'])
+
+# See ToStringReturnsValueWrapper.
+class ToStringReturnsValueInner:
+
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        return 'Inner to_string {}'.format(int(self.val['val']))
+
+# Test a printer that returns a gdb.Value in its to_string.  That gdb.Value
+# also has its own pretty-printer.
+class ToStringReturnsValueWrapper:
+
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        return self.val['inner']
 
 class pp_s (object):
     def __init__(self, val):
@@ -234,6 +253,15 @@ class pp_int_typedef (object):
     def to_string(self):
         return "type=%s, val=%s" % (self.val.type, int(self.val))
 
+class pp_int_typedef3 (object):
+    "A printer without a to_string method"
+
+    def __init__(self, val):
+        self.val = val
+
+    def children(self):
+        yield 's', 27
+
 def lookup_function (val):
     "Look-up and return a pretty-printer that can print val."
 
@@ -316,7 +344,12 @@ def register_pretty_printers ():
     pretty_printers_dict[re.compile ('^string_repr$')] = string_print
     pretty_printers_dict[re.compile ('^container$')] = ContainerPrinter
     pretty_printers_dict[re.compile ('^justchildren$')] = NoStringContainerPrinter
-    
+
+    pretty_printers_dict[re.compile ('^struct to_string_returns_value_inner$')] = ToStringReturnsValueInner
+    pretty_printers_dict[re.compile ('^to_string_returns_value_inner$')] = ToStringReturnsValueInner
+    pretty_printers_dict[re.compile ('^struct to_string_returns_value_wrapper$')] = ToStringReturnsValueWrapper
+    pretty_printers_dict[re.compile ('^to_string_returns_value_wrapper$')] = ToStringReturnsValueWrapper
+
     pretty_printers_dict[re.compile ('^struct ns$')]  = pp_ns
     pretty_printers_dict[re.compile ('^ns$')]  = pp_ns
 
@@ -338,6 +371,7 @@ def register_pretty_printers ():
 
     typedefs_pretty_printers_dict[re.compile ('^int_type$')] = pp_int_typedef
     typedefs_pretty_printers_dict[re.compile ('^int_type2$')] = pp_int_typedef
+    typedefs_pretty_printers_dict[re.compile ('^int_type3$')] = pp_int_typedef3
 
 # Dict for struct types with typedefs fully stripped.
 pretty_printers_dict = {}

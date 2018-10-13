@@ -1,5 +1,5 @@
 /* BFD back-end for IBM RS/6000 "XCOFF64" files.
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
    Written Clinton Popetz.
    Contributed by Cygnus Support.
 
@@ -1306,10 +1306,6 @@ xcoff64_ppc_relocate_section (bfd *output_bfd,
 	 operation, which would be tedious, or we must do the computations
 	 in a type larger than bfd_vma, which would be inefficient.  */
 
-      if ((unsigned int) howto.complain_on_overflow
-	  >= XCOFF_MAX_COMPLAIN_OVERFLOW)
-	abort ();
-
       if (((*xcoff_complain_overflow[howto.complain_on_overflow])
 	   (input_bfd, value_to_relocate, relocation, &howto)))
 	{
@@ -2147,7 +2143,7 @@ xcoff64_create_csect_from_smclas (bfd *abfd, union internal_auxent *aux,
     {
       _bfd_error_handler
 	/* xgettext: c-format */
-	(_("%B: symbol `%s' has unrecognized smclas %d"),
+	(_("%pB: symbol `%s' has unrecognized smclas %d"),
 	 abfd, symbol_name, aux->x_csect.x_smclas);
       bfd_set_error (bfd_error_bad_value);
     }
@@ -2694,22 +2690,22 @@ const bfd_target rs6000_xcoff64_vec =
     },
 
     { /* bfd_set_format */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_mkobject,
       _bfd_generic_mkarchive,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     {/* bfd_write_contents */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       xcoff64_write_object_contents,
       _bfd_xcoff_write_archive_contents,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     /* Generic */
     _bfd_archive_close_and_cleanup,
-    bfd_true,
+    _bfd_bool_bfd_true,
     coff_new_section_hook,
     _bfd_generic_get_section_contents,
     _bfd_generic_get_section_contents_in_window,
@@ -2738,7 +2734,7 @@ const bfd_target rs6000_xcoff64_vec =
     xcoff64_openr_next_archived_file,
     _bfd_generic_get_elt_at_index,
     _bfd_xcoff_stat_arch_elt,
-    bfd_true,
+    _bfd_bool_bfd_true,
 
     /* Symbols */
     coff_get_symtab_upper_bound,
@@ -2786,6 +2782,7 @@ const bfd_target rs6000_xcoff64_vec =
     bfd_generic_discard_group,
     _bfd_generic_section_already_linked,
     _bfd_xcoff_define_common_symbol,
+    _bfd_generic_link_hide_symbol,
     bfd_generic_define_start_stop,
 
     /* Dynamic */
@@ -2955,22 +2952,22 @@ const bfd_target rs6000_xcoff64_aix_vec =
     },
 
     { /* bfd_set_format */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_mkobject,
       _bfd_generic_mkarchive,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     {/* bfd_write_contents */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       xcoff64_write_object_contents,
       _bfd_xcoff_write_archive_contents,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     /* Generic */
     _bfd_archive_close_and_cleanup,
-    bfd_true,
+    _bfd_bool_bfd_true,
     coff_new_section_hook,
     _bfd_generic_get_section_contents,
     _bfd_generic_get_section_contents_in_window,
@@ -2999,7 +2996,7 @@ const bfd_target rs6000_xcoff64_aix_vec =
     xcoff64_openr_next_archived_file,
     _bfd_generic_get_elt_at_index,
     _bfd_xcoff_stat_arch_elt,
-    bfd_true,
+    _bfd_bool_bfd_true,
 
     /* Symbols */
     coff_get_symtab_upper_bound,
@@ -3047,6 +3044,7 @@ const bfd_target rs6000_xcoff64_aix_vec =
     bfd_generic_discard_group,
     _bfd_generic_section_already_linked,
     _bfd_xcoff_define_common_symbol,
+    _bfd_generic_link_hide_symbol,
     bfd_generic_define_start_stop,
 
     /* Dynamic */

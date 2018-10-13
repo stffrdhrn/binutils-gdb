@@ -1,5 +1,5 @@
 /* Object file "section" support for the BFD library.
-   Copyright (C) 1990-2017 Free Software Foundation, Inc.
+   Copyright (C) 1990-2018 Free Software Foundation, Inc.
    Written by Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -65,10 +65,7 @@ SUBSECTION
 	data in place until a <<bfd_get_section_contents>> call is
 	made. Other back ends may read in all the data at once.  For
 	example, an S-record file has to be read once to determine the
-	size of the data. An IEEE-695 file doesn't contain raw data in
-	sections, but data and relocation expressions intermixed, so
-	the data area has to be parsed to get out the data and
-	relocations.
+	size of the data.
 
 INODE
 Section Output, typedef asection, Section Input, Sections
@@ -221,13 +218,10 @@ CODE_FRAGMENT
 .  {* The section contains thread local data.  *}
 .#define SEC_THREAD_LOCAL                0x400
 .
-.  {* The section has GOT references.  This flag is only for the
-.     linker, and is currently only used by the elf32-hppa back end.
-.     It will be set if global offset table references were detected
-.     in this section, which indicate to the linker that the section
-.     contains PIC code, and must be handled specially when doing a
-.     static link.  *}
-.#define SEC_HAS_GOT_REF                 0x800
+.  {* The section's size is fixed.  Generic linker code will not
+.     recalculate it and it is up to whoever has set this flag to
+.     get the size right.  *}
+.#define SEC_FIXED_SIZE                  0x800
 .
 .  {* The section contains common symbols (symbols may be defined
 .     multiple times, the value of a symbol is the amount of
@@ -826,21 +820,21 @@ _bfd_generic_new_section_hook (bfd *abfd, asection *newsect)
   return TRUE;
 }
 
-static unsigned int section_id = 0x10;  /* id 0 to 3 used by STD_SECTION.  */
+unsigned int _bfd_section_id = 0x10;  /* id 0 to 3 used by STD_SECTION.  */
 
 /* Initializes a new section.  NEWSECT->NAME is already set.  */
 
 static asection *
 bfd_section_init (bfd *abfd, asection *newsect)
 {
-  newsect->id = section_id;
+  newsect->id = _bfd_section_id;
   newsect->index = abfd->section_count;
   newsect->owner = abfd;
 
   if (! BFD_SEND (abfd, _new_section_hook, (abfd, newsect)))
     return NULL;
 
-  section_id++;
+  _bfd_section_id++;
   abfd->section_count++;
   bfd_section_list_append (abfd, newsect);
   return newsect;
@@ -1292,23 +1286,6 @@ bfd_make_section (bfd *abfd, const char *name)
 
 /*
 FUNCTION
-	bfd_get_next_section_id
-
-SYNOPSIS
-	int bfd_get_next_section_id (void);
-
-DESCRIPTION
-	Returns the id that the next section created will have.
-*/
-
-int
-bfd_get_next_section_id (void)
-{
-  return section_id;
-}
-
-/*
-FUNCTION
 	bfd_set_section_flags
 
 SYNOPSIS
@@ -1480,16 +1457,20 @@ SYNOPSIS
 
 DESCRIPTION
 	Sets the contents of the section @var{section} in BFD
-	@var{abfd} to the data starting in memory at @var{data}. The
-	data is written to the output section starting at offset
+	@var{abfd} to the data starting in memory at @var{location}.
+	The data is written to the output section starting at offset
 	@var{offset} for @var{count} octets.
 
-	Normally <<TRUE>> is returned, else <<FALSE>>. Possible error
-	returns are:
+	Normally <<TRUE>> is returned, but <<FALSE>> is returned if
+	there was an error.  Possible error returns are:
 	o <<bfd_error_no_contents>> -
 	The output section does not have the <<SEC_HAS_CONTENTS>>
 	attribute, so nothing can be written to it.
-	o and some more too
+	o <<bfd_error_bad_value>> -
+	The section is unable to contain all of the data.
+	o <<bfd_error_invalid_operation>> -
+	The BFD is not writeable.
+	o and some more too.
 
 	This routine is front end to the back end function
 	<<_bfd_set_section_contents>>.
@@ -1697,4 +1678,14 @@ bfd_generic_discard_group (bfd *abfd ATTRIBUTE_UNUSED,
 			   asection *group ATTRIBUTE_UNUSED)
 {
   return TRUE;
+}
+
+bfd_boolean
+_bfd_nowrite_set_section_contents (bfd *abfd,
+				   sec_ptr section ATTRIBUTE_UNUSED,
+				   const void *location ATTRIBUTE_UNUSED,
+				   file_ptr offset ATTRIBUTE_UNUSED,
+				   bfd_size_type count ATTRIBUTE_UNUSED)
+{
+  return _bfd_bool_bfd_false_error (abfd);
 }

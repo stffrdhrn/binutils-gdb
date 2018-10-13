@@ -1,5 +1,5 @@
 /* YACC parser for Pascal expressions, for GDB.
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -72,7 +72,7 @@ int yyparse (void);
 
 static int yylex (void);
 
-void yyerror (const char *);
+static void yyerror (const char *);
 
 static char *uptok (const char *, int);
 %}
@@ -709,12 +709,7 @@ variable:	name_not_typename
 			  if (sym.symbol)
 			    {
 			      if (symbol_read_needs_frame (sym.symbol))
-				{
-				  if (innermost_block == 0
-				      || contained_in (sym.block,
-						       innermost_block))
-				    innermost_block = sym.block;
-				}
+				innermost_block.update (sym);
 
 			      write_exp_elt_opcode (pstate, OP_VAR_VALUE);
 			      write_exp_elt_block (pstate, sym.block);
@@ -728,10 +723,7 @@ variable:	name_not_typename
 			      /* Object pascal: it hangs off of `this'.  Must
 			         not inadvertently convert from a method call
 				 to data ref.  */
-			      if (innermost_block == 0
-				  || contained_in (sym.block,
-						   innermost_block))
-				innermost_block = sym.block;
+			      innermost_block.update (sym);
 			      write_exp_elt_opcode (pstate, OP_THIS);
 			      write_exp_elt_opcode (pstate, OP_THIS);
 			      write_exp_elt_opcode (pstate, STRUCTOP_PTR);
@@ -1120,7 +1112,6 @@ yylex (void)
 {
   int c;
   int namelen;
-  unsigned int i;
   const char *tokstart;
   char *uptokstart;
   const char *tokptr;
@@ -1137,7 +1128,7 @@ yylex (void)
 
   /* See if it is a special token of length 3.  */
   if (explen > 2)
-    for (i = 0; i < sizeof (tokentab3) / sizeof (tokentab3[0]); i++)
+    for (int i = 0; i < sizeof (tokentab3) / sizeof (tokentab3[0]); i++)
       if (strncasecmp (tokstart, tokentab3[i].oper, 3) == 0
           && (!isalpha (tokentab3[i].oper[0]) || explen == 3
               || (!isalpha (tokstart[3])
@@ -1150,7 +1141,7 @@ yylex (void)
 
   /* See if it is a special token of length 2.  */
   if (explen > 1)
-  for (i = 0; i < sizeof (tokentab2) / sizeof (tokentab2[0]); i++)
+  for (int i = 0; i < sizeof (tokentab2) / sizeof (tokentab2[0]); i++)
       if (strncasecmp (tokstart, tokentab2[i].oper, 2) == 0
           && (!isalpha (tokentab2[i].oper[0]) || explen == 2
               || (!isalpha (tokstart[2])
@@ -1232,7 +1223,7 @@ yylex (void)
 	  goto symbol;		/* Nope, must be a symbol.  */
 	}
 
-      /* FALL THRU into number case.  */
+      /* FALL THRU.  */
 
     case '0':
     case '1':
@@ -1527,7 +1518,7 @@ yylex (void)
     /* second chance uppercased (as Free Pascal does).  */
     if (!sym && is_a_field_of_this.type == NULL && !is_a_field)
       {
-       for (i = 0; i <= namelen; i++)
+       for (int i = 0; i <= namelen; i++)
          {
            if ((tmp[i] >= 'a' && tmp[i] <= 'z'))
              tmp[i] -= ('a'-'A');
@@ -1543,7 +1534,7 @@ yylex (void)
     /* Third chance Capitalized (as GPC does).  */
     if (!sym && is_a_field_of_this.type == NULL && !is_a_field)
       {
-       for (i = 0; i <= namelen; i++)
+       for (int i = 0; i <= namelen; i++)
          {
            if (i == 0)
              {
@@ -1730,11 +1721,11 @@ pascal_parse (struct parser_state *par_state)
   return yyparse ();
 }
 
-void
+static void
 yyerror (const char *msg)
 {
   if (prev_lexptr)
     lexptr = prev_lexptr;
 
-  error (_("A %s in expression, near `%s'."), (msg ? msg : "error"), lexptr);
+  error (_("A %s in expression, near `%s'."), msg, lexptr);
 }

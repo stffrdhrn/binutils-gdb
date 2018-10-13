@@ -1,6 +1,6 @@
 /* This testcase is part of GDB, the GNU debugger.
 
-   Copyright 2017 Free Software Foundation, Inc.
+   Copyright 2017-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@ my_getenv (const char *name)
 int
 main (int argc, char *argv[])
 {
+  /* Call malloc to ensure it is linked in.  */
+  char *tmp = malloc (1);
   const char *myvar = getenv ("GDB_TEST_VAR");
 
   if (myvar != NULL)
@@ -36,5 +38,6 @@ main (int argc, char *argv[])
   else
     printf ("It failed.");
 
+  free (tmp);
   return 0;	/* break-here */
 }

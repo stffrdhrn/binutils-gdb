@@ -1,6 +1,6 @@
 /* UI_FILE - a generic STDIO like output stream.
 
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -52,7 +52,7 @@ ui_file::putstr (const char *str, int quoter)
 void
 ui_file::putstrn (const char *str, int n, int quoter)
 {
-  fputstrn_unfiltered (str, n, quoter, this);
+  fputstrn_unfiltered (str, n, quoter, fputc_unfiltered, this);
 }
 
 int

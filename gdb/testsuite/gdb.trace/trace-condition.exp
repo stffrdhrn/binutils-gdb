@@ -1,4 +1,4 @@
-# Copyright 2011-2017 Free Software Foundation, Inc.
+# Copyright 2011-2018 Free Software Foundation, Inc.
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -71,9 +71,9 @@ proc test_tracepoints { trace_command condition num_frames { kfail_proc 0 } } {
 	return 0
     }
 
-    gdb_test "break begin" ".*" ""
+    gdb_breakpoint "begin" qualified
 
-    gdb_test "break end" ".*" ""
+    gdb_breakpoint "end" qualified
 
     with_test_prefix "${trace_command}: ${condition}" {
 

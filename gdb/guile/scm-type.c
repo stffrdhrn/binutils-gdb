@@ -1,6 +1,6 @@
 /* Scheme interface to types.
 
-   Copyright (C) 2008-2017 Free Software Foundation, Inc.
+   Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -224,7 +224,7 @@ tyscm_equal_p_type_smob (SCM type1_scm, SCM type2_scm)
 {
   type_smob *type1_smob, *type2_smob;
   struct type *type1, *type2;
-  int result = 0;
+  bool result = false;
 
   SCM_ASSERT_TYPE (tyscm_is_type (type1_scm), type1_scm, SCM_ARG1, FUNC_NAME,
 		   type_smob_name);
@@ -576,10 +576,16 @@ gdbscm_type_tag (SCM self)
   type_smob *t_smob
     = tyscm_get_type_smob_arg_unsafe (self, SCM_ARG1, FUNC_NAME);
   struct type *type = t_smob->type;
+  const char *tagname = nullptr;
 
-  if (!TYPE_TAG_NAME (type))
+  if (TYPE_CODE (type) == TYPE_CODE_STRUCT
+      || TYPE_CODE (type) == TYPE_CODE_UNION
+      || TYPE_CODE (type) == TYPE_CODE_ENUM)
+    tagname = TYPE_NAME (type);
+
+  if (tagname == nullptr)
     return SCM_BOOL_F;
-  return gdbscm_scm_from_c_string (TYPE_TAG_NAME (type));
+  return gdbscm_scm_from_c_string (tagname);
 }
 
 /* (type-name <gdb:type>) -> string
@@ -969,9 +975,6 @@ gdbscm_type_field (SCM self, SCM field_scm)
   type_smob *t_smob
     = tyscm_get_type_smob_arg_unsafe (self, SCM_ARG1, FUNC_NAME);
   struct type *type = t_smob->type;
-  char *field;
-  int i;
-  struct cleanup *cleanups;
 
   SCM_ASSERT_TYPE (scm_is_string (field_scm), field_scm, SCM_ARG2, FUNC_NAME,
 		   _("string"));
@@ -985,21 +988,20 @@ gdbscm_type_field (SCM self, SCM field_scm)
     gdbscm_out_of_range_error (FUNC_NAME, SCM_ARG1, self,
 			       _(not_composite_error));
 
-  field = gdbscm_scm_to_c_string (field_scm);
-  cleanups = make_cleanup (xfree, field);
+  {
+    gdb::unique_xmalloc_ptr<char> field = gdbscm_scm_to_c_string (field_scm);
 
-  for (i = 0; i < TYPE_NFIELDS (type); i++)
-    {
-      const char *t_field_name = TYPE_FIELD_NAME (type, i);
+    for (int i = 0; i < TYPE_NFIELDS (type); i++)
+      {
+	const char *t_field_name = TYPE_FIELD_NAME (type, i);
 
-      if (t_field_name && (strcmp_iw (t_field_name, field) == 0))
-	{
-	    do_cleanups (cleanups);
+	if (t_field_name && (strcmp_iw (t_field_name, field.get ()) == 0))
+	  {
+	    field.reset (nullptr);
 	    return tyscm_make_field_smob (self, i);
-	}
-    }
-
-  do_cleanups (cleanups);
+	  }
+      }
+  }
 
   gdbscm_out_of_range_error (FUNC_NAME, SCM_ARG1, field_scm,
 			     _("Unknown field"));
@@ -1014,9 +1016,6 @@ gdbscm_type_has_field_p (SCM self, SCM field_scm)
   type_smob *t_smob
     = tyscm_get_type_smob_arg_unsafe (self, SCM_ARG1, FUNC_NAME);
   struct type *type = t_smob->type;
-  char *field;
-  int i;
-  struct cleanup *cleanups;
 
   SCM_ASSERT_TYPE (scm_is_string (field_scm), field_scm, SCM_ARG2, FUNC_NAME,
 		   _("string"));
@@ -1030,21 +1029,18 @@ gdbscm_type_has_field_p (SCM self, SCM field_scm)
     gdbscm_out_of_range_error (FUNC_NAME, SCM_ARG1, self,
 			       _(not_composite_error));
 
-  field = gdbscm_scm_to_c_string (field_scm);
-  cleanups = make_cleanup (xfree, field);
+  {
+    gdb::unique_xmalloc_ptr<char> field
+      = gdbscm_scm_to_c_string (field_scm);
 
-  for (i = 0; i < TYPE_NFIELDS (type); i++)
-    {
-      const char *t_field_name = TYPE_FIELD_NAME (type, i);
+    for (int i = 0; i < TYPE_NFIELDS (type); i++)
+      {
+	const char *t_field_name = TYPE_FIELD_NAME (type, i);
 
-      if (t_field_name && (strcmp_iw (t_field_name, field) == 0))
-	{
-	    do_cleanups (cleanups);
-	    return SCM_BOOL_T;
-	}
-    }
-
-  do_cleanups (cleanups);
+	if (t_field_name && (strcmp_iw (t_field_name, field.get ()) == 0))
+	  return SCM_BOOL_T;
+      }
+  }
 
   return SCM_BOOL_F;
 }
@@ -1218,7 +1214,6 @@ gdbscm_field_baseclass_p (SCM self)
 {
   field_smob *f_smob
     = tyscm_get_field_smob_arg_unsafe (self, SCM_ARG1, FUNC_NAME);
-  struct field *field = tyscm_field_smob_to_field (f_smob);
   struct type *type = tyscm_field_smob_containing_type (f_smob);
 
   if (TYPE_CODE (type) == TYPE_CODE_STRUCT)

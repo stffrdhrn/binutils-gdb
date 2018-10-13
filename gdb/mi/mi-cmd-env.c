@@ -1,5 +1,5 @@
 /* MI Command Set - environment commands.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by Red Hat Inc.
 
@@ -31,6 +31,7 @@
 #include "ui-out.h"
 #include "top.h"
 #include <sys/stat.h>
+#include "source.h"
 
 static const char path_var_name[] = "PATH";
 static char *orig_path = NULL;

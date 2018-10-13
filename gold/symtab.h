@@ -1,6 +1,6 @@
 // symtab.h -- the gold symbol table   -*- C++ -*-
 
-// Copyright (C) 2006-2017 Free Software Foundation, Inc.
+// Copyright (C) 2006-2018 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -343,6 +343,11 @@ class Symbol
   void
   set_in_dyn()
   { this->in_dyn_ = true; }
+
+  // Return whether this symbol is defined in a dynamic object.
+  bool
+  from_dyn() const
+  { return this->source_ == FROM_OBJECT && this->object()->is_dynamic(); }
 
   // Return whether this symbol has been seen in a real ELF object.
   // (IN_REG will return TRUE if the symbol has been seen in either

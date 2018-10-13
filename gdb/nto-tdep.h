@@ -1,6 +1,6 @@
 /* nto-tdep.h - QNX Neutrino target header.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    Contributed by QNX Software Systems Ltd.
 
@@ -170,7 +170,8 @@ void nto_relocate_section_addresses (struct so_list *,
 
 int nto_map_arch_to_cputype (const char *);
 
-int nto_find_and_open_solib (const char *, unsigned, char **);
+int nto_find_and_open_solib (const char *, unsigned,
+			     gdb::unique_xmalloc_ptr<char> *);
 
 enum gdb_osabi nto_elf_osabi_sniffer (bfd *abfd);
 

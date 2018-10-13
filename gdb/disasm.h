@@ -1,5 +1,5 @@
 /* Disassemble support for GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -66,6 +66,11 @@ private:
   /* Stores data required for disassembling instructions in
      opcodes.  */
   struct disassemble_info m_di;
+
+  /* If we own the string in `m_di.disassembler_options', we do so
+     using this field.  */
+  std::string m_disassembler_options_holder;
+
   CORE_ADDR m_err_memaddr;
 
   static int dis_asm_read_memory (bfd_vma memaddr, gdb_byte *myaddr,

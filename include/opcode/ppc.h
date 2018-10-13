@@ -1,5 +1,5 @@
 /* ppc.h -- Header file for PowerPC opcode table
-   Copyright (C) 1994-2017 Free Software Foundation, Inc.
+   Copyright (C) 1994-2018 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Support
 
    This file is part of GDB, GAS, and the GNU binutils.
@@ -75,11 +75,11 @@ struct powerpc_opcode
    in the order in which the disassembler should consider
    instructions.  */
 extern const struct powerpc_opcode powerpc_opcodes[];
-extern const int powerpc_num_opcodes;
+extern const unsigned int powerpc_num_opcodes;
 extern const struct powerpc_opcode vle_opcodes[];
-extern const int vle_num_opcodes;
+extern const unsigned int vle_num_opcodes;
 extern const struct powerpc_opcode spe2_opcodes[];
-extern const int spe2_num_opcodes;
+extern const unsigned int spe2_num_opcodes;
 
 /* Values defined for the flags field of a struct powerpc_opcode.  */
 
@@ -204,7 +204,7 @@ extern const int spe2_num_opcodes;
 /* Opcode is only supported by Power8 architecture.  */
 #define PPC_OPCODE_POWER8     0x1000000000ull
 
-/* Opcode is supported by ppc750cl.  */
+/* Opcode is supported by ppc750cl/Gekko/Broadway.  */
 #define PPC_OPCODE_750	      0x2000000000ull
 
 /* Opcode is supported by ppc7450.  */
@@ -280,11 +280,10 @@ struct powerpc_operand
 
      If this field is not NULL, then simply call it with the
      instruction and the operand value.  It will return the new value
-     of the instruction.  If the ERRMSG argument is not NULL, then if
-     the operand value is illegal, *ERRMSG will be set to a warning
-     string (the operand will be inserted in any case).  If the
-     operand value is legal, *ERRMSG will be unchanged (most operands
-     can accept any value).  */
+     of the instruction.  If the operand value is illegal, *ERRMSG
+     will be set to a warning string (the operand will be inserted in
+     any case).  If the operand value is legal, *ERRMSG will be
+     unchanged (most operands can accept any value).  */
   uint64_t (*insert)
     (uint64_t instruction, int64_t op, ppc_cpu_t dialect, const char **errmsg);
 
@@ -302,11 +301,18 @@ struct powerpc_operand
      is the result).
 
      If this field is not NULL, then simply call it with the
-     instruction value.  It will return the value of the operand.  If
-     the INVALID argument is not NULL, *INVALID will be set to
-     non-zero if this operand type can not actually be extracted from
-     this operand (i.e., the instruction does not match).  If the
-     operand is valid, *INVALID will not be changed.  */
+     instruction value.  It will return the value of the operand.
+     *INVALID will be set to one by the extraction function if this
+     operand type can not be extracted from this operand (i.e., the
+     instruction does not match).  If the operand is valid, *INVALID
+     will not be changed.  *INVALID will always be non-negative when
+     used to extract a field from an instruction.
+
+     The extraction function is also called by both the assembler and
+     disassembler if an operand is optional, in which case the
+     function should return the default value of the operand.
+     *INVALID is negative in this case, and is the negative count of
+     omitted optional operands up to and including this operand.  */
   int64_t (*extract) (uint64_t instruction, ppc_cpu_t dialect, int *invalid);
 
   /* One bit syntax flags.  */
@@ -405,14 +411,6 @@ extern const unsigned int num_powerpc_operands;
 /* Valid range of operand is 0..n rather than 0..n-1.  */
 #define PPC_OPERAND_PLUS1 (0x20000)
 
-/* This operand does not actually exist in the assembler input.  This
-   is used to support extended mnemonics such as mr, for which two
-   operands fields are identical.  The assembler should call the
-   insert function with any op value.  The disassembler should call
-   the extract function, ignore the return value, and check the value
-   placed in the valid argument.  */
-#define PPC_OPERAND_FAKE (0x40000)
-
 /* This operand is optional, and is zero if omitted.  This is used for
    example, in the optional BF field in the comparison instructions.  The
    assembler must count the number of operands remaining on the line,
@@ -428,11 +426,6 @@ extern const unsigned int num_powerpc_operands;
    either 4 or 5 operands.  The disassembler should print this operand
    out regardless of the PPC_OPERAND_OPTIONAL field.  */
 #define PPC_OPERAND_NEXT (0x100000)
-
-/* This flag is only used with PPC_OPERAND_OPTIONAL.  If this operand
-   is omitted, then the value it should use for the operand is stored
-   in the SHIFT field of the immediatly following operand field.  */
-#define PPC_OPERAND_OPTIONAL_VALUE (0x200000)
 
 /* This flag is only used with PPC_OPERAND_OPTIONAL.  The operand is
    only optional when generating 32-bit code.  */
@@ -472,10 +465,13 @@ extern const int powerpc_num_macros;
 extern ppc_cpu_t ppc_parse_cpu (ppc_cpu_t, ppc_cpu_t *, const char *);
 
 static inline int64_t
-ppc_optional_operand_value (const struct powerpc_operand *operand)
+ppc_optional_operand_value (const struct powerpc_operand *operand,
+			    uint64_t insn,
+			    ppc_cpu_t dialect,
+			    int num_optional)
 {
-  if ((operand->flags & PPC_OPERAND_OPTIONAL_VALUE) != 0)
-    return (operand+1)->shift;
+  if (operand->extract)
+    return (*operand->extract) (insn, dialect, &num_optional);
   return 0;
 }
 

@@ -1,5 +1,5 @@
 /* Definitions for PRPSINFO structures under ELF on GNU/Linux.
-   Copyright (C) 2013-2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -45,8 +45,8 @@ struct elf_external_linux_prpsinfo32_ugid32
     char pr_ppid[4];
     char pr_pgrp[4];
     char pr_sid[4];
-    char pr_fname[16];			/* Filename of executable.  */
-    char pr_psargs[80];			/* Initial part of arg list.  */
+    char pr_fname[16] ATTRIBUTE_NONSTRING;  /* Filename of executable.  */
+    char pr_psargs[80] ATTRIBUTE_NONSTRING; /* Initial part of arg list.  */
   };
 
 /* Helper function to copy an elf_internal_linux_prpsinfo in host
@@ -97,8 +97,8 @@ struct elf_external_linux_prpsinfo32_ugid16
     char pr_ppid[4];
     char pr_pgrp[4];
     char pr_sid[4];
-    char pr_fname[16];			/* Filename of executable.  */
-    char pr_psargs[80];			/* Initial part of arg list.  */
+    char pr_fname[16] ATTRIBUTE_NONSTRING;  /* Filename of executable.  */
+    char pr_psargs[80] ATTRIBUTE_NONSTRING; /* Initial part of arg list.  */
   };
 
 /* Helper function to copy an elf_internal_linux_prpsinfo in host
@@ -150,8 +150,8 @@ struct elf_external_linux_prpsinfo64_ugid32
     char pr_ppid[4];
     char pr_pgrp[4];
     char pr_sid[4];
-    char pr_fname[16];			/* Filename of executable.  */
-    char pr_psargs[80];			/* Initial part of arg list.  */
+    char pr_fname[16] ATTRIBUTE_NONSTRING;  /* Filename of executable.  */
+    char pr_psargs[80] ATTRIBUTE_NONSTRING; /* Initial part of arg list.  */
   };
 
 /* Helper function to copy an elf_internal_linux_prpsinfo in host
@@ -203,8 +203,8 @@ struct elf_external_linux_prpsinfo64_ugid16
     char pr_ppid[4];
     char pr_pgrp[4];
     char pr_sid[4];
-    char pr_fname[16];			/* Filename of executable.  */
-    char pr_psargs[80];			/* Initial part of arg list.  */
+    char pr_fname[16] ATTRIBUTE_NONSTRING;  /* Filename of executable.  */
+    char pr_psargs[80] ATTRIBUTE_NONSTRING; /* Initial part of arg list.  */
   };
 
 /* Helper function to copy an elf_internal_linux_prpsinfo in host

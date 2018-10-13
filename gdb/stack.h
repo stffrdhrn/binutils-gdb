@@ -1,6 +1,6 @@
 /* Stack manipulation commands, for GDB the GNU Debugger.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,7 +20,11 @@
 #ifndef STACK_H
 #define STACK_H
 
-void select_frame_command (const char *level_exp, int from_tty);
+/* Access method used by the MI -stack-select-frame command to switch to
+   frame FI.  This differs from SELECT_FRAME in that the observers for a
+   user selected context change will be triggered.  */
+
+void select_frame_for_mi (struct frame_info *fi);
 
 gdb::unique_xmalloc_ptr<char> find_frame_funname (struct frame_info *frame,
 						  enum language *funlang,

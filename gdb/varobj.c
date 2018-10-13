@@ -1,6 +1,6 @@
 /* Implementation of the GDB variable objects API.
 
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include "gdbthread.h"
 #include "inferior.h"
 #include "varobj-iter.h"
+#include "parser-defs.h"
 
 #if HAVE_PYTHON
 #include "python/python.h"
@@ -297,7 +298,6 @@ varobj_create (const char *objname,
       else
 	fi = NULL;
 
-      /* frame = -2 means always use selected frame.  */
       if (type == USE_SELECTED_FRAME)
 	var->root->floating = true;
 
@@ -310,7 +310,8 @@ varobj_create (const char *objname,
 	}
 
       p = expression;
-      innermost_block = NULL;
+      innermost_block.reset (INNERMOST_BLOCK_FOR_SYMBOLS
+			     | INNERMOST_BLOCK_FOR_REGISTERS);
       /* Wrap the call to parse expression, so we can 
          return a sensible error.  */
       TRY
@@ -335,7 +336,8 @@ varobj_create (const char *objname,
 	}
 
       var->format = variable_default_display (var.get ());
-      var->root->valid_block = innermost_block;
+      var->root->valid_block =
+	var->root->floating ? NULL : innermost_block.block ();
       var->name = expression;
       /* For a root var, the name and the expr are the same.  */
       var->path_expr = expression;
@@ -344,7 +346,7 @@ varobj_create (const char *objname,
          we must select the appropriate frame before parsing
          the expression, otherwise the value will not be current.
          Since select_frame is so benign, just call it for all cases.  */
-      if (innermost_block)
+      if (var->root->valid_block)
 	{
 	  /* User could specify explicit FRAME-ADDR which was not found but
 	     EXPRESSION is frame specific and we would not be able to evaluate
@@ -354,7 +356,7 @@ varobj_create (const char *objname,
 	    error (_("Failed to find the specified frame"));
 
 	  var->root->frame = get_frame_id (fi);
-	  var->root->thread_id = ptid_to_global_thread_id (inferior_ptid);
+	  var->root->thread_id = inferior_thread ()->global_num;
 	  old_id = get_frame_id (get_selected_frame (NULL));
 	  select_frame (fi);	 
 	}
@@ -520,9 +522,9 @@ varobj_set_display_format (struct varobj *var,
     }
 
   if (varobj_value_is_changeable_p (var) 
-      && var->value && !value_lazy (var->value))
+      && var->value != nullptr && !value_lazy (var->value.get ()))
     {
-      var->print_value = varobj_value_get_print_value (var->value,
+      var->print_value = varobj_value_get_print_value (var->value.get (),
 						       var->format, var);
     }
 
@@ -705,7 +707,7 @@ varobj_clear_saved_item (struct varobj_dynamic *var)
 {
   if (var->saved_item != NULL)
     {
-      value_free (var->saved_item->value);
+      value_decref (var->saved_item->value);
       delete var->saved_item;
       var->saved_item = NULL;
     }
@@ -759,7 +761,7 @@ update_dynamic_varobj_children (struct varobj *var,
 	  /* Release vitem->value so its lifetime is not bound to the
 	     execution of a command.  */
 	  if (item != NULL && item->value != NULL)
-	    release_value_or_incref (item->value);
+	    release_value (item->value).release ();
 	}
 
       if (item == NULL)
@@ -946,6 +948,11 @@ varobj_get_path_expr_parent (const struct varobj *var)
   while (!is_root_p (parent) && !is_path_expr_parent (parent))
     parent = parent->parent;
 
+  /* Computation of full rooted expression for children of dynamic
+     varobjs is not supported.  */
+  if (varobj_is_dynamic_p (parent))
+    error (_("Invalid variable object (child of a dynamic varobj)"));
+
   return parent;
 }
 
@@ -1043,7 +1050,7 @@ varobj_set_value (struct varobj *var, const char *expression)
   gdb_assert (varobj_value_is_changeable_p (var));
 
   /* The value of a changeable variable object must not be lazy.  */
-  gdb_assert (!value_lazy (var->value));
+  gdb_assert (!value_lazy (var->value.get ()));
 
   /* Need to coerce the input.  We want to check if the
      value of the variable object will be different
@@ -1058,7 +1065,7 @@ varobj_set_value (struct varobj *var, const char *expression)
      rather value_contents, will take care of this.  */
   TRY
     {
-      val = value_assign (var->value, value);
+      val = value_assign (var->value.get (), value);
     }
 
   CATCH (except, RETURN_MASK_ERROR)
@@ -1110,9 +1117,9 @@ install_default_visualizer (struct varobj *var)
     {
       PyObject *pretty_printer = NULL;
 
-      if (var->value)
+      if (var->value != nullptr)
 	{
-	  pretty_printer = gdbpy_get_varobj_pretty_printer (var->value);
+	  pretty_printer = gdbpy_get_varobj_pretty_printer (var->value.get ());
 	  if (! pretty_printer)
 	    {
 	      gdbpy_print_stack ();
@@ -1147,7 +1154,8 @@ construct_visualizer (struct varobj *var, PyObject *constructor)
     pretty_printer = NULL;
   else
     {
-      pretty_printer = instantiate_pretty_printer (constructor, var->value);
+      pretty_printer = instantiate_pretty_printer (constructor,
+						   var->value.get ());
       if (! pretty_printer)
 	{
 	  gdbpy_print_stack ();
@@ -1324,8 +1332,9 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
 
   /* Get a reference now, before possibly passing it to any Python
      code that might release it.  */
+  value_ref_ptr value_holder;
   if (value != NULL)
-    value_incref (value);
+    value_holder = value_ref_ptr::new_reference (value);
 
   /* Below, we'll be comparing string rendering of old and new
      values.  Don't get string rendering if the value is
@@ -1352,7 +1361,7 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
 	{
 	  /* Try to compare the values.  That requires that both
 	     values are non-lazy.  */
-	  if (var->not_fetched && value_lazy (var->value))
+	  if (var->not_fetched && value_lazy (var->value.get ()))
 	    {
 	      /* This is a frozen varobj and the value was never read.
 		 Presumably, UI shows some "never read" indicator.
@@ -1370,7 +1379,7 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
 	    }
 	  else
 	    {
-	      gdb_assert (!value_lazy (var->value));
+	      gdb_assert (!value_lazy (var->value.get ()));
 	      gdb_assert (!value_lazy (value));
 
 	      gdb_assert (!var->print_value.empty () && !print_value.empty ());
@@ -1390,9 +1399,7 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
     }
 
   /* We must always keep the new value, since children depend on it.  */
-  if (var->value != NULL && var->value != value)
-    value_free (var->value);
-  var->value = value;
+  var->value = value_holder;
   if (value && value_lazy (value) && intentionally_not_fetched)
     var->not_fetched = true;
   else
@@ -1405,8 +1412,8 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
      to see if the variable changed.  */
   if (var->dynamic->pretty_printer != NULL)
     {
-      print_value = varobj_value_get_print_value (var->value, var->format,
-						  var);
+      print_value = varobj_value_get_print_value (var->value.get (),
+						  var->format, var);
       if ((var->print_value.empty () && !print_value.empty ())
 	  || (!var->print_value.empty () && print_value.empty ())
 	  || (!var->print_value.empty () && !print_value.empty ()
@@ -1415,7 +1422,7 @@ install_new_value (struct varobj *var, struct value *value, bool initial)
     }
   var->print_value = print_value;
 
-  gdb_assert (!var->value || value_type (var->value));
+  gdb_assert (var->value == nullptr || value_type (var->value.get ()));
 
   return changed;
 }
@@ -1453,9 +1460,8 @@ varobj_set_visualizer (struct varobj *var, const char *visualizer)
   gdbpy_enter_varobj enter_py (var);
 
   mainmod = PyImport_AddModule ("__main__");
-  gdbpy_ref<> globals (PyModule_GetDict (mainmod));
-  Py_INCREF (globals.get ());
-
+  gdbpy_ref<> globals
+    = gdbpy_ref<>::new_reference (PyModule_GetDict (mainmod));
   gdbpy_ref<> constructor (PyRun_String (visualizer, Py_eval_input,
 					 globals.get (), globals.get ()));
 
@@ -1623,7 +1629,7 @@ varobj_update (struct varobj **varp, bool is_explicit)
 	 for which -var-list-children was never invoked.  */
       if (varobj_is_dynamic_p (v))
 	{
-	  std::vector<varobj *> changed, type_changed, unchanged, newobj;
+	  std::vector<varobj *> changed, type_changed_vec, unchanged, newobj_vec;
 	  bool children_changed = false;
 
 	  if (v->frozen)
@@ -1655,48 +1661,49 @@ varobj_update (struct varobj **varp, bool is_explicit)
 
 	  /* If update_dynamic_varobj_children returns false, then we have
 	     a non-conforming pretty-printer, so we skip it.  */
-	  if (update_dynamic_varobj_children (v, &changed, &type_changed, &newobj,
-					      &unchanged, &children_changed, true,
-					      v->from, v->to))
+	  if (update_dynamic_varobj_children (v, &changed, &type_changed_vec,
+					      &newobj_vec,
+					      &unchanged, &children_changed,
+					      true, v->from, v->to))
 	    {
-	      if (children_changed || !newobj.empty ())
+	      if (children_changed || !newobj_vec.empty ())
 		{
 		  r.children_changed = true;
-		  r.newobj = std::move (newobj);
+		  r.newobj = std::move (newobj_vec);
 		}
 	      /* Push in reverse order so that the first child is
 		 popped from the work stack first, and so will be
 		 added to result first.  This does not affect
 		 correctness, just "nicer".  */
-	      for (int i = type_changed.size () - 1; i >= 0; --i)
+	      for (int i = type_changed_vec.size () - 1; i >= 0; --i)
 		{
-		  varobj_update_result r (type_changed[i]);
+		  varobj_update_result item (type_changed_vec[i]);
 
 		  /* Type may change only if value was changed.  */
-		  r.changed = true;
-		  r.type_changed = true;
-		  r.value_installed = true;
+		  item.changed = true;
+		  item.type_changed = true;
+		  item.value_installed = true;
 
-		  stack.push_back (std::move (r));
+		  stack.push_back (std::move (item));
 		}
 	      for (int i = changed.size () - 1; i >= 0; --i)
 		{
-		  varobj_update_result r (changed[i]);
+		  varobj_update_result item (changed[i]);
 
-		  r.changed = true;
-		  r.value_installed = true;
+		  item.changed = true;
+		  item.value_installed = true;
 
-		  stack.push_back (std::move (r));
+		  stack.push_back (std::move (item));
 		}
 	      for (int i = unchanged.size () - 1; i >= 0; --i)
 		{
 		  if (!unchanged[i]->frozen)
 		    {
-		      varobj_update_result r (unchanged[i]);
+		      varobj_update_result item (unchanged[i]);
 
-		      r.value_installed = true;
+		      item.value_installed = true;
 
-		      stack.push_back (std::move (r));
+		      stack.push_back (std::move (item));
 		    }
 		}
 	      if (r.changed || r.children_changed)
@@ -1988,7 +1995,6 @@ varobj::~varobj ()
 
   varobj_iter_delete (var->dynamic->child_iter);
   varobj_clear_saved_item (var->dynamic);
-  value_free (var->value);
 
   if (is_root_p (var))
     delete var->root;
@@ -2012,8 +2018,8 @@ varobj_get_value_type (const struct varobj *var)
 {
   struct type *type;
 
-  if (var->value)
-    type = value_type (var->value);
+  if (var->value != nullptr)
+    type = value_type (var->value.get ());
   else
     type = var->type;
 
@@ -2122,11 +2128,11 @@ value_of_root_1 (struct varobj **var_handle)
     }
   else
     {
-      ptid_t ptid = global_thread_id_to_ptid (var->root->thread_id);
+      thread_info *thread = find_thread_global_id (var->root->thread_id);
 
-      if (!ptid_equal (minus_one_ptid, ptid))
+      if (thread != NULL)
 	{
-	  switch_to_thread (ptid);
+	  switch_to_thread (thread);
 	  within_scope = check_scope (var);
 	}
     }
@@ -2259,7 +2265,8 @@ my_value_of_variable (struct varobj *var, enum varobj_display_formats format)
   if (var->root->is_valid)
     {
       if (var->dynamic->pretty_printer != NULL)
-	return varobj_value_get_print_value (var->value, var->format, var);
+	return varobj_value_get_print_value (var->value.get (), var->format,
+					     var);
       return (*var->root->lang_ops->value_of_variable) (var, format);
     }
   else
@@ -2272,7 +2279,7 @@ varobj_formatted_print_options (struct value_print_options *opts,
 {
   get_formatted_print_options (opts, format_code[(int) format]);
   opts->deref_ref = 0;
-  opts->raw = 1;
+  opts->raw = !pretty_printing;
 }
 
 std::string
@@ -2312,9 +2319,9 @@ varobj_value_get_print_value (struct value *value,
 	    {
 	      struct value *replacement;
 
-	      gdbpy_ref<> output (apply_varobj_pretty_printer (value_formatter,
-							       &replacement,
-							       &stb));
+	      gdbpy_ref<> output = apply_varobj_pretty_printer (value_formatter,
+								&replacement,
+								&stb);
 
 	      /* If we have string like output ...  */
 	      if (output != NULL)
@@ -2395,7 +2402,8 @@ varobj_editable_p (const struct varobj *var)
 {
   struct type *type;
 
-  if (!(var->root->is_valid && var->value && VALUE_LVAL (var->value)))
+  if (!(var->root->is_valid && var->value != nullptr
+	&& VALUE_LVAL (var->value.get ())))
     return false;
 
   type = varobj_get_value_type (var);

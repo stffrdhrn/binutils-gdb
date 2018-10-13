@@ -1,6 +1,6 @@
 /* Low-level RSP routines for GDB, the GNU debugger.
 
-   Copyright (C) 1988-2017 Free Software Foundation, Inc.
+   Copyright (C) 1988-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -61,6 +61,10 @@ gdb::byte_vector hex2bin (const char *hex);
 /* Like hex2bin, but return a std::string.  */
 
 extern std::string hex2str (const char *hex);
+
+/* Like hex2bin, but return a std::string.  */
+
+extern std::string hex2str (const char *hex, int count);
 
 /* Convert some bytes to a hexadecimal representation.  BIN holds the
    bytes to convert.  COUNT says how many bytes to convert.  The

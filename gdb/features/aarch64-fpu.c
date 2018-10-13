@@ -1,14 +1,14 @@
 /* THIS FILE IS GENERATED.  -*- buffer-read-only: t -*- vi:set ro:
   Original: aarch64-fpu.xml */
 
-#include "arch/tdesc.h"
+#include "common/tdesc.h"
 
 static int
 create_feature_aarch64_fpu (struct target_desc *result, long regnum)
 {
   struct tdesc_feature *feature;
 
-  feature = tdesc_create_feature (result, "org.gnu.gdb.aarch64.fpu", "aarch64-fpu.xml");
+  feature = tdesc_create_feature (result, "org.gnu.gdb.aarch64.fpu");
   tdesc_type *element_type;
   element_type = tdesc_named_type (feature, "ieee_double");
   tdesc_create_vector (feature, "v2d", element_type, 2);
@@ -47,8 +47,8 @@ create_feature_aarch64_fpu (struct target_desc *result, long regnum)
   tdesc_create_vector (feature, "v1i", element_type, 1);
 
   tdesc_type_with_fields *type_with_fields;
-  tdesc_type *field_type;
   type_with_fields = tdesc_create_union (feature, "vnd");
+  tdesc_type *field_type;
   field_type = tdesc_named_type (feature, "v2d");
   tdesc_add_field (type_with_fields, "f", field_type);
   field_type = tdesc_named_type (feature, "v2u");

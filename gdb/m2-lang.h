@@ -1,6 +1,6 @@
 /* Modula 2 language support definitions for GDB, the GNU debugger.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,8 +21,6 @@ struct type_print_options;
 struct parser_state;
 
 extern int m2_parse (struct parser_state *); /* Defined in m2-exp.y */
-
-extern void m2_yyerror (const char *);	/* Defined in m2-exp.y */
 
 /* Defined in m2-typeprint.c */
 extern void m2_print_type (struct type *, const char *, struct ui_file *, int,

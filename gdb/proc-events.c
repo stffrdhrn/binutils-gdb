@@ -1,6 +1,6 @@
 /* Machine-independent support for Solaris /proc (process file system)
 
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    Written by Michael Snyder at Cygnus Solutions.
    Based on work by Fred Fish, Stu Grossman, Geoff Noer, and others.
@@ -493,7 +493,9 @@ init_syscall_table (void)
   syscall_table[SYS_utssys] = "utssys";
   syscall_table[SYS_uucopy] = "uucopy";
   syscall_table[SYS_uucopystr] = "uucopystr";
+#ifdef SYS_uuidsys
   syscall_table[SYS_uuidsys] = "uuidsys";
+#endif
 #ifdef SYS_va_mask
   syscall_table[SYS_va_mask] = "va_mask";
 #endif

@@ -1,6 +1,6 @@
 /* Target-dependent code for the Sanyo Xstormy16a (LC590000) processor.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -163,7 +163,7 @@ xstormy16_extract_return_value (struct type *type, struct regcache *regcache,
   int i, regnum = E_1ST_ARG_REGNUM;
 
   for (i = 0; i < len; i += xstormy16_reg_size)
-    regcache_raw_read (regcache, regnum++, valbuf + i);
+    regcache->raw_read (regnum++, valbuf + i);
 }
 
 /* Function: xstormy16_store_return_value
@@ -181,7 +181,7 @@ xstormy16_store_return_value (struct type *type, struct regcache *regcache,
       gdb_byte buf[xstormy16_reg_size];
       memset (buf, 0, xstormy16_reg_size);
       memcpy (buf, valbuf, 1);
-      regcache_raw_write (regcache, E_1ST_ARG_REGNUM, buf);
+      regcache->raw_write (E_1ST_ARG_REGNUM, buf);
     }
   else
     {
@@ -189,7 +189,7 @@ xstormy16_store_return_value (struct type *type, struct regcache *regcache,
       int i, regnum = E_1ST_ARG_REGNUM;
 
       for (i = 0; i < len; i += xstormy16_reg_size)
-        regcache_raw_write (regcache, regnum++, valbuf + i);
+        regcache->raw_write (regnum++, valbuf + i);
     }
 }
 
@@ -234,7 +234,6 @@ xstormy16_push_dummy_call (struct gdbarch *gdbarch,
   int argreg = E_1ST_ARG_REGNUM;
   int i, j;
   int typelen, slacklen;
-  const gdb_byte *val;
   gdb_byte buf[xstormy16_pc_size];
 
   /* If struct_return is true, then the struct return address will
@@ -257,7 +256,7 @@ xstormy16_push_dummy_call (struct gdbarch *gdbarch,
 	break;
 
       /* Put argument into registers wordwise.  */
-      val = value_contents (args[i]);
+      const gdb_byte *val = value_contents (args[i]);
       for (j = 0; j < typelen; j += xstormy16_reg_size)
 	{
 	  ULONGEST regval;

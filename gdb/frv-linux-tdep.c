@@ -1,7 +1,7 @@
 /* Target-dependent code for GNU/Linux running on the Fujitsu FR-V,
    for GDB.
 
-   Copyright (C) 2004-2017 Free Software Foundation, Inc.
+   Copyright (C) 2004-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -445,10 +445,10 @@ frv_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					void *cb_data,
 					const struct regcache *regcache)
 {
-  cb (".reg", sizeof (frv_elf_gregset_t), &frv_linux_gregset,
-      NULL, cb_data);
-  cb (".reg2", sizeof (frv_elf_fpregset_t), &frv_linux_fpregset,
-      NULL, cb_data);
+  cb (".reg", sizeof (frv_elf_gregset_t), sizeof (frv_elf_gregset_t),
+      &frv_linux_gregset, NULL, cb_data);
+  cb (".reg2", sizeof (frv_elf_fpregset_t), sizeof (frv_elf_fpregset_t),
+      &frv_linux_fpregset, NULL, cb_data);
 }
 
 

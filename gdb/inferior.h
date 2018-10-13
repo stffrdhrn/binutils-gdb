@@ -1,7 +1,7 @@
 /* Variables that describe the inferior process running under GDB:
    Where it is, why it stopped, and how to step it.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -32,6 +32,7 @@ struct terminal_info;
 struct target_desc_info;
 struct continuation;
 struct inferior;
+struct thread_info;
 
 /* For bpstat.  */
 #include "breakpoint.h"
@@ -56,21 +57,45 @@ struct inferior;
 struct infcall_suspend_state;
 struct infcall_control_state;
 
-extern struct infcall_suspend_state *save_infcall_suspend_state (void);
-extern struct infcall_control_state *save_infcall_control_state (void);
-
 extern void restore_infcall_suspend_state (struct infcall_suspend_state *);
 extern void restore_infcall_control_state (struct infcall_control_state *);
 
-extern struct cleanup *make_cleanup_restore_infcall_suspend_state
-					    (struct infcall_suspend_state *);
-extern struct cleanup *make_cleanup_restore_infcall_control_state
-					    (struct infcall_control_state *);
+/* A deleter for infcall_suspend_state that calls
+   restore_infcall_suspend_state.  */
+struct infcall_suspend_state_deleter
+{
+  void operator() (struct infcall_suspend_state *state) const
+  {
+    restore_infcall_suspend_state (state);
+  }
+};
+
+/* A unique_ptr specialization for infcall_suspend_state.  */
+typedef std::unique_ptr<infcall_suspend_state, infcall_suspend_state_deleter>
+    infcall_suspend_state_up;
+
+extern infcall_suspend_state_up save_infcall_suspend_state ();
+
+/* A deleter for infcall_control_state that calls
+   restore_infcall_control_state.  */
+struct infcall_control_state_deleter
+{
+  void operator() (struct infcall_control_state *state) const
+  {
+    restore_infcall_control_state (state);
+  }
+};
+
+/* A unique_ptr specialization for infcall_control_state.  */
+typedef std::unique_ptr<infcall_control_state, infcall_control_state_deleter>
+    infcall_control_state_up;
+
+extern infcall_control_state_up save_infcall_control_state ();
 
 extern void discard_infcall_suspend_state (struct infcall_suspend_state *);
 extern void discard_infcall_control_state (struct infcall_control_state *);
 
-extern struct regcache *
+extern readonly_detached_regcache *
   get_infcall_suspend_state_regcache (struct infcall_suspend_state *);
 
 extern void set_sigint_trap (void);
@@ -83,7 +108,7 @@ extern void set_inferior_io_terminal (const char *terminal_name);
 extern const char *get_inferior_io_terminal (void);
 
 /* Collected pid, tid, etc. of the debugged inferior.  When there's
-   no inferior, ptid_get_pid (inferior_ptid) will be 0.  */
+   no inferior, inferior_ptid.pid () will be 0.  */
 
 extern ptid_t inferior_ptid;
 
@@ -129,9 +154,15 @@ extern void child_terminal_ours_for_output (struct target_ops *self);
 
 extern void child_terminal_inferior (struct target_ops *self);
 
+extern void child_terminal_save_inferior (struct target_ops *self);
+
 extern void child_terminal_init (struct target_ops *self);
 
 extern void child_terminal_init_with_pgrp (int pgrp);
+
+extern void child_pass_ctrlc (struct target_ops *self);
+
+extern void child_interrupt (struct target_ops *self);
 
 /* From fork-child.c */
 
@@ -154,7 +185,7 @@ extern void post_create_inferior (struct target_ops *, int);
 
 extern void attach_command (const char *, int);
 
-extern char *get_inferior_args (void);
+extern const char *get_inferior_args (void);
 
 extern void set_inferior_args (const char *);
 
@@ -170,7 +201,7 @@ extern void delete_longjmp_breakpoint_cleanup (void *arg);
 
 extern void detach_command (const char *, int);
 
-extern void notice_new_inferior (ptid_t, int, int);
+extern void notice_new_inferior (struct thread_info *, int, int);
 
 extern struct value *get_return_value (struct value *function,
 				       struct type *value_type);
@@ -201,10 +232,6 @@ extern void prepare_execution_command (struct target_ops *target,
    the target is started up with a shell.  */
 extern int startup_with_shell;
 
-/* Address at which inferior stopped.  */
-
-extern CORE_ADDR stop_pc;
-
 /* Nonzero if stopped due to completion of a stack dummy routine.  */
 
 extern enum stop_stack_kind stop_stack_dummy;
@@ -213,6 +240,10 @@ extern enum stop_stack_kind stop_stack_dummy;
    inferior process.  */
 
 extern int stopped_by_random_signal;
+
+/* Print notices on inferior events (attach, detach, etc.), set with
+   `set print inferior-events'.  */
+extern int print_inferior_events;
 
 /* STEP_OVER_ALL means step over all subroutine calls.
    STEP_OVER_UNDEBUGGABLE means step over calls to undebuggable functions.
@@ -276,6 +307,16 @@ struct private_inferior
 
 struct inferior_control_state
 {
+  inferior_control_state ()
+    : stop_soon (NO_STOP_QUIETLY)
+  {
+  }
+
+  explicit inferior_control_state (enum stop_kind when)
+    : stop_soon (when)
+  {
+  }
+
   /* See the definition of stop_kind above.  */
   enum stop_kind stop_soon;
 };
@@ -334,7 +375,7 @@ public:
 
   /* State of GDB control of inferior process execution.
      See `struct inferior_control_state'.  */
-  inferior_control_state control {NO_STOP_QUIETLY};
+  inferior_control_state control;
 
   /* True if this was an auto-created inferior, e.g. created from
      following a fork; false, if this inferior was manually added by
@@ -366,6 +407,10 @@ public:
 
   /* The name of terminal device to use for I/O.  */
   char *terminal = NULL;
+
+  /* The terminal state as set by the last target_terminal::terminal_*
+     call.  */
+  target_terminal_state terminal_state = target_terminal_state::is_ours;
 
   /* Environment to use for running inferior,
      in format described in environ.h.  */
@@ -458,11 +503,11 @@ extern struct inferior *add_inferior_silent (int pid);
 extern void delete_inferior (struct inferior *todel);
 
 /* Delete an existing inferior list entry, due to inferior detaching.  */
-extern void detach_inferior (int pid);
+extern void detach_inferior (inferior *inf);
 
-extern void exit_inferior (int pid);
+extern void exit_inferior (inferior *inf);
 
-extern void exit_inferior_silent (int pid);
+extern void exit_inferior_silent (inferior *inf);
 
 extern void exit_inferior_num_silent (int num);
 
@@ -470,21 +515,6 @@ extern void inferior_appeared (struct inferior *inf, int pid);
 
 /* Get rid of all inferiors.  */
 extern void discard_all_inferiors (void);
-
-/* Translate the integer inferior id (GDB's homegrown id, not the system's)
-   into a "pid" (which may be overloaded with extra inferior information).  */
-extern int gdb_inferior_id_to_pid (int);
-
-/* Translate a target 'pid' into the integer inferior id (GDB's
-   homegrown id, not the system's).  */
-extern int pid_to_gdb_inferior_id (int pid);
-
-/* Boolean test for an already-known pid.  */
-extern int in_inferior_list (int pid);
-
-/* Boolean test for an already-known inferior id (GDB's homegrown id,
-   not the system's).  */
-extern int valid_gdb_inferior_id (int num);
 
 /* Search function to lookup an inferior by target 'pid'.  */
 extern struct inferior *find_inferior_pid (int pid);

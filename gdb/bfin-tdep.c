@@ -1,6 +1,6 @@
 /* Target-dependent code for Analog Devices Blackfin processor, for GDB.
 
-   Copyright (C) 2005-2017 Free Software Foundation, Inc.
+   Copyright (C) 2005-2018 Free Software Foundation, Inc.
 
    Contributed by Analog Devices, Inc.
 
@@ -526,7 +526,7 @@ bfin_push_dummy_call (struct gdbarch *gdbarch,
     {
       struct type *value_type = value_enclosing_type (args[i]);
       struct type *arg_type = check_typedef (value_type);
-      int container_len = (TYPE_LENGTH (value_type) + 3) & ~3;
+      int container_len = (TYPE_LENGTH (arg_type) + 3) & ~3;
 
       sp -= container_len;
       write_memory (sp, value_contents (args[i]), container_len);
@@ -647,7 +647,7 @@ bfin_store_return_value (struct type *type,
 
   while (len > 0)
     {
-      regcache_cooked_write (regs, regno++, valbuf);
+      regs->cooked_write (regno++, valbuf);
       len -= 4;
       valbuf += 4;
     }
@@ -688,7 +688,7 @@ bfin_register_name (struct gdbarch *gdbarch, int i)
 }
 
 static enum register_status
-bfin_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+bfin_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
 			   int regnum, gdb_byte *buffer)
 {
   gdb_byte buf[BFIN_MAX_REGISTER_SIZE];
@@ -699,7 +699,7 @@ bfin_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
 		    _("invalid register number %d"), regnum);
 
   /* Extract the CC bit from the ASTAT register.  */
-  status = regcache_raw_read (regcache, BFIN_ASTAT_REGNUM, buf);
+  status = regcache->raw_read (BFIN_ASTAT_REGNUM, buf);
   if (status == REG_VALID)
     {
       buffer[1] = buffer[2] = buffer[3] = 0;
@@ -719,9 +719,9 @@ bfin_pseudo_register_write (struct gdbarch *gdbarch, struct regcache *regcache,
 		    _("invalid register number %d"), regnum);
 
   /* Overlay the CC bit in the ASTAT register.  */
-  regcache_raw_read (regcache, BFIN_ASTAT_REGNUM, buf);
+  regcache->raw_read (BFIN_ASTAT_REGNUM, buf);
   buf[0] = (buf[0] & ~ASTAT_CC) | ((buffer[0] & 1) << ASTAT_CC_POS);
-  regcache_raw_write (regcache, BFIN_ASTAT_REGNUM, buf);
+  regcache->raw_write (BFIN_ASTAT_REGNUM, buf);
 }
 
 static CORE_ADDR

@@ -1,6 +1,6 @@
 /* Block-related functions for the GNU debugger, GDB.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,10 +31,10 @@
    C++ files, namely using declarations and the current namespace in
    scope.  */
 
-struct block_namespace_info
+struct block_namespace_info : public allocate_on_obstack
 {
-  const char *scope;
-  struct using_direct *using_decl;
+  const char *scope = nullptr;
+  struct using_direct *using_decl = nullptr;
 };
 
 static void block_initialize_namespace (struct block *block,
@@ -350,11 +350,7 @@ static void
 block_initialize_namespace (struct block *block, struct obstack *obstack)
 {
   if (BLOCK_NAMESPACE (block) == NULL)
-    {
-      BLOCK_NAMESPACE (block) = XOBNEW (obstack, struct block_namespace_info);
-      BLOCK_NAMESPACE (block)->scope = NULL;
-      BLOCK_NAMESPACE (block)->using_decl = NULL;
-    }
+    BLOCK_NAMESPACE (block) = new (obstack) struct block_namespace_info ();
 }
 
 /* Return the static block associated to BLOCK.  Return NULL if block
@@ -673,12 +669,13 @@ block_iter_match_next (const lookup_name_info &name,
 
 struct symbol *
 block_lookup_symbol (const struct block *block, const char *name,
+		     symbol_name_match_type match_type,
 		     const domain_enum domain)
 {
   struct block_iterator iter;
   struct symbol *sym;
 
-  lookup_name_info lookup_name (name, symbol_name_match_type::FULL);
+  lookup_name_info lookup_name (name, match_type);
 
   if (!BLOCK_FUNCTION (block))
     {
@@ -810,3 +807,24 @@ block_find_non_opaque_type_preferred (struct symbol *sym, void *data)
   *best = sym;
   return 0;
 }
+
+/* See block.h.  */
+
+struct blockranges *
+make_blockranges (struct objfile *objfile,
+                  const std::vector<blockrange> &rangevec)
+{
+  struct blockranges *blr;
+  size_t n = rangevec.size();
+
+  blr = (struct blockranges *)
+    obstack_alloc (&objfile->objfile_obstack,
+                   sizeof (struct blockranges)
+		   + (n - 1) * sizeof (struct blockrange));
+
+  blr->nranges = n;
+  for (int i = 0; i < n; i++)
+    blr->range[i] = rangevec[i];
+  return blr;
+}
+

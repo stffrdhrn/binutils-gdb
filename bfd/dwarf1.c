@@ -1,5 +1,5 @@
 /* DWARF 1 find nearest line (_bfd_dwarf1_find_nearest_line).
-   Copyright (C) 1998-2017 Free Software Foundation, Inc.
+   Copyright (C) 1998-2018 Free Software Foundation, Inc.
 
    Written by Gavin Romig-Koch of Cygnus Solutions (gavin@cygnus.com).
 
@@ -213,6 +213,7 @@ parse_die (bfd *	     abfd,
   /* Then the attributes.  */
   while (xptr + 2 <= aDiePtrEnd)
     {
+      unsigned int   block_len;
       unsigned short attr;
 
       /* Parse the attribute based on its form.  This section
@@ -255,12 +256,24 @@ parse_die (bfd *	     abfd,
 	  break;
 	case FORM_BLOCK2:
 	  if (xptr + 2 <= aDiePtrEnd)
-	    xptr += bfd_get_16 (abfd, xptr);
+	    {
+	      block_len = bfd_get_16 (abfd, xptr);
+	      if (xptr + block_len > aDiePtrEnd
+		  || xptr + block_len < xptr)
+		return FALSE;
+	      xptr += block_len;
+	    }
 	  xptr += 2;
 	  break;
 	case FORM_BLOCK4:
 	  if (xptr + 4 <= aDiePtrEnd)
-	    xptr += bfd_get_32 (abfd, xptr);
+	    {
+	      block_len = bfd_get_32 (abfd, xptr);
+	      if (xptr + block_len > aDiePtrEnd
+		  || xptr + block_len < xptr)
+		return FALSE;
+	      xptr += block_len;
+	    }
 	  xptr += 4;
 	  break;
 	case FORM_STRING:

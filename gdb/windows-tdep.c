@@ -1,4 +1,4 @@
-/* Copyright (C) 2008-2017 Free Software Foundation, Inc.
+/* Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -279,7 +279,7 @@ static const struct lval_funcs tlb_value_funcs =
 static struct value *
 tlb_make_value (struct gdbarch *gdbarch, struct internalvar *var, void *ignore)
 {
-  if (target_has_stack && !ptid_equal (inferior_ptid, null_ptid))
+  if (target_has_stack && inferior_ptid != null_ptid)
     {
       struct type *type = windows_get_tlb_type (gdbarch);
       return allocate_computed_value (type, &tlb_value_funcs, NULL);
@@ -331,7 +331,7 @@ display_one_tib (ptid_t ptid)
       return -1;
     }
 
-  if (target_read (&current_target, TARGET_OBJECT_MEMORY,
+  if (target_read (current_top_target (), TARGET_OBJECT_MEMORY,
 		   NULL, tib, thread_local_base, tib_size) != tib_size)
     {
       printf_filtered (_("Unable to read thread information "
@@ -367,7 +367,7 @@ display_one_tib (ptid_t ptid)
 static void
 display_tib (const char * args, int from_tty)
 {
-  if (!ptid_equal (inferior_ptid, null_ptid))
+  if (inferior_ptid != null_ptid)
     display_one_tib (inferior_ptid);
 }
 

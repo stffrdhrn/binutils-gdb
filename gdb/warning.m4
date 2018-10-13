@@ -1,5 +1,5 @@
 dnl Autoconf configure script for GDB, the GNU debugger.
-dnl Copyright (C) 1995-2017 Free Software Foundation, Inc.
+dnl Copyright (C) 1995-2018 Free Software Foundation, Inc.
 dnl
 dnl This file is part of GDB.
 dnl
@@ -37,11 +37,16 @@ fi
 
 # The options we'll try to enable.
 build_warnings="-Wall -Wpointer-arith \
--Wno-unused -Wunused-value -Wunused-function \
+-Wno-unused -Wunused-value -Wunused-variable -Wunused-function \
 -Wno-switch -Wno-char-subscripts \
 -Wempty-body -Wunused-but-set-parameter -Wunused-but-set-variable \
--Wno-sign-compare -Wno-narrowing -Wno-error=maybe-uninitialized \
--Wno-mismatched-tags"
+-Wno-sign-compare -Wno-error=maybe-uninitialized \
+-Wno-mismatched-tags \
+-Wno-error=deprecated-register \
+-Wsuggest-override \
+-Wimplicit-fallthrough=3 \
+-Wduplicated-cond \
+-Wshadow=local"
 
 case "${host}" in
   *-*-mingw32*)
@@ -54,7 +59,10 @@ case "${host}" in
     build_warnings="$build_warnings -Wno-unknown-pragmas"
     # Solaris 11 <unistd.h> marks vfork deprecated.
     build_warnings="$build_warnings -Wno-deprecated-declarations" ;;
-  *) build_warnings="$build_warnings -Wformat-nonliteral" ;;
+  *)
+    # Note that gcc requires -Wformat for -Wformat-nonliteral to work,
+    # but there's a special case for this below.
+    build_warnings="$build_warnings -Wformat-nonliteral" ;;
 esac
 
 AC_ARG_ENABLE(build-warnings,
@@ -102,6 +110,12 @@ then
 	case $w in
 	-Wno-*)
 		wtest=`echo $w | sed 's/-Wno-/-W/g'` ;;
+        -Wformat-nonliteral)
+		# gcc requires -Wformat before -Wformat-nonliteral
+		# will work, so stick them together.
+		w="-Wformat $w"
+		wtest="$w"
+		;;
 	*)
 		wtest=$w ;;
 	esac
@@ -114,7 +128,20 @@ then
 	    CFLAGS="$CFLAGS -Werror $wtest"
 	    saved_CXXFLAGS="$CXXFLAGS"
 	    CXXFLAGS="$CXXFLAGS -Werror $wtest"
-	    AC_TRY_COMPILE([],[],WARN_CFLAGS="${WARN_CFLAGS} $w",)
+	    if test "x$w" = "x-Wunused-variable"; then
+	      # Check for https://gcc.gnu.org/bugzilla/show_bug.cgi?id=38958,
+	      # fixed in GCC 4.9.  This test is derived from the gdb
+	      # source code that triggered this bug in GCC.
+	      AC_TRY_COMPILE(
+	        [struct scoped_restore_base {};
+                 struct scoped_restore_tmpl : public scoped_restore_base {
+		   ~scoped_restore_tmpl() {}
+		 };],
+		[const scoped_restore_base &b = scoped_restore_tmpl();],
+		WARN_CFLAGS="${WARN_CFLAGS} $w",)
+	    else
+	      AC_TRY_COMPILE([],[],WARN_CFLAGS="${WARN_CFLAGS} $w",)
+	    fi
 	    CFLAGS="$saved_CFLAGS"
 	    CXXFLAGS="$saved_CXXFLAGS"
 	esac

@@ -1,5 +1,5 @@
 /* ppc-opc.c -- PowerPC opcode list
-   Copyright (C) 1994-2017 Free Software Foundation, Inc.
+   Copyright (C) 1994-2018 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Cygnus Support
 
    This file is part of the GNU opcodes library.
@@ -143,54 +143,59 @@ extract_ry (uint64_t insn,
     return value + 16;
 }
 
-/* The BA field in an XL form instruction when it must be the same as
-   the BT field in the same instruction.  This operand is marked FAKE.
-   The insertion function just copies the BT field into the BA field,
-   and the extraction function just checks that the fields are the
-   same.  */
+/* The BA and BB fields in an XL form instruction or the RA and RB fields or
+   VRA and VRB fields in a VX form instruction when they must be the same.
+   This is used for extended mnemonics like crclr.  The extraction function
+   enforces that the fields are the same.  */
 
 static uint64_t
-insert_bat (uint64_t insn,
-	    int64_t value ATTRIBUTE_UNUSED,
+insert_bab (uint64_t insn,
+	    int64_t value,
 	    ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	    const char **errmsg ATTRIBUTE_UNUSED)
 {
-  return insn | (((insn >> 21) & 0x1f) << 16);
+  value &= 0x1f;
+  return insn | (value << 16) | (value << 11);
 }
 
 static int64_t
-extract_bat (uint64_t insn,
+extract_bab (uint64_t insn,
 	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	     int *invalid)
 {
-  if (((insn >> 21) & 0x1f) != ((insn >> 16) & 0x1f))
+  int64_t ba = (insn >> 16) & 0x1f;
+  int64_t bb = (insn >> 11) & 0x1f;
+
+  if (ba != bb)
     *invalid = 1;
-  return 0;
+  return ba;
 }
 
-/* The BB field in an XL form instruction when it must be the same as
-   the BA field in the same instruction.  This operand is marked FAKE.
-   The insertion function just copies the BA field into the BB field,
-   and the extraction function just checks that the fields are the
-   same.  */
+/* The BT, BA and BB fields in an XL form instruction when they must all be
+   the same.  This is used for extended mnemonics like crclr.  The extraction
+   function enforces that the fields are the same.  */
 
 static uint64_t
-insert_bba (uint64_t insn,
-	    int64_t value ATTRIBUTE_UNUSED,
-	    ppc_cpu_t dialect ATTRIBUTE_UNUSED,
-	    const char **errmsg ATTRIBUTE_UNUSED)
+insert_btab (uint64_t insn,
+	     int64_t value,
+	     ppc_cpu_t dialect,
+	     const char **errmsg)
 {
-  return insn | (((insn >> 16) & 0x1f) << 11);
+  value &= 0x1f;
+  return (value << 21) | insert_bab (insn, value, dialect, errmsg);
 }
 
 static int64_t
-extract_bba (uint64_t insn,
-	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
+extract_btab (uint64_t insn,
+	     ppc_cpu_t dialect,
 	     int *invalid)
 {
-  if (((insn >> 16) & 0x1f) != ((insn >> 11) & 0x1f))
+  int64_t bt = (insn >> 21) & 0x1f;
+  int64_t bab = extract_bab (insn, dialect, invalid);
+
+  if (bt != bab)
     *invalid = 1;
-  return 0;
+  return bt;
 }
 
 /* The BD field in a B form instruction when the - modifier is used.
@@ -478,7 +483,7 @@ insert_dxdn (uint64_t insn,
 static int64_t
 extract_dxdn (uint64_t insn,
 	      ppc_cpu_t dialect ATTRIBUTE_UNUSED,
-	      int *invalid ATTRIBUTE_UNUSED)
+	      int *invalid)
 {
   return -extract_dxd (insn, dialect, invalid);
 }
@@ -532,8 +537,12 @@ extract_fxm (uint64_t insn,
 	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	     int *invalid)
 {
-  int64_t mask = (insn >> 12) & 0xff;
+  /* Return a value of -1 for a missing optional operand, which is
+     used as a flag by insert_fxm.  */
+  if (*invalid < 0)
+    return -1;
 
+  int64_t mask = (insn >> 12) & 0xff;
   /* Is this a Power4 insn?  */
   if ((insn & (1 << 20)) != 0)
     {
@@ -606,8 +615,11 @@ extract_ls (uint64_t insn,
 	    ppc_cpu_t dialect,
 	    int *invalid)
 {
-  uint64_t lvalue = (insn >> 21) & 3;
+  /* Missing optional operands have a value of zero.  */
+  if (*invalid < 0)
+    return 0;
 
+  uint64_t lvalue = (insn >> 21) & 3;
   if (((insn >> 1) & 0x3ff) == 598)
     {
       uint64_t max_lvalue = (dialect & PPC_OPCODE_POWER4) ? 2 : 1;
@@ -624,21 +636,13 @@ extract_ls (uint64_t insn,
 static uint64_t
 insert_esync (uint64_t insn,
 	      int64_t value,
-	      ppc_cpu_t dialect,
+	      ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	      const char **errmsg)
 {
   uint64_t ls = (insn >> 21) & 0x03;
 
-  if (value == 0)
-    {
-      if (((dialect & PPC_OPCODE_E6500) != 0 && ls > 1)
-	  || ((dialect & PPC_OPCODE_POWER9) != 0 && ls > 2))
-	*errmsg = _("illegal L operand value");
-      return insn;
-    }
-
-  if ((ls & ~0x1)
-      || (((value >> 1) & 0x1) ^ ls) == 0)
+  if (value != 0
+      && ((~value >> 1) & 0x1) != ls)
     *errmsg = _("incompatible L operand value");
 
   return insn | ((value & 0xf) << 16);
@@ -646,23 +650,18 @@ insert_esync (uint64_t insn,
 
 static int64_t
 extract_esync (uint64_t insn,
-	       ppc_cpu_t dialect,
+	       ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	       int *invalid)
 {
+  if (*invalid < 0)
+    return 0;
+
   uint64_t ls = (insn >> 21) & 0x3;
-  uint64_t lvalue = (insn >> 16) & 0xf;
-
-  if (lvalue == 0)
-    {
-      if (((dialect & PPC_OPCODE_E6500) != 0 && ls > 1)
-	  || ((dialect & PPC_OPCODE_POWER9) != 0 && ls > 2))
-	*invalid = 1;
-    }
-  else if ((ls & ~0x1)
-	   || (((lvalue >> 1) & 0x1) ^ ls) == 0)
+  uint64_t value = (insn >> 16) & 0xf;
+  if (value != 0
+      && ((~value >> 1) & 0x1) != ls)
     *invalid = 1;
-
-  return lvalue;
+  return value;
 }
 
 /* The MB and ME fields in an M form instruction expressed as a single
@@ -909,9 +908,11 @@ extract_raq (uint64_t insn,
 	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	     int *invalid)
 {
+  if (*invalid < 0)
+    return 0;
+
   uint64_t rtvalue = (insn >> 21) & 0x1f;
   uint64_t ravalue = (insn >> 16) & 0x1f;
-
   if (ravalue == rtvalue)
     *invalid = 1;
   return ravalue;
@@ -944,29 +945,31 @@ extract_ras (uint64_t insn,
   return ravalue;
 }
 
-/* The RB field in an X form instruction when it must be the same as
-   the RS field in the instruction.  This is used for extended
-   mnemonics like mr.  This operand is marked FAKE.  The insertion
-   function just copies the BT field into the BA field, and the
-   extraction function just checks that the fields are the same.  */
+/* The RS and RB fields in an X form instruction when they must be the same.
+   This is used for extended mnemonics like mr.  The extraction function
+   enforces that the fields are the same.  */
 
 static uint64_t
-insert_rbs (uint64_t insn,
-	    int64_t value ATTRIBUTE_UNUSED,
+insert_rsb (uint64_t insn,
+	    int64_t value,
 	    ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	    const char **errmsg ATTRIBUTE_UNUSED)
 {
-  return insn | (((insn >> 21) & 0x1f) << 11);
+  value &= 0x1f;
+  return insn | (value << 21) | (value << 11);
 }
 
 static int64_t
-extract_rbs (uint64_t insn,
+extract_rsb (uint64_t insn,
 	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	     int *invalid)
 {
-  if (((insn >> 21) & 0x1f) != ((insn >> 11) & 0x1f))
+  int64_t rs = (insn >> 21) & 0x1f;
+  int64_t rb = (insn >> 11) & 0x1f;
+
+  if (rs != rb)
     *invalid = 1;
-  return 0;
+  return rs;
 }
 
 /* The RB field in an lswx instruction, which has special value
@@ -1180,6 +1183,41 @@ extract_spr (uint64_t insn,
   return ((insn >> 16) & 0x1f) | ((insn >> 6) & 0x3e0);
 }
 
+/* Some dialects have 8 [DI]BAT registers instead of the standard 4.  */
+#define ALLOW8_BAT (PPC_OPCODE_750)
+
+static uint64_t
+insert_sprbat (uint64_t insn,
+	       int64_t value,
+	       ppc_cpu_t dialect,
+	       const char **errmsg)
+{
+  if (value > 7
+      || (value > 3 && (dialect & ALLOW8_BAT) == 0))
+    *errmsg = _("invalid bat number");
+
+  /* If this is [di]bat4..7 then use spr 560..575, otherwise 528..543.  */
+  if (value > 3)
+    value = ((value & 3) << 6) | 1;
+  else
+    value = value << 6;
+
+  return insn | (value << 11);
+}
+
+static int64_t
+extract_sprbat (uint64_t insn,
+		ppc_cpu_t dialect,
+		int *invalid)
+{
+  uint64_t val = (insn >> 17) & 0x3;
+
+  val = val + ((insn >> 9) & 0x4);
+  if (val > 3 && (dialect & ALLOW8_BAT) == 0)
+    *invalid = 1;
+  return val;
+}
+
 /* Some dialects have 8 SPRG registers instead of the standard 4.  */
 #define ALLOW8_SPRG (PPC_OPCODE_BOOKE | PPC_OPCODE_405)
 
@@ -1237,6 +1275,9 @@ extract_tbr (uint64_t insn,
 	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
 	     int *invalid)
 {
+  if (*invalid < 0)
+    return 268;
+
   int64_t ret = ((insn >> 16) & 0x1f) | ((insn >> 6) & 0x3e0);
   if (ret != 268 && ret != 269)
     *invalid = 1;
@@ -1318,30 +1359,31 @@ extract_xb6 (uint64_t insn,
   return ((insn << 4) & 0x20) | ((insn >> 11) & 0x1f);
 }
 
-/* The XB field in an XX3 form instruction when it must be the same as
-   the XA field in the instruction.  This is used for extended
-   mnemonics like xvmovdp.  This operand is marked FAKE.  The insertion
-   function just copies the XA field into the XB field, and the
-   extraction function just checks that the fields are the same.  */
+/* The XA and XB fields in an XX3 form instruction when they must be the same.
+   This is used for extended mnemonics like xvmovdp.  The extraction function
+   enforces that the fields are the same.  */
 
 static uint64_t
-insert_xb6s (uint64_t insn,
-	     int64_t value ATTRIBUTE_UNUSED,
-	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
-	     const char **errmsg ATTRIBUTE_UNUSED)
+insert_xab6 (uint64_t insn,
+	     int64_t value,
+	     ppc_cpu_t dialect,
+	     const char **errmsg)
 {
-  return insn | (((insn >> 16) & 0x1f) << 11) | (((insn >> 2) & 0x1) << 1);
+  return insert_xa6 (insn, value, dialect, errmsg)
+	 | insert_xb6 (insn, value, dialect, errmsg);
 }
 
 static int64_t
-extract_xb6s (uint64_t insn,
-	      ppc_cpu_t dialect ATTRIBUTE_UNUSED,
+extract_xab6 (uint64_t insn,
+	      ppc_cpu_t dialect,
 	      int *invalid)
 {
-  if ((((insn >> 16) & 0x1f) != ((insn >> 11) & 0x1f))
-      || (((insn >> 2) & 0x1) != ((insn >> 1) & 0x1)))
+  int64_t xa6 = extract_xa6 (insn, dialect, invalid);
+  int64_t xb6 = extract_xb6 (insn, dialect, invalid);
+
+  if (xa6 != xb6)
     *invalid = 1;
-  return 0;
+  return xa6;
 }
 
 /* The XC field in an XX4 form instruction.  This is split.  */
@@ -1418,7 +1460,7 @@ insert_vlensi (uint64_t insn,
 static int64_t
 extract_vlensi (uint64_t insn,
 		ppc_cpu_t dialect ATTRIBUTE_UNUSED,
-		int *invalid ATTRIBUTE_UNUSED)
+		int *invalid)
 {
   int64_t value = ((insn >> 10) & 0xf800) | (insn & 0x7ff);
   value = (value ^ 0x8000) - 0x8000;
@@ -1730,6 +1772,25 @@ extract_Ddd (uint64_t insn,
 {
   return ((insn >> 11) & 0x3) | ((insn << 2) & 0x4);
 }
+
+static uint64_t
+insert_sxl (uint64_t insn,
+	    int64_t value,
+	    ppc_cpu_t dialect ATTRIBUTE_UNUSED,
+	    const char **errmsg ATTRIBUTE_UNUSED)
+{
+  return insn | ((value & 0x1) << 11);
+}
+
+static int64_t
+extract_sxl (uint64_t insn,
+	     ppc_cpu_t dialect ATTRIBUTE_UNUSED,
+	     int *invalid)
+{
+  if (*invalid < 0)
+    return 1;
+  return (insn >> 11) & 0x1;
+}
 
 /* The operands table.
 
@@ -1756,27 +1817,34 @@ const struct powerpc_operand powerpc_operands[] =
 #define BI_MASK (0x1f << 16)
   { 0x1f, 16, NULL, NULL, PPC_OPERAND_CR_BIT },
 
-  /* The BA field in an XL form instruction when it must be the same
-     as the BT field in the same instruction.  */
-#define BAT BA + 1
-  { 0x1f, 16, insert_bat, extract_bat, PPC_OPERAND_FAKE },
+  /* The BT, BA and BB fields in a XL form instruction when they must all
+     be the same.  */
+#define BTAB BA + 1
+  { 0x1f, 21, insert_btab, extract_btab, PPC_OPERAND_CR_BIT },
 
   /* The BB field in an XL form instruction.  */
-#define BB BAT + 1
+#define BB BTAB + 1
 #define BB_MASK (0x1f << 11)
   { 0x1f, 11, NULL, NULL, PPC_OPERAND_CR_BIT },
 
-  /* The BB field in an XL form instruction when it must be the same
-     as the BA field in the same instruction.  */
-#define BBA BB + 1
-  /* The VB field in a VX form instruction when it must be the same
-     as the VA field in the same instruction.  */
-#define VBA BBA
-  { 0x1f, 11, insert_bba, extract_bba, PPC_OPERAND_FAKE },
+  /* The BA and BB fields in a XL form instruction when they must be
+     the same.  */
+#define BAB BB + 1
+  { 0x1f, 16, insert_bab, extract_bab, PPC_OPERAND_CR_BIT },
+
+  /* The VRA and VRB fields in a VX form instruction when they must be the same.
+     This is used for extended mnemonics like vmr.  */
+#define VAB BAB + 1
+  { 0x1f, 16, insert_bab, extract_bab, PPC_OPERAND_VR },
+
+  /* The RA and RB fields in a VX form instruction when they must be the same.
+     This is used for extended mnemonics like evmr.  */
+#define RAB VAB + 1
+  { 0x1f, 16, insert_bab, extract_bab, PPC_OPERAND_GPR },
 
   /* The BD field in a B form instruction.  The lower two bits are
      forced to zero.  */
-#define BD BBA + 1
+#define BD RAB + 1
   { 0xfffc, 0, NULL, NULL, PPC_OPERAND_RELATIVE | PPC_OPERAND_SIGNED },
 
   /* The BD field in a B form instruction when absolute addressing is
@@ -2021,13 +2089,10 @@ const struct powerpc_operand powerpc_operands[] =
 
   /* Power4 version for mfcr.  */
 #define FXM4 FXM + 1
-  { 0xff, 12, insert_fxm, extract_fxm,
-    PPC_OPERAND_OPTIONAL | PPC_OPERAND_OPTIONAL_VALUE},
-  /* If the FXM4 operand is ommitted, use the sentinel value -1.  */
-  { -1, -1, NULL, NULL, 0},
+  { 0xff, 12, insert_fxm, extract_fxm, PPC_OPERAND_OPTIONAL },
 
   /* The IMM20 field in an LI instruction.  */
-#define IMM20 FXM4 + 2
+#define IMM20 FXM4 + 1
   { 0xfffff, PPC_OPSHIFT_INV, insert_li20, extract_li20, PPC_OPERAND_SIGNED},
 
   /* The L field in a D or X form instruction.  */
@@ -2155,15 +2220,14 @@ const struct powerpc_operand powerpc_operands[] =
 #define RB_MASK (0x1f << 11)
   { 0x1f, 11, NULL, NULL, PPC_OPERAND_GPR },
 
-  /* The RB field in an X form instruction when it must be the same as
-     the RS field in the instruction.  This is used for extended
-     mnemonics like mr.  */
-#define RBS RB + 1
-  { 0x1f, 11, insert_rbs, extract_rbs, PPC_OPERAND_FAKE },
+  /* The RS and RB fields in an X form instruction when they must be the same.
+     This is used for extended mnemonics like mr.  */
+#define RSB RB + 1
+  { 0x1f, 11, insert_rsb, extract_rsb, PPC_OPERAND_GPR },
 
   /* The RB field in an lswx instruction, which has special value
      restrictions.  */
-#define RBX RBS + 1
+#define RBX RSB + 1
   { 0x1f, 11, insert_rbx, extract_rbx, PPC_OPERAND_GPR },
 
   /* The RB field of the dccci and iccci instructions, which are optional.  */
@@ -2291,11 +2355,16 @@ const struct powerpc_operand powerpc_operands[] =
 
   /* The BAT index number in an XFX form m[ft]ibat[lu] instruction.  */
 #define SPRBAT SPR + 1
-#define SPRBAT_MASK (0x3 << 17)
-  { 0x3, 17, NULL, NULL, 0 },
+#define SPRBAT_MASK (0xc1 << 11)
+  { 0x7, PPC_OPSHIFT_INV, insert_sprbat, extract_sprbat, PPC_OPERAND_SPR },
+
+  /* The GQR index number in an XFX form m[ft]gqr instruction.  */
+#define SPRGQR SPRBAT + 1
+#define SPRGQR_MASK (0x7 << 16)
+  { 0x7, 16, NULL, NULL, PPC_OPERAND_GQR },
 
   /* The SPRG register number in an XFX form m[ft]sprg instruction.  */
-#define SPRG SPRBAT + 1
+#define SPRG SPRGQR + 1
   { 0x1f, 16, insert_sprg, extract_sprg, PPC_OPERAND_SPR },
 
   /* The SR field in an X form instruction.  */
@@ -2324,12 +2393,10 @@ const struct powerpc_operand powerpc_operands[] =
      field, but it is optional.  */
 #define TBR SV + 1
   { 0x3ff, 11, insert_tbr, extract_tbr,
-    PPC_OPERAND_SPR | PPC_OPERAND_OPTIONAL | PPC_OPERAND_OPTIONAL_VALUE},
-  /* If the TBR operand is ommitted, use the value 268.  */
-  { -1, 268, NULL, NULL, 0},
+    PPC_OPERAND_SPR | PPC_OPERAND_OPTIONAL },
 
   /* The TO field in a D or X form instruction.  */
-#define TO TBR + 2
+#define TO TBR + 1
 #define DUI TO
 #define TO_MASK (0x1f << 21)
   { 0x1f, 21, NULL, NULL, 0 },
@@ -2483,12 +2550,10 @@ const struct powerpc_operand powerpc_operands[] =
 
   /* The S field in a XL form instruction.  */
 #define SXL S + 1
-  { 0x1, 11, NULL, NULL, PPC_OPERAND_OPTIONAL | PPC_OPERAND_OPTIONAL_VALUE},
-  /* If the SXL operand is ommitted, use the value 1.  */
-  { -1, 1, NULL, NULL, 0},
+  { 0x1, 11, insert_sxl, extract_sxl, PPC_OPERAND_OPTIONAL },
 
   /* SH field starting at bit position 16.  */
-#define SH16 SXL + 2
+#define SH16 SXL + 1
   /* The DCM and DGM fields in a Z form instruction.  */
 #define DCM SH16
 #define DGM DCM
@@ -2564,14 +2629,13 @@ const struct powerpc_operand powerpc_operands[] =
 #define XB6 XA6 + 1
   { 0x3f, PPC_OPSHIFT_INV, insert_xb6, extract_xb6, PPC_OPERAND_VSR },
 
-  /* The XB field in an XX3 form instruction when it must be the same as
-     the XA field in the instruction.  This is used in extended mnemonics
-     like xvmovdp.  This is split.  */
-#define XB6S XB6 + 1
-  { 0x3f, PPC_OPSHIFT_INV, insert_xb6s, extract_xb6s, PPC_OPERAND_FAKE },
+  /* The XA and XB fields in an XX3 form instruction when they must be the same.
+     This is used in extended mnemonics like xvmovdp.  This is split.  */
+#define XAB6 XB6 + 1
+  { 0x3f, PPC_OPSHIFT_INV, insert_xab6, extract_xab6, PPC_OPERAND_VSR },
 
   /* The XC field in an XX4 form instruction.  This is split.  */
-#define XC6 XB6S + 1
+#define XC6 XAB6 + 1
   { 0x3f, PPC_OPSHIFT_INV, insert_xc6, extract_xc6, PPC_OPERAND_VSR },
 
   /* The DM or SHW field in an XX3 form instruction.  */
@@ -3353,6 +3417,10 @@ const unsigned int num_powerpc_operands = (sizeof (powerpc_operands)
 #define XSPRBAT_MASK (XSPR_MASK &~ SPRBAT_MASK)
 
 /* An XFX form instruction with the SPR field filled in except for the
+   SPRGQR field.  */
+#define XSPRGQR_MASK (XSPR_MASK &~ SPRGQR_MASK)
+
+/* An XFX form instruction with the SPR field filled in except for the
    SPRG field.  */
 #define XSPRG_MASK (XSPR_MASK & ~(0x1f << 16))
 
@@ -3467,6 +3535,8 @@ const unsigned int num_powerpc_operands = (sizeof (powerpc_operands)
 #define PPC464	PPC440
 #define PPC476	PPC_OPCODE_476
 #define PPC750	PPC_OPCODE_750
+#define GEKKO	PPC_OPCODE_750
+#define BROADWAY PPC_OPCODE_750
 #define PPC7450 PPC_OPCODE_7450
 #define PPC860	PPC_OPCODE_860
 #define PPCPS	PPC_OPCODE_PPCPS
@@ -3499,7 +3569,7 @@ const unsigned int num_powerpc_operands = (sizeof (powerpc_operands)
 #define PPCPMR	PPC_OPCODE_PMR
 #define PPCTMR  PPC_OPCODE_TMR
 #define PPCCHLK PPC_OPCODE_CACHELCK
-#define PPCRFMCI	PPC_OPCODE_RFMCI
+#define PPCRFMCI PPC_OPCODE_RFMCI
 #define E500MC  PPC_OPCODE_E500MC
 #define PPCA2	PPC_OPCODE_A2
 #define TITAN   PPC_OPCODE_TITAN
@@ -3792,10 +3862,10 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"evand",	VX (4, 529),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
 {"evandc",	VX (4, 530),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
 {"evxor",	VX (4, 534),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
-{"evmr",	VX (4, 535),	VX_MASK,     PPCSPE,	0,		{RS, RA, BBA}},
+{"evmr",	VX (4, 535),	VX_MASK,     PPCSPE,	0,		{RS, RAB}},
 {"evor",	VX (4, 535),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
+{"evnot",	VX (4, 536),	VX_MASK,     PPCSPE,	0,		{RS, RAB}},
 {"evnor",	VX (4, 536),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
-{"evnot",	VX (4, 536),	VX_MASK,     PPCSPE,	0,		{RS, RA, BBA}},
 {"get",		APU(4, 268,0),	APU_RA_MASK, PPC405,	0,		{RT, FSL}},
 {"eveqv",	VX (4, 537),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
 {"evorc",	VX (4, 539),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
@@ -4139,7 +4209,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"bcdus.",	VX (4,1153),	VX_MASK,     PPCVEC3,	0,		{VD, VA, VB}},
 {"vavguw",	VX (4,1154),	VX_MASK,     PPCVEC,	0,		{VD, VA, VB}},
 {"vabsduw",	VX (4,1155),	VX_MASK,     PPCVEC2,	0,		{VD, VA, VB}},
-{"vmr",		VX (4,1156),	VX_MASK,     PPCVEC,	0,		{VD, VA, VBA}},
+{"vmr",		VX (4,1156),	VX_MASK,     PPCVEC,	0,		{VD, VAB}},
 {"vor",		VX (4,1156),	VX_MASK,     PPCVEC,	0,		{VD, VA, VB}},
 {"vcmpnew.",	VXR(4, 135,1),	VXR_MASK,    PPCVEC3,	0,		{VD, VA, VB}},
 {"vpmsumw",	VX (4,1160),	VX_MASK,     PPCVEC2,	0,		{VD, VA, VB}},
@@ -4183,7 +4253,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"vavgsb",	VX (4,1282),	VX_MASK,     PPCVEC,	0,		{VD, VA, VB}},
 {"evmhessfaaw",	VX (4,1283),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
 {"evmhousiaaw",	VX (4,1284),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
-{"vnot",	VX (4,1284),	VX_MASK,     PPCVEC,	0,		{VD, VA, VBA}},
+{"vnot",	VX (4,1284),	VX_MASK,     PPCVEC,	0,		{VD, VAB}},
 {"vnor",	VX (4,1284),	VX_MASK,     PPCVEC,	0,		{VD, VA, VB}},
 {"evmhossiaaw",	VX (4,1285),	VX_MASK,     PPCSPE,	0,		{RS, RA, RB}},
 {"udi4fcm.",	APU(4, 643,0),	APU_MASK, PPC405|PPC440, 0,		{URT, URA, URB}},
@@ -4955,7 +5025,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 
 {"rfid",	XL(19,18),	0xffffffff,  PPC64,	PPCVLE,	{0}},
 
-{"crnot",	XL(19,33),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BA, BBA}},
+{"crnot",	XL(19,33),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BAB}},
 {"crnor",	XL(19,33),	XL_MASK,     COM,	PPCVLE,		{BT, BA, BB}},
 {"rfmci",	X(19,38),    0xffffffff, PPCRFMCI|PPCA2|PPC476, PPCVLE,	{0}},
 
@@ -4975,7 +5045,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"isync",	XL(19,150),	0xffffffff,  PPCCOM,	PPCVLE,		{0}},
 {"ics",		XL(19,150),	0xffffffff,  PWRCOM,	PPCVLE,		{0}},
 
-{"crclr",	XL(19,193),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BAT, BBA}},
+{"crclr",	XL(19,193),	XL_MASK,     PPCCOM,	PPCVLE,		{BTAB}},
 {"crxor",	XL(19,193),	XL_MASK,     COM,	PPCVLE,		{BT, BA, BB}},
 
 {"dnh",		X(19,198),	X_MASK,	     E500MC,	PPCVLE,		{DUI, DUIS}},
@@ -4986,7 +5056,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 
 {"hrfid",	XL(19,274),    0xffffffff, POWER5|CELL, PPC476|PPCVLE,	{0}},
 
-{"crset",	XL(19,289),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BAT, BBA}},
+{"crset",	XL(19,289),	XL_MASK,     PPCCOM,	PPCVLE,		{BTAB}},
 {"creqv",	XL(19,289),	XL_MASK,     COM,	PPCVLE,		{BT, BA, BB}},
 
 {"urfid",	XL(19,306),	0xffffffff,  POWER9,	PPCVLE,		{0}},
@@ -4998,7 +5068,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 
 {"nap",		XL(19,434),	0xffffffff,  POWER6,	POWER9|PPCVLE,	{0}},
 
-{"crmove",	XL(19,449),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BA, BBA}},
+{"crmove",	XL(19,449),	XL_MASK,     PPCCOM,	PPCVLE,		{BT, BAB}},
 {"cror",	XL(19,449),	XL_MASK,     COM,	PPCVLE,		{BT, BA, BB}},
 
 {"sleep",	XL(19,466),	0xffffffff,  POWER6,	POWER9|PPCVLE,	{0}},
@@ -5463,9 +5533,9 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 
 {"popcntb",	X(31,122),	XRB_MASK,    POWER5,	0,		{RA, RS}},
 
-{"not",		XRC(31,124,0),	X_MASK,	     COM,	0,		{RA, RS, RBS}},
+{"not",		XRC(31,124,0),	X_MASK,	     COM,	0,		{RA, RSB}},
 {"nor",		XRC(31,124,0),	X_MASK,	     COM,	0,		{RA, RS, RB}},
-{"not.",	XRC(31,124,1),	X_MASK,	     COM,	0,		{RA, RS, RBS}},
+{"not.",	XRC(31,124,1),	X_MASK,	     COM,	0,		{RA, RSB}},
 {"nor.",	XRC(31,124,1),	X_MASK,	     COM,	0,		{RA, RS, RB}},
 
 {"dcbfep",	XRT(31,127,0),	XRT_MASK, E500MC|PPCA2, 0,		{RA0, RB}},
@@ -5887,6 +5957,18 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mfdpdr",	XSPR(31,339,630), XSPR_MASK, PPC860,	0,		{RT}},
 {"mfdpir",	XSPR(31,339,631), XSPR_MASK, PPC860,	0,		{RT}},
 {"mfimmr",	XSPR(31,339,638), XSPR_MASK, PPC860,	0,		{RT}},
+{"mfupmc1",	XSPR(31,339,771), XSPR_MASK, POWER9,	0, 		{RT}},
+{"mfpmc1",	XSPR(31,339,771), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfupmc2",	XSPR(31,339,772), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfpmc2",	XSPR(31,339,772), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfupmc3",	XSPR(31,339,773), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfpmc3",	XSPR(31,339,773), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfupmc4",	XSPR(31,339,774), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfpmc4",	XSPR(31,339,774), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfupmc5",	XSPR(31,339,775), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfpmc5",	XSPR(31,339,775), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfupmc6",	XSPR(31,339,776), XSPR_MASK, POWER9,	0,		{RT}},
+{"mfpmc6",	XSPR(31,339,776), XSPR_MASK, POWER9,	0,		{RT}},
 {"mfmi_ctr",	XSPR(31,339,784), XSPR_MASK, PPC860,	0,		{RT}},
 {"mfmi_ap",	XSPR(31,339,786), XSPR_MASK, PPC860,	0,		{RT}},
 {"mfmi_epn",	XSPR(31,339,787), XSPR_MASK, PPC860,	0,		{RT}},
@@ -5914,6 +5996,11 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mfccr1",	XSPR(31,339,888), XSPR_MASK, TITAN,	0,		{RT}},
 {"mfppr",	XSPR(31,339,896), XSPR_MASK, POWER7,	0,		{RT}},
 {"mfppr32",	XSPR(31,339,898), XSPR_MASK, POWER7,	0,		{RT}},
+{"mfgqr",	XSPR(31,339,912), XSPRGQR_MASK, PPCPS,	0,		{RT, SPRGQR}},
+{"mfhid2",	XSPR(31,339,920), XSPR_MASK, GEKKO,	0,		{RT}},
+{"mfwpar",	XSPR(31,339,921), XSPR_MASK, GEKKO,	0,		{RT}},
+{"mfdmau",	XSPR(31,339,922), XSPR_MASK, GEKKO,	0,		{RT}},
+{"mfdmal",	XSPR(31,339,923), XSPR_MASK, GEKKO,	0,		{RT}},
 {"mfrstcfg",	XSPR(31,339,923), XSPR_MASK, TITAN,	0,		{RT}},
 {"mfdcdbtrl",	XSPR(31,339,924), XSPR_MASK, TITAN,	0,		{RT}},
 {"mfdcdbtrh",	XSPR(31,339,925), XSPR_MASK, TITAN,	0,		{RT}},
@@ -5958,10 +6045,15 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mfsrr2",	XSPR(31,339,990), XSPR_MASK, PPC403,	0,		{RT}},
 {"mfsrr3",	XSPR(31,339,991), XSPR_MASK, PPC403,	0,		{RT}},
 {"mfdbsr",	XSPR(31,339,1008), XSPR_MASK, PPC403,	0,		{RT}},
+{"mfhid0",	XSPR(31,339,1008), XSPR_MASK, GEKKO,	0,		{RT}},
+{"mfhid1",	XSPR(31,339,1009), XSPR_MASK, GEKKO,	0,		{RT}},
 {"mfdbcr0",	XSPR(31,339,1010), XSPR_MASK, PPC405,	0,		{RT}},
+{"mfiabr",	XSPR(31,339,1010), XSPR_MASK, GEKKO,	0,		{RT}},
+{"mfhid4",	XSPR(31,339,1011), XSPR_MASK, BROADWAY,	0,		{RT}},
 {"mfdbdr",	XSPR(31,339,1011), XSPR_MASK, TITAN,	0,		{RS}},
 {"mfiac1",	XSPR(31,339,1012), XSPR_MASK, PPC403,	0,		{RT}},
 {"mfiac2",	XSPR(31,339,1013), XSPR_MASK, PPC403,	0,		{RT}},
+{"mfdabr",	XSPR(31,339,1013), XSPR_MASK, PPC750,	0,		{RT}},
 {"mfdac1",	XSPR(31,339,1014), XSPR_MASK, PPC403,	0,		{RT}},
 {"mfdac2",	XSPR(31,339,1015), XSPR_MASK, PPC403,	0,		{RT}},
 {"mfl2cr",	XSPR(31,339,1017), XSPR_MASK, PPC750,	0,		{RT}},
@@ -6073,9 +6165,9 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"yield",	0x7f7bdb78,	0xffffffff,  POWER7,	0,		{0}},
 {"mdoio",	0x7fbdeb78,	0xffffffff,  POWER7,	0,		{0}},
 {"mdoom",	0x7fdef378,	0xffffffff,  POWER7,	0,		{0}},
-{"mr",		XRC(31,444,0),	X_MASK,	     COM,	0,		{RA, RS, RBS}},
+{"mr",		XRC(31,444,0),	X_MASK,	     COM,	0,		{RA, RSB}},
 {"or",		XRC(31,444,0),	X_MASK,	     COM,	0,		{RA, RS, RB}},
-{"mr.",		XRC(31,444,1),	X_MASK,	     COM,	0,		{RA, RS, RBS}},
+{"mr.",		XRC(31,444,1),	X_MASK,	     COM,	0,		{RA, RSB}},
 {"or.",		XRC(31,444,1),	X_MASK,	     COM,	0,		{RA, RS, RB}},
 
 {"mtexisr",	XSPR(31,451, 64), XSPR_MASK, PPC403,	0,		{RS}},
@@ -6230,6 +6322,12 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mtmcsrr0",	XSPR(31,467,570), XSPR_MASK, PPCRFMCI,	0,		{RS}},
 {"mtmcsrr1",	XSPR(31,467,571), XSPR_MASK, PPCRFMCI,	0,		{RS}},
 {"mtmcsr",	XSPR(31,467,572), XSPR_MASK, PPCRFMCI,	0,		{RS}},
+{"mtupmc1",	XSPR(31,467,771), XSPR_MASK, POWER9,	0,		{RS}},
+{"mtupmc2",	XSPR(31,467,772), XSPR_MASK, POWER9,	0,		{RS}},
+{"mtupmc3",	XSPR(31,467,773), XSPR_MASK, POWER9,	0,		{RS}},
+{"mtupmc4",	XSPR(31,467,774), XSPR_MASK, POWER9,	0,		{RS}},
+{"mtupmc5",	XSPR(31,467,775), XSPR_MASK, POWER9,	0,		{RS}},
+{"mtupmc6",	XSPR(31,467,776), XSPR_MASK, POWER9,	0,		{RS}},
 {"mtivndx",	XSPR(31,467,880), XSPR_MASK, TITAN,	0,		{RS}},
 {"mtdvndx",	XSPR(31,467,881), XSPR_MASK, TITAN,	0,		{RS}},
 {"mtivlim",	XSPR(31,467,882), XSPR_MASK, TITAN,	0,		{RS}},
@@ -6238,6 +6336,11 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mtccr1",	XSPR(31,467,888), XSPR_MASK, TITAN,	0,		{RS}},
 {"mtppr",	XSPR(31,467,896), XSPR_MASK, POWER7,	0,		{RS}},
 {"mtppr32",	XSPR(31,467,898), XSPR_MASK, POWER7,	0,		{RS}},
+{"mtgqr",	XSPR(31,467,912), XSPRGQR_MASK, PPCPS,	0,		{SPRGQR, RS}},
+{"mthid2",	XSPR(31,467,920), XSPR_MASK, GEKKO,	0,		{RS}},
+{"mtwpar",	XSPR(31,467,921), XSPR_MASK, GEKKO,	0,		{RS}},
+{"mtdmau",	XSPR(31,467,922), XSPR_MASK, GEKKO,	0,		{RS}},
+{"mtdmal",	XSPR(31,467,923), XSPR_MASK, GEKKO,	0,		{RS}},
 {"mtummcr0",	XSPR(31,467,936), XSPR_MASK, PPC750,	0,		{RS}},
 {"mtupmc1",	XSPR(31,467,937), XSPR_MASK, PPC750,	0,		{RS}},
 {"mtupmc2",	XSPR(31,467,938), XSPR_MASK, PPC750,	0,		{RS}},
@@ -6278,10 +6381,15 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"mtsrr2",	XSPR(31,467,990), XSPR_MASK, PPC403,	0,		{RS}},
 {"mtsrr3",	XSPR(31,467,991), XSPR_MASK, PPC403,	0,		{RS}},
 {"mtdbsr",	XSPR(31,467,1008), XSPR_MASK, PPC403,	0,		{RS}},
-{"mtdbdr",	XSPR(31,467,1011), XSPR_MASK, TITAN,	0,		{RS}},
+{"mthid0",	XSPR(31,467,1008), XSPR_MASK, GEKKO,	0,		{RS}},
+{"mthid1",	XSPR(31,467,1009), XSPR_MASK, GEKKO,	0,		{RS}},
 {"mtdbcr0",	XSPR(31,467,1010), XSPR_MASK, PPC405,	0,		{RS}},
+{"mtiabr",	XSPR(31,467,1010), XSPR_MASK, GEKKO,	0,		{RS}},
+{"mthid4",	XSPR(31,467,1011), XSPR_MASK, BROADWAY,	0,		{RS}},
+{"mtdbdr",	XSPR(31,467,1011), XSPR_MASK, TITAN,	0,		{RS}},
 {"mtiac1",	XSPR(31,467,1012), XSPR_MASK, PPC403,	0,		{RS}},
 {"mtiac2",	XSPR(31,467,1013), XSPR_MASK, PPC403,	0,		{RS}},
+{"mtdabr",	XSPR(31,467,1013), XSPR_MASK, PPC750,	0,		{RS}},
 {"mtdac1",	XSPR(31,467,1014), XSPR_MASK, PPC403,	0,		{RS}},
 {"mtdac2",	XSPR(31,467,1015), XSPR_MASK, PPC403,	0,		{RS}},
 {"mtl2cr",	XSPR(31,467,1017), XSPR_MASK, PPC750,	0,		{RS}},
@@ -7052,9 +7160,9 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"xxsel",	XX4(60,3),	XX4_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6, XC6}},
 {"xssubsp",	XX3(60,8),	XX3_MASK,    PPCVSX2,	PPCVLE,		{XT6, XA6, XB6}},
 {"xsmaddmsp",	XX3(60,9),	XX3_MASK,    PPCVSX2,	PPCVLE,		{XT6, XA6, XB6}},
-{"xxspltd",	XX3(60,10),	XX3DM_MASK,  PPCVSX,	PPCVLE,		{XT6, XA6, XB6S, DMEX}},
+{"xxspltd",	XX3(60,10),	XX3DM_MASK,  PPCVSX,	PPCVLE,		{XT6, XAB6, DMEX}},
 {"xxmrghd",	XX3(60,10),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
-{"xxswapd",	XX3(60,10)|(2<<8), XX3_MASK, PPCVSX,	PPCVLE,		{XT6, XA6, XB6S}},
+{"xxswapd",	XX3(60,10)|(2<<8), XX3_MASK, PPCVSX,	PPCVLE,		{XT6, XAB6}},
 {"xxmrgld",	XX3(60,10)|(3<<8), XX3_MASK, PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xxpermdi",	XX3(60,10),	XX3DM_MASK,  PPCVSX,	PPCVLE,		{XT6, XA6, XB6, DM}},
 {"xscmpgtdp",	XX3(60,11),	XX3_MASK,    PPCVSX3,	PPCVLE,		{XT6, XA6, XB6}},
@@ -7202,7 +7310,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"xvnmaddmsp",	XX3(60,201),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xvcvspsxds",	XX2(60,408),	XX2_MASK,    PPCVSX,	PPCVLE,		{XT6, XB6}},
 {"xvabssp",	XX2(60,409),	XX2_MASK,    PPCVSX,	PPCVLE,		{XT6, XB6}},
-{"xvmovsp",	XX3(60,208),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6S}},
+{"xvmovsp",	XX3(60,208),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XAB6}},
 {"xvcpsgnsp",	XX3(60,208),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xvnmsubasp",	XX3(60,209),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xvcvuxdsp",	XX2(60,424),	XX2_MASK,    PPCVSX,	PPCVLE,		{XT6, XB6}},
@@ -7231,7 +7339,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"xvcvhpsp",	XX2VA(60,475,24),XX2_MASK,   PPCVSX3,	PPCVLE,		{XT6, XB6}},
 {"xvcvsphp",	XX2VA(60,475,25),XX2_MASK,   PPCVSX3,	PPCVLE,		{XT6, XB6}},
 {"xxbrq",	XX2VA(60,475,31),XX2_MASK,   PPCVSX3,	PPCVLE,		{XT6, XB6}},
-{"xvmovdp",	XX3(60,240),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6S}},
+{"xvmovdp",	XX3(60,240),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XAB6}},
 {"xvcpsgndp",	XX3(60,240),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xvnmsubadp",	XX3(60,241),	XX3_MASK,    PPCVSX,	PPCVLE,		{XT6, XA6, XB6}},
 {"xvcvuxddp",	XX2(60,488),	XX2_MASK,    PPCVSX,	PPCVLE,		{XT6, XB6}},
@@ -7551,7 +7659,7 @@ const struct powerpc_opcode powerpc_opcodes[] = {
 {"fcfidu.",	XRC(63,974,1),	XRA_MASK, POWER7|PPCA2,	PPCVLE,		{FRT, FRB}},
 };
 
-const int powerpc_num_opcodes =
+const unsigned int powerpc_num_opcodes =
   sizeof (powerpc_opcodes) / sizeof (powerpc_opcodes[0]);
 
 /* The VLE opcode table.
@@ -8419,9 +8527,9 @@ const struct powerpc_opcode vle_opcodes[] = {
 {"e_cmphl",	X(31,46),	X_MASK,		PPCVLE,	0,		{CRD, RA, RB}},
 {"e_crandc",	XL(31,129),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
 {"e_crnand",	XL(31,225),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
-{"e_crnot",	XL(31,33),	XL_MASK,	PPCVLE,	0,		{BT, BA, BBA}},
+{"e_crnot",	XL(31,33),	XL_MASK,	PPCVLE,	0,		{BT, BAB}},
 {"e_crnor",	XL(31,33),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
-{"e_crclr",	XL(31,193),	XL_MASK,	PPCVLE,	0,		{BT, BAT, BBA}},
+{"e_crclr",	XL(31,193),	XL_MASK,	PPCVLE,	0,		{BTAB}},
 {"e_crxor",	XL(31,193),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
 {"e_mcrf",	XL(31,16),	XL_MASK,	PPCVLE,	0,		{CRD, CR}},
 {"e_slwi",	EX(31,112),	EX_MASK,	PPCVLE,	0,		{RA, RS, SH}},
@@ -8432,7 +8540,7 @@ const struct powerpc_opcode vle_opcodes[] = {
 {"e_rlw",	EX(31,560),	EX_MASK,	PPCVLE,	0,		{RA, RS, RB}},
 {"e_rlw.",	EX(31,561),	EX_MASK,	PPCVLE,	0,		{RA, RS, RB}},
 
-{"e_crset",	XL(31,289),	XL_MASK,	PPCVLE,	0,		{BT, BAT, BBA}},
+{"e_crset",	XL(31,289),	XL_MASK,	PPCVLE,	0,		{BTAB}},
 {"e_creqv",	XL(31,289),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
 
 {"e_rlwi",	EX(31,624),	EX_MASK,	PPCVLE,	0,		{RA, RS, SH}},
@@ -8440,7 +8548,7 @@ const struct powerpc_opcode vle_opcodes[] = {
 
 {"e_crorc",	XL(31,417),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
 
-{"e_crmove",	XL(31,449),	XL_MASK,	PPCVLE,	0,		{BT, BA, BBA}},
+{"e_crmove",	XL(31,449),	XL_MASK,	PPCVLE,	0,		{BT, BAB}},
 {"e_cror",	XL(31,449),	XL_MASK,	PPCVLE,	0,		{BT, BA, BB}},
 
 {"mtmas1",	XSPR(31,467,625), XSPR_MASK,	PPCVLE,	0,		{RS}},
@@ -8479,7 +8587,7 @@ const struct powerpc_opcode vle_opcodes[] = {
 {"se_bl",	BD8(58,0,1),	BD8_MASK,	PPCVLE,	0,		{B8}},
 };
 
-const int vle_num_opcodes =
+const unsigned int vle_num_opcodes =
   sizeof (vle_opcodes) / sizeof (vle_opcodes[0]);
 
 /* The macro table.  This is only used by the assembler.  */
@@ -9370,5 +9478,5 @@ const struct powerpc_opcode spe2_opcodes[] = {
 {"evavgdsr",		  VX (4, 1663),		VX_MASK,		PPCSPE2, 0, {RD, RA, RB}},
 };
 
-const int spe2_num_opcodes =
+const unsigned int spe2_num_opcodes =
   sizeof (spe2_opcodes) / sizeof (spe2_opcodes[0]);

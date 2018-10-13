@@ -1,4 +1,4 @@
-# Copyright 2011-2017 Free Software Foundation, Inc.
+# Copyright 2011-2018 Free Software Foundation, Inc.
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -104,9 +104,9 @@ proc test_fast_tracepoints {} {
 
     set fourgood 0
 
-    gdb_test "break begin" ".*" ""
+    gdb_breakpoint "begin" qualified
 
-    gdb_test "break end" ".*" ""
+    gdb_breakpoint "end" qualified
 
     gdb_test "print gdb_agent_gdb_trampoline_buffer_error" ".*" ""
 

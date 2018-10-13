@@ -1,6 +1,6 @@
 /* Generate a core file for the inferior process.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -151,7 +151,7 @@ gcore_command (const char *args, int from_tty)
   else
     {
       /* Default corefile name is "core.PID".  */
-      corefilename.reset (xstrprintf ("core.%d", ptid_get_pid (inferior_ptid)));
+      corefilename.reset (xstrprintf ("core.%d", inferior_ptid.pid ()));
     }
 
   if (info_verbose)
@@ -611,7 +611,8 @@ _initialize_gcore (void)
 {
   add_com ("generate-core-file", class_files, gcore_command, _("\
 Save a core file with the current state of the debugged process.\n\
-Argument is optional filename.  Default filename is 'core.<process_id>'."));
+Usage: generate-core-file [FILENAME]\n\
+Argument is optional filename.  Default filename is 'core.PROCESS_ID'."));
 
   add_com_alias ("gcore", "generate-core-file", class_files, 1);
 }

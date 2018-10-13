@@ -1,3 +1,18 @@
+2018-10-05  Stafford Horne  <shorne@gmail.com>
+
+	* cgen-ops.h (ADDCFDI): New function, add carry flag DI variant.
+	(ADDOFDI): New function, add overflow flag DI variant.
+	(SUBCFDI): New function, subtract carry flag DI variant.
+	(SUBOFDI): New function, subtract overflow flag DI variant.
+
+2018-09-28  Компан, Вячеслав Олегович  <kompan.vo@phystech.edu>
+
+	* sim-core.h (sim_cpu_core): Rename cpu_core.xor to
+	cpu_core.byte_xor.
+	* sim-core.c (sim_core_set_xor): Likewise.
+	(sim_core_xor_read_buffer): Likewise.
+	(sim_core_xor_write_buffer): Likewise.
+
 2017-12-12  Peter Gavin  <pgavin@gmail.com>
 	    Stafford Horne  <shorne@gmail.com>
 

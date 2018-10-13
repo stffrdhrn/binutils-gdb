@@ -1,5 +1,5 @@
 /* Target-machine dependent code for Nios II, for GDB.
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
    Contributed by Peter Brookes (pbrookes@altera.com)
    and Andrew Draper (adraper@altera.com).
    Contributed by Mentor Graphics, Inc.
@@ -207,13 +207,13 @@ nios2_extract_return_value (struct gdbarch *gdbarch, struct type *valtype,
 
   /* Return values of up to 8 bytes are returned in $r2 $r3.  */
   if (len <= register_size (gdbarch, NIOS2_R2_REGNUM))
-    regcache_cooked_read (regcache, NIOS2_R2_REGNUM, valbuf);
+    regcache->cooked_read (NIOS2_R2_REGNUM, valbuf);
   else
     {
       gdb_assert (len <= (register_size (gdbarch, NIOS2_R2_REGNUM)
 			  + register_size (gdbarch, NIOS2_R3_REGNUM)));
-      regcache_cooked_read (regcache, NIOS2_R2_REGNUM, valbuf);
-      regcache_cooked_read (regcache, NIOS2_R3_REGNUM, valbuf + 4);
+      regcache->cooked_read (NIOS2_R2_REGNUM, valbuf);
+      regcache->cooked_read (NIOS2_R3_REGNUM, valbuf + 4);
     }
 }
 
@@ -228,13 +228,13 @@ nios2_store_return_value (struct gdbarch *gdbarch, struct type *valtype,
 
   /* Return values of up to 8 bytes are returned in $r2 $r3.  */
   if (len <= register_size (gdbarch, NIOS2_R2_REGNUM))
-    regcache_cooked_write (regcache, NIOS2_R2_REGNUM, valbuf);
+    regcache->cooked_write (NIOS2_R2_REGNUM, valbuf);
   else
     {
       gdb_assert (len <= (register_size (gdbarch, NIOS2_R2_REGNUM)
 			  + register_size (gdbarch, NIOS2_R3_REGNUM)));
-      regcache_cooked_write (regcache, NIOS2_R2_REGNUM, valbuf);
-      regcache_cooked_write (regcache, NIOS2_R3_REGNUM, valbuf + 4);
+      regcache->cooked_write (NIOS2_R2_REGNUM, valbuf);
+      regcache->cooked_write (NIOS2_R3_REGNUM, valbuf + 4);
     }
 }
 
@@ -1202,8 +1202,6 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
   struct reg_value *value = cache->reg_value;
   struct reg_value temp_value[NIOS2_NUM_REGS];
 
-  int i;
-
   /* Save the starting PC so we can correct the pc after running
      through the prolog, using symbol info.  */
   CORE_ADDR pc = start_pc;
@@ -1285,7 +1283,7 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 
 	      /* If any registers were saved on the stack before then
 		 we can't backtrace into them now.  */
-	      for (i = 0 ; i < NIOS2_NUM_REGS ; i++)
+	      for (int i = 0 ; i < NIOS2_NUM_REGS ; i++)
 		{
 		  if (cache->reg_saved[i].basereg == NIOS2_SP_REGNUM)
 		    cache->reg_saved[i].basereg = -1;
@@ -1416,7 +1414,6 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 	  /* PUSH.N {reglist}, adjust
 	     or
 	     STWM {reglist}, --(SP)[, writeback] */
-	  int i;
 	  int off = 0;
 
 	  if (ra != NIOS2_SP_REGNUM || id != 0)
@@ -1424,7 +1421,7 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 	       part of the prologue.  */
 	    break;
 
-	  for (i = 31; i >= 0; i--)
+	  for (int i = 31; i >= 0; i--)
 	    if (reglist & (1 << i))
 	      {
 		int orig = value[i].reg;
@@ -1469,9 +1466,9 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 		 if ra has been stored into r8 beforehand and if it's
 		 before the stack adjust.
 		 Note mcount corrupts r2-r3, r9-r15 & ra.  */
-	      for (i = 2 ; i <= 3 ; i++)
+	      for (int i = 2 ; i <= 3 ; i++)
 		value[i].reg = -1;
-	      for (i = 9 ; i <= 15 ; i++)
+	      for (int i = 9 ; i <= 15 ; i++)
 		value[i].reg = -1;
 	      value[NIOS2_RA_REGNUM].reg = -1;
 
@@ -1621,14 +1618,14 @@ nios2_analyze_prologue (struct gdbarch *gdbarch, const CORE_ADDR start_pc,
 
   /* Adjust all the saved registers such that they contain addresses
      instead of offsets.  */
-  for (i = 0; i < NIOS2_NUM_REGS; i++)
+  for (int i = 0; i < NIOS2_NUM_REGS; i++)
     if (cache->reg_saved[i].basereg == NIOS2_SP_REGNUM)
       {
 	cache->reg_saved[i].basereg = NIOS2_Z_REGNUM;
 	cache->reg_saved[i].addr += frame_high;
       }
 
-  for (i = 0; i < NIOS2_NUM_REGS; i++)
+  for (int i = 0; i < NIOS2_NUM_REGS; i++)
     if (cache->reg_saved[i].basereg == NIOS2_GP_REGNUM)
       {
 	CORE_ADDR gp = get_frame_register_unsigned (this_frame,
@@ -1818,9 +1815,8 @@ nios2_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 {
   int argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset = 0;
-  CORE_ADDR func_addr = find_function_addr (function, NULL);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
 
   /* Set the return address register to point to the entry point of
@@ -1829,8 +1825,8 @@ nios2_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
   /* Now make space on the stack for the args.  */
   for (argnum = 0; argnum < nargs; argnum++)
-    len += align_up (TYPE_LENGTH (value_type (args[argnum])), 4);
-  sp -= len;
+    arg_space += align_up (TYPE_LENGTH (value_type (args[argnum])), 4);
+  sp -= arg_space;
 
   /* Initialize the register pointer.  */
   argreg = NIOS2_FIRST_ARGREG;
@@ -2231,6 +2227,23 @@ nios2_get_longjmp_target (struct frame_info *frame, CORE_ADDR *pc)
   return 1;
 }
 
+/* Implement the type_align gdbarch function.  */
+
+static ULONGEST
+nios2_type_align (struct gdbarch *gdbarch, struct type *type)
+{
+  type = check_typedef (type);
+  return std::min<ULONGEST> (4, TYPE_LENGTH (type));
+}
+
+/* Implement the gcc_target_options gdbarch method.  */
+static char *
+nios2_gcc_target_options (struct gdbarch *gdbarch)
+{
+  /* GCC doesn't know "-m32".  */
+  return NULL;
+}
+
 /* Initialize the Nios II gdbarch.  */
 
 static struct gdbarch *
@@ -2294,6 +2307,8 @@ nios2_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   set_gdbarch_float_bit (gdbarch, 32);
   set_gdbarch_double_bit (gdbarch, 64);
 
+  set_gdbarch_type_align (gdbarch, nios2_type_align);
+
   set_gdbarch_float_format (gdbarch, floatformats_ieee_single);
   set_gdbarch_double_format (gdbarch, floatformats_ieee_double);
 
@@ -2333,6 +2348,9 @@ nios2_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
   /* Single stepping.  */
   set_gdbarch_software_single_step (gdbarch, nios2_software_single_step);
+
+  /* Target options for compile.  */
+  set_gdbarch_gcc_target_options (gdbarch, nios2_gcc_target_options);
 
   /* Hook in ABI-specific overrides, if they have been registered.  */
   gdbarch_init_osabi (info, gdbarch);

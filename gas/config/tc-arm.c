@@ -1,5 +1,5 @@
 /* tc-arm.c -- Assemble for the ARM
-   Copyright (C) 1994-2017 Free Software Foundation, Inc.
+   Copyright (C) 1994-2018 Free Software Foundation, Inc.
    Contributed by Richard Earnshaw (rwe@pegasus.esprit.ec.org)
 	Modified by David Taylor (dtaylor@armltd.co.uk)
 	Cirrus coprocessor mods by Aldy Hernandez (aldyh@redhat.com)
@@ -75,6 +75,9 @@ static struct
   unsigned	  sp_restored:1;
 } unwind;
 
+/* Whether --fdpic was given.  */
+static int arm_fdpic;
+
 #endif /* OBJ_ELF */
 
 /* Results from operand parsing worker functions.  */
@@ -123,7 +126,12 @@ enum arm_float_abi
 
 #define streq(a, b)	      (strcmp (a, b) == 0)
 
+/* Current set of feature bits available (CPU+FPU).  Different from
+   selected_cpu + selected_fpu in case of autodetection since the CPU
+   feature bits are then all set.  */
 static arm_feature_set cpu_variant;
+/* Feature bits used in each execution state.  Used to set build attribute
+   (in particular Tag_*_ISA_use) in CPU autodetection mode.  */
 static arm_feature_set arm_arch_used;
 static arm_feature_set thumb_arch_used;
 
@@ -143,17 +151,24 @@ bfd_boolean codecomposer_syntax = FALSE;
 /* Variables that we set while parsing command-line options.  Once all
    options have been read we re-process these values to set the real
    assembly flags.  */
-static const arm_feature_set *  legacy_cpu = NULL;
-static const arm_feature_set *  legacy_fpu = NULL;
 
-static const arm_feature_set *  mcpu_cpu_opt = NULL;
-static arm_feature_set *        dyn_mcpu_ext_opt = NULL;
-static const arm_feature_set *  mcpu_fpu_opt = NULL;
-static const arm_feature_set *  march_cpu_opt = NULL;
-static arm_feature_set *        dyn_march_ext_opt = NULL;
-static const arm_feature_set *  march_fpu_opt = NULL;
-static const arm_feature_set *  mfpu_opt = NULL;
-static const arm_feature_set *  object_arch = NULL;
+/* CPU and FPU feature bits set for legacy CPU and FPU options (eg. -marm1
+   instead of -mcpu=arm1).  */
+static const arm_feature_set *legacy_cpu = NULL;
+static const arm_feature_set *legacy_fpu = NULL;
+
+/* CPU, extension and FPU feature bits selected by -mcpu.  */
+static const arm_feature_set *mcpu_cpu_opt = NULL;
+static arm_feature_set *mcpu_ext_opt = NULL;
+static const arm_feature_set *mcpu_fpu_opt = NULL;
+
+/* CPU, extension and FPU feature bits selected by -march.  */
+static const arm_feature_set *march_cpu_opt = NULL;
+static arm_feature_set *march_ext_opt = NULL;
+static const arm_feature_set *march_fpu_opt = NULL;
+
+/* Feature bits selected by -mfpu.  */
+static const arm_feature_set *mfpu_opt = NULL;
 
 /* Constants for known architecture features.  */
 static const arm_feature_set fpu_default = FPU_DEFAULT;
@@ -241,6 +256,10 @@ static const arm_feature_set arm_ext_v8_2 =
   ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_2A);
 static const arm_feature_set arm_ext_v8_3 =
   ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8_3A);
+static const arm_feature_set arm_ext_sb =
+  ARM_FEATURE_CORE_HIGH (ARM_EXT2_SB);
+static const arm_feature_set arm_ext_predres =
+  ARM_FEATURE_CORE_HIGH (ARM_EXT2_PREDRES);
 
 static const arm_feature_set arm_arch_any = ARM_ANY;
 #ifdef OBJ_ELF
@@ -302,8 +321,20 @@ static const arm_feature_set fpu_neon_ext_dotprod =
   ARM_FEATURE_COPROC (FPU_NEON_EXT_DOTPROD);
 
 static int mfloat_abi_opt = -1;
-/* Record user cpu selection for object attributes.  */
+/* Architecture feature bits selected by the last -mcpu/-march or .cpu/.arch
+   directive.  */
+static arm_feature_set selected_arch = ARM_ARCH_NONE;
+/* Extension feature bits selected by the last -mcpu/-march or .arch_extension
+   directive.  */
+static arm_feature_set selected_ext = ARM_ARCH_NONE;
+/* Feature bits selected by the last -mcpu/-march or by the combination of the
+   last .cpu/.arch directive .arch_extension directives since that
+   directive.  */
 static arm_feature_set selected_cpu = ARM_ARCH_NONE;
+/* FPU feature bits selected by the last -mfpu or .fpu directive.  */
+static arm_feature_set selected_fpu = FPU_NONE;
+/* Feature bits selected by the last .object_arch directive.  */
+static arm_feature_set selected_object_arch = ARM_ARCH_NONE;
 /* Must be long enough to hold any of the names in arm_cpus.  */
 static char selected_cpu_name[20];
 
@@ -1016,7 +1047,6 @@ static int
 my_get_expression (expressionS * ep, char ** str, int prefix_mode)
 {
   char * save_in;
-  segT	 seg;
 
   /* In unified syntax, all prefixes are optional.  */
   if (unified_syntax)
@@ -1048,7 +1078,7 @@ my_get_expression (expressionS * ep, char ** str, int prefix_mode)
   save_in = input_line_pointer;
   input_line_pointer = *str;
   in_my_get_expression = TRUE;
-  seg = expression (ep);
+  expression (ep);
   in_my_get_expression = FALSE;
 
   if (ep->X_op == O_illegal || ep->X_op == O_absent)
@@ -1061,22 +1091,6 @@ my_get_expression (expressionS * ep, char ** str, int prefix_mode)
 		      ? _("missing expression") :_("bad expression"));
       return 1;
     }
-
-#ifdef OBJ_AOUT
-  if (seg != absolute_section
-      && seg != text_section
-      && seg != data_section
-      && seg != bss_section
-      && seg != undefined_section)
-    {
-      inst.error = _("bad segment");
-      *str = input_line_pointer;
-      input_line_pointer = save_in;
-      return 1;
-    }
-#else
-  (void) seg;
-#endif
 
   /* Get rid of any bignums now, so that we don't generate an error for which
      we can't establish a line number later on.	 Big numbers are never valid
@@ -4758,7 +4772,7 @@ const pseudo_typeS md_pseudo_table[] =
   {"4byte", cons, 4},
   {"8byte", cons, 8},
   /* These are used for dwarf2.  */
-  { "file", (void (*) (int)) dwarf2_directive_file, 0 },
+  { "file", dwarf2_directive_file, 0 },
   { "loc",  dwarf2_directive_loc,  0 },
   { "loc_mark_labels", dwarf2_directive_loc_mark_labels, 0 },
 #endif
@@ -6160,17 +6174,16 @@ record_feature_use (const arm_feature_set *feature)
     ARM_MERGE_FEATURE_SETS (arm_arch_used, arm_arch_used, *feature);
 }
 
-/* If the given feature available in the selected CPU, mark it as used.
-   Returns TRUE iff feature is available.  */
+/* If the given feature is currently allowed, mark it as used and return TRUE.
+   Return FALSE otherwise.  */
 static bfd_boolean
 mark_feature_used (const arm_feature_set *feature)
 {
-  /* Ensure the option is valid on the current architecture.  */
+  /* Ensure the option is currently allowed.  */
   if (!ARM_CPU_HAS_FEATURE (cpu_variant, *feature))
     return FALSE;
 
-  /* Add the appropriate architecture feature for the barrier option used.
-     */
+  /* Add the appropriate architecture feature for the barrier option used.  */
   record_feature_use (feature);
 
   return TRUE;
@@ -8410,11 +8423,12 @@ do_adr (void)
   inst.reloc.pc_rel = 1;
   inst.reloc.exp.X_add_number -= 8;
 
-  if (inst.reloc.exp.X_op == O_symbol
+  if (support_interwork
+      && inst.reloc.exp.X_op == O_symbol
       && inst.reloc.exp.X_add_symbol != NULL
       && S_IS_DEFINED (inst.reloc.exp.X_add_symbol)
       && THUMB_IS_FUNC (inst.reloc.exp.X_add_symbol))
-    inst.reloc.exp.X_add_number += 1;
+    inst.reloc.exp.X_add_number |= 1;
 }
 
 /* This is a pseudo-op of the form "adrl rd, label" to be converted
@@ -8434,11 +8448,12 @@ do_adrl (void)
   inst.size		       = INSN_SIZE * 2;
   inst.reloc.exp.X_add_number -= 8;
 
-  if (inst.reloc.exp.X_op == O_symbol
+  if (support_interwork
+      && inst.reloc.exp.X_op == O_symbol
       && inst.reloc.exp.X_add_symbol != NULL
       && S_IS_DEFINED (inst.reloc.exp.X_add_symbol)
       && THUMB_IS_FUNC (inst.reloc.exp.X_add_symbol))
-    inst.reloc.exp.X_add_number += 1;
+    inst.reloc.exp.X_add_number |= 1;
 }
 
 static void
@@ -8610,7 +8625,8 @@ do_bx (void)
   /* Output R_ARM_V4BX relocations if is an EABI object that looks like
      it is for ARMv4t or earlier.  */
   want_reloc = !ARM_CPU_HAS_FEATURE (selected_cpu, arm_ext_v5);
-  if (object_arch && !ARM_CPU_HAS_FEATURE (*object_arch, arm_ext_v5))
+  if (!ARM_FEATURE_ZERO (selected_object_arch)
+      && !ARM_CPU_HAS_FEATURE (selected_object_arch, arm_ext_v5))
       want_reloc = TRUE;
 
 #ifdef OBJ_ELF
@@ -8907,6 +8923,11 @@ encode_ldmstm(int from_push_pop_mnem)
   if (from_push_pop_mnem && one_reg >= 0)
     {
       int is_push = (inst.instruction & A_PUSH_POP_OP_MASK) == A1_OPCODE_PUSH;
+
+      if (is_push && one_reg == 13 /* SP */)
+	/* PR 22483: The A2 encoding cannot be used when
+	   pushing the stack pointer as this is UNPREDICTABLE.  */
+	return;
 
       inst.instruction &= A_COND_MASK;
       inst.instruction |= is_push ? A2_OPCODE_PUSH : A2_OPCODE_POP;
@@ -9238,7 +9259,7 @@ do_mrs (void)
   if (inst.operands[1].isreg)
     {
       br = inst.operands[1].reg;
-      if (((br & 0x200) == 0) && ((br & 0xf0000) != 0xf000))
+      if (((br & 0x200) == 0) && ((br & 0xf0000) != 0xf0000))
 	as_bad (_("bad register for mrs"));
     }
   else
@@ -11267,6 +11288,12 @@ do_t_clz (void)
   inst.instruction |= Rd << 8;
   inst.instruction |= Rm << 16;
   inst.instruction |= Rm;
+}
+
+static void
+do_t_csdb (void)
+{
+  set_it_insn_type (OUTSIDE_IT_INSN);
 }
 
 static void
@@ -16669,7 +16696,26 @@ do_neon_mov (void)
     case NS_HI:
     case NS_FI:  /* case 10 (fconsts).  */
       ldconst = "fconsts";
-      encode_fconstd:
+    encode_fconstd:
+      if (!inst.operands[1].immisfloat)
+	{
+	  unsigned new_imm;
+	  /* Immediate has to fit in 8 bits so float is enough.  */
+	  float imm = (float) inst.operands[1].imm;
+	  memcpy (&new_imm, &imm, sizeof (float));
+	  /* But the assembly may have been written to provide an integer
+	     bit pattern that equates to a float, so check that the
+	     conversion has worked.  */
+	  if (is_quarter_float (new_imm))
+	    {
+	      if (is_quarter_float (inst.operands[1].imm))
+		as_warn (_("immediate constant is valid both as a bit-pattern and a floating point value (using the fp value)"));
+
+	      inst.operands[1].imm = new_imm;
+	      inst.operands[1].immisfloat = 1;
+	    }
+	}
+
       if (is_quarter_float (inst.operands[1].imm))
 	{
 	  inst.operands[1].imm = neon_qfloat_bits (inst.operands[1].imm);
@@ -16760,6 +16806,20 @@ do_neon_movhf (void)
 
   constraint (!ARM_CPU_HAS_FEATURE (cpu_variant, fpu_vfp_ext_armv8),
 	      _(BAD_FPU));
+
+  if (inst.cond != COND_ALWAYS)
+    {
+      if (thumb_mode)
+	{
+	  as_warn (_("ARMv8.2 scalar fp16 instruction cannot be conditional,"
+		     " the behaviour is UNPREDICTABLE"));
+	}
+      else
+	{
+	  inst.error = BAD_COND;
+	  return;
+	}
+    }
 
   do_vfp_sp_monadic ();
 
@@ -18548,12 +18608,13 @@ it_fsm_post_encode (void)
   if (now_it.insn_cond
       && !now_it.warn_deprecated
       && warn_on_deprecated
-      && ARM_CPU_HAS_FEATURE (cpu_variant, arm_ext_v8))
+      && ARM_CPU_HAS_FEATURE (cpu_variant, arm_ext_v8)
+      && !ARM_CPU_HAS_FEATURE (cpu_variant, arm_ext_m))
     {
       if (inst.instruction >= 0x10000)
 	{
 	  as_tsktsk (_("IT blocks containing 32-bit Thumb instructions are "
-		     "deprecated in ARMv8"));
+		     "performance deprecated in ARMv8-A and ARMv8-R"));
 	  now_it.warn_deprecated = TRUE;
 	}
       else
@@ -18564,9 +18625,10 @@ it_fsm_post_encode (void)
 	    {
 	      if ((inst.instruction & p->mask) == p->pattern)
 		{
-		  as_tsktsk (_("IT blocks containing 16-bit Thumb instructions "
-			     "of the following class are deprecated in ARMv8: "
-			     "%s"), p->description);
+		  as_tsktsk (_("IT blocks containing 16-bit Thumb "
+			       "instructions of the following class are "
+			       "performance deprecated in ARMv8-A and "
+			       "ARMv8-R: %s"), p->description);
 		  now_it.warn_deprecated = TRUE;
 		  break;
 		}
@@ -18578,7 +18640,8 @@ it_fsm_post_encode (void)
       if (now_it.block_length > 1)
 	{
 	  as_tsktsk (_("IT blocks containing more than one conditional "
-		     "instruction are deprecated in ARMv8"));
+		     "instruction are performance deprecated in ARMv8-A and "
+		     "ARMv8-R"));
 	  now_it.warn_deprecated = TRUE;
 	}
     }
@@ -19265,7 +19328,16 @@ static struct reloc_entry reloc_names[] =
   { "tlscall", BFD_RELOC_ARM_TLS_CALL},
 	{ "TLSCALL", BFD_RELOC_ARM_TLS_CALL},
   { "tlsdescseq", BFD_RELOC_ARM_TLS_DESCSEQ},
-	{ "TLSDESCSEQ", BFD_RELOC_ARM_TLS_DESCSEQ}
+	{ "TLSDESCSEQ", BFD_RELOC_ARM_TLS_DESCSEQ},
+  { "gotfuncdesc", BFD_RELOC_ARM_GOTFUNCDESC },
+	{ "GOTFUNCDESC", BFD_RELOC_ARM_GOTFUNCDESC },
+  { "gotofffuncdesc", BFD_RELOC_ARM_GOTOFFFUNCDESC },
+	{ "GOTOFFFUNCDESC", BFD_RELOC_ARM_GOTOFFFUNCDESC },
+  { "funcdesc", BFD_RELOC_ARM_FUNCDESC },
+	{ "FUNCDESC", BFD_RELOC_ARM_FUNCDESC },
+   { "tlsgd_fdpic", BFD_RELOC_ARM_TLS_GD32_FDPIC },      { "TLSGD_FDPIC", BFD_RELOC_ARM_TLS_GD32_FDPIC },
+   { "tlsldm_fdpic", BFD_RELOC_ARM_TLS_LDM32_FDPIC },    { "TLSLDM_FDPIC", BFD_RELOC_ARM_TLS_LDM32_FDPIC },
+   { "gottpoff_fdpic", BFD_RELOC_ARM_TLS_IE32_FDPIC },   { "GOTTPOFF_FDIC", BFD_RELOC_ARM_TLS_IE32_FDPIC },
 };
 #endif
 
@@ -19398,6 +19470,15 @@ static struct asm_barrier_opt barrier_opt_names[] =
 
 #define C3(mnem, op, nops, ops, ae)	\
   { #mnem, OPS##nops ops, OT_cinfix3, 0x##op, 0x0, ARM_VARIANT, 0, do_##ae, NULL }
+
+/* Thumb-only variants of TCE and TUE.  */
+#define ToC(mnem, top, nops, ops, te) \
+  { mnem, OPS##nops ops, OT_csuffix, 0x0, 0x##top, 0, THUMB_VARIANT, NULL, \
+    do_##te }
+
+#define ToU(mnem, top, nops, ops, te) \
+  { mnem, OPS##nops ops, OT_unconditional, 0x0, 0x##top, 0, THUMB_VARIANT, \
+    NULL, do_##te }
 
 /* Legacy mnemonics that always have conditional infix after the third
    character.  */
@@ -19979,6 +20060,17 @@ static const struct asm_opcode insns[] =
  TC3("ldrsbt",	03000d0, f9100e00, 2, (RRnpc_npcsp, ADDR), ldsttv4, t_ldstt),
  TC3("strht",	02000b0, f8200e00, 2, (RRnpc_npcsp, ADDR), ldsttv4, t_ldstt),
 
+#undef  ARM_VARIANT
+#define ARM_VARIANT    & arm_ext_v3
+#undef  THUMB_VARIANT
+#define THUMB_VARIANT  & arm_ext_v6t2
+
+ TUE("csdb",	320f014, f3af8014, 0, (), noargs, t_csdb),
+ TUF("ssbb",	57ff040, f3bf8f40, 0, (), noargs, t_csdb),
+ TUF("pssbb",	57ff044, f3bf8f44, 0, (), noargs, t_csdb),
+
+#undef  ARM_VARIANT
+#define ARM_VARIANT    & arm_ext_v6t2
 #undef  THUMB_VARIANT
 #define THUMB_VARIANT  & arm_ext_v6t2_v8m
  TCE("movw",	3000000, f2400000, 2, (RRnpc, HALF),		    mov16, t_mov16),
@@ -21428,25 +21520,40 @@ static const struct asm_opcode insns[] =
  cCE("cfmadda32", e200600, 4, (RMAX, RMAX, RMFX, RMFX), mav_quad),
  cCE("cfmsuba32", e300600, 4, (RMAX, RMAX, RMFX, RMFX), mav_quad),
 
+ /* ARMv8.5-A instructions.  */
+#undef  ARM_VARIANT
+#define ARM_VARIANT   & arm_ext_sb
+#undef  THUMB_VARIANT
+#define THUMB_VARIANT & arm_ext_sb
+ TUF("sb", 57ff070, f3bf8f70, 0, (), noargs, noargs),
+
+#undef  ARM_VARIANT
+#define ARM_VARIANT   & arm_ext_predres
+#undef  THUMB_VARIANT
+#define THUMB_VARIANT & arm_ext_predres
+ CE("cfprctx", e070f93, 1, (RRnpc), rd),
+ CE("dvprctx", e070fb3, 1, (RRnpc), rd),
+ CE("cpprctx", e070ff3, 1, (RRnpc), rd),
+
  /* ARMv8-M instructions.  */
 #undef  ARM_VARIANT
 #define ARM_VARIANT NULL
 #undef  THUMB_VARIANT
 #define THUMB_VARIANT & arm_ext_v8m
- TUE("sg", 0, e97fe97f, 0, (), 0, noargs),
- TUE("blxns", 0, 4784, 1, (RRnpc), 0, t_blx),
- TUE("bxns", 0, 4704, 1, (RRnpc), 0, t_bx),
- TUE("tt", 0, e840f000, 2, (RRnpc, RRnpc), 0, tt),
- TUE("ttt", 0, e840f040, 2, (RRnpc, RRnpc), 0, tt),
- TUE("tta", 0, e840f080, 2, (RRnpc, RRnpc), 0, tt),
- TUE("ttat", 0, e840f0c0, 2, (RRnpc, RRnpc), 0, tt),
+ ToU("sg",    e97fe97f,	0, (),		   noargs),
+ ToC("blxns", 4784,	1, (RRnpc),	   t_blx),
+ ToC("bxns",  4704,	1, (RRnpc),	   t_bx),
+ ToC("tt",    e840f000,	2, (RRnpc, RRnpc), tt),
+ ToC("ttt",   e840f040,	2, (RRnpc, RRnpc), tt),
+ ToC("tta",   e840f080,	2, (RRnpc, RRnpc), tt),
+ ToC("ttat",  e840f0c0,	2, (RRnpc, RRnpc), tt),
 
  /* FP for ARMv8-M Mainline.  Enabled for ARMv8-M Mainline because the
     instructions behave as nop if no VFP is present.  */
 #undef  THUMB_VARIANT
 #define THUMB_VARIANT & arm_ext_v8m_main
- TUEc("vlldm",	0,	 ec300a00, 1, (RRnpc),	rn),
- TUEc("vlstm",	0,	 ec200a00, 1, (RRnpc),	rn),
+ ToC("vlldm", ec300a00, 1, (RRnpc), rn),
+ ToC("vlstm", ec200a00, 1, (RRnpc), rn),
 };
 #undef ARM_VARIANT
 #undef THUMB_VARIANT
@@ -21990,21 +22097,6 @@ valueT
 md_section_align (segT	 segment ATTRIBUTE_UNUSED,
 		  valueT size)
 {
-#if (defined (OBJ_AOUT) || defined (OBJ_MAYBE_AOUT))
-  if (OUTPUT_FLAVOR == bfd_target_aout_flavour)
-    {
-      /* For a.out, force the section size to be aligned.  If we don't do
-	 this, BFD will align it for us, but it will not write out the
-	 final bytes of the section.  This may be a bug in BFD, but it is
-	 easier to fix it here since that is how the other a.out targets
-	 work.  */
-      int align;
-
-      align = bfd_get_section_alignment (stdoutput, segment);
-      size = ((size + (1 << align) - 1) & (-((valueT) 1 << align)));
-    }
-#endif
-
   return size;
 }
 
@@ -23564,12 +23656,14 @@ md_apply_fix (fixS *	fixP,
 	      /* MOV accepts both Thumb2 modified immediate (T2 encoding) and
 		 UINT16 (T3 encoding), MOVW only accepts UINT16.  When
 		 disassembling, MOV is preferred when there is no encoding
-		 overlap.
-		 NOTE: MOV is using ORR opcode under Thumb 2 mode.  */
+		 overlap.  */
 	      if (((newval >> T2_DATA_OP_SHIFT) & 0xf) == T2_OPCODE_ORR
+		  /* NOTE: MOV uses the ORR opcode in Thumb 2 mode
+		     but with the Rn field [19:16] set to 1111.  */
+		  && (((newval >> 16) & 0xf) == 0xf)
 		  && ARM_CPU_HAS_FEATURE (cpu_variant, arm_ext_v6t2_v8m)
 		  && !((newval >> T2_SBIT_SHIFT) & 0x1)
-		  && value >= 0 && value <=0xffff)
+		  && value >= 0 && value <= 0xffff)
 		{
 		  /* Toggle bit[25] to change encoding from T2 to T3.  */
 		  newval ^= 1 << 25;
@@ -23933,6 +24027,21 @@ md_apply_fix (fixS *	fixP,
       S_SET_THREAD_LOCAL (fixP->fx_addsy);
       break;
 
+      /* Same handling as above, but with the arm_fdpic guard.  */
+    case BFD_RELOC_ARM_TLS_GD32_FDPIC:
+    case BFD_RELOC_ARM_TLS_IE32_FDPIC:
+    case BFD_RELOC_ARM_TLS_LDM32_FDPIC:
+      if (arm_fdpic)
+	{
+	  S_SET_THREAD_LOCAL (fixP->fx_addsy);
+	}
+      else
+	{
+	  as_bad_where (fixP->fx_file, fixP->fx_line,
+			_("Relocation supported only in FDPIC mode"));
+	}
+      break;
+
     case BFD_RELOC_ARM_GOT32:
     case BFD_RELOC_ARM_GOTOFF:
       break;
@@ -23948,6 +24057,22 @@ md_apply_fix (fixS *	fixP,
 	 during reloc processing later.  */
       if (fixP->fx_done || !seg->use_rela_p)
 	md_number_to_chars (buf, fixP->fx_offset, 4);
+      break;
+
+      /* Relocations for FDPIC.  */
+    case BFD_RELOC_ARM_GOTFUNCDESC:
+    case BFD_RELOC_ARM_GOTOFFFUNCDESC:
+    case BFD_RELOC_ARM_FUNCDESC:
+      if (arm_fdpic)
+	{
+	  if (fixP->fx_done || !seg->use_rela_p)
+	    md_number_to_chars (buf, 0, 4);
+	}
+      else
+	{
+	  as_bad_where (fixP->fx_file, fixP->fx_line,
+			_("Relocation supported only in FDPIC mode"));
+      }
       break;
 #endif
 
@@ -24710,14 +24835,20 @@ tc_gen_reloc (asection *section, fixS *fixp)
     case BFD_RELOC_ARM_THUMB_ALU_ABS_G1_NC:
     case BFD_RELOC_ARM_THUMB_ALU_ABS_G2_NC:
     case BFD_RELOC_ARM_THUMB_ALU_ABS_G3_NC:
+    case BFD_RELOC_ARM_GOTFUNCDESC:
+    case BFD_RELOC_ARM_GOTOFFFUNCDESC:
+    case BFD_RELOC_ARM_FUNCDESC:
       code = fixp->fx_r_type;
       break;
 
     case BFD_RELOC_ARM_TLS_GOTDESC:
     case BFD_RELOC_ARM_TLS_GD32:
+    case BFD_RELOC_ARM_TLS_GD32_FDPIC:
     case BFD_RELOC_ARM_TLS_LE32:
     case BFD_RELOC_ARM_TLS_IE32:
+    case BFD_RELOC_ARM_TLS_IE32_FDPIC:
     case BFD_RELOC_ARM_TLS_LDM32:
+    case BFD_RELOC_ARM_TLS_LDM32_FDPIC:
       /* BFD will include the symbol's address in the addend.
 	 But we don't want that, so subtract it out again here.  */
       if (!S_IS_COMMON (fixp->fx_addsy))
@@ -24983,9 +25114,12 @@ arm_fix_adjustable (fixS * fixP)
       || fixP->fx_r_type == BFD_RELOC_ARM_GOT32
       || fixP->fx_r_type == BFD_RELOC_ARM_GOTOFF
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_GD32
+      || fixP->fx_r_type == BFD_RELOC_ARM_TLS_GD32_FDPIC
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_LE32
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_IE32
+      || fixP->fx_r_type == BFD_RELOC_ARM_TLS_IE32_FDPIC
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_LDM32
+      || fixP->fx_r_type == BFD_RELOC_ARM_TLS_LDM32_FDPIC
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_LDO32
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_GOTDESC
       || fixP->fx_r_type == BFD_RELOC_ARM_TLS_CALL
@@ -25039,10 +25173,20 @@ elf32_arm_target_format (void)
 	  ? "elf32-bigarm-nacl"
 	  : "elf32-littlearm-nacl");
 #else
-  if (target_big_endian)
-    return "elf32-bigarm";
+  if (arm_fdpic)
+    {
+      if (target_big_endian)
+	return "elf32-bigarm-fdpic";
+      else
+	return "elf32-littlearm-fdpic";
+    }
   else
-    return "elf32-littlearm";
+    {
+      if (target_big_endian)
+	return "elf32-bigarm";
+      else
+	return "elf32-littlearm";
+    }
 #endif
 }
 
@@ -25304,70 +25448,69 @@ md_begin (void)
       if (mcpu_cpu_opt || march_cpu_opt)
 	as_bad (_("use of old and new-style options to set CPU type"));
 
-      mcpu_cpu_opt = legacy_cpu;
+      selected_arch = *legacy_cpu;
     }
-  else if (!mcpu_cpu_opt)
+  else if (mcpu_cpu_opt)
     {
-      mcpu_cpu_opt = march_cpu_opt;
-      dyn_mcpu_ext_opt = dyn_march_ext_opt;
-      /* Avoid double free in arm_md_end.  */
-      dyn_march_ext_opt = NULL;
+      selected_arch = *mcpu_cpu_opt;
+      selected_ext = *mcpu_ext_opt;
     }
+  else if (march_cpu_opt)
+    {
+      selected_arch = *march_cpu_opt;
+      selected_ext = *march_ext_opt;
+    }
+  ARM_MERGE_FEATURE_SETS (selected_cpu, selected_arch, selected_ext);
 
   if (legacy_fpu)
     {
       if (mfpu_opt)
 	as_bad (_("use of old and new-style options to set FPU type"));
 
-      mfpu_opt = legacy_fpu;
+      selected_fpu = *legacy_fpu;
     }
-  else if (!mfpu_opt)
+  else if (mfpu_opt)
+    selected_fpu = *mfpu_opt;
+  else
     {
 #if !(defined (EABI_DEFAULT) || defined (TE_LINUX) \
 	|| defined (TE_NetBSD) || defined (TE_VXWORKS))
       /* Some environments specify a default FPU.  If they don't, infer it
 	 from the processor.  */
       if (mcpu_fpu_opt)
-	mfpu_opt = mcpu_fpu_opt;
-      else
-	mfpu_opt = march_fpu_opt;
+	selected_fpu = *mcpu_fpu_opt;
+      else if (march_fpu_opt)
+	selected_fpu = *march_fpu_opt;
 #else
-      mfpu_opt = &fpu_default;
+      selected_fpu = fpu_default;
 #endif
     }
 
-  if (!mfpu_opt)
+  if (ARM_FEATURE_ZERO (selected_fpu))
     {
-      if (mcpu_cpu_opt != NULL)
-	mfpu_opt = &fpu_default;
-      else if (mcpu_fpu_opt != NULL && ARM_CPU_HAS_FEATURE (*mcpu_fpu_opt, arm_ext_v5))
-	mfpu_opt = &fpu_arch_vfp_v2;
+      if (!no_cpu_selected ())
+	selected_fpu = fpu_default;
       else
-	mfpu_opt = &fpu_arch_fpa;
+	selected_fpu = fpu_arch_fpa;
     }
 
 #ifdef CPU_DEFAULT
-  if (!mcpu_cpu_opt)
+  if (ARM_FEATURE_ZERO (selected_arch))
     {
-      mcpu_cpu_opt = &cpu_default;
-      selected_cpu = cpu_default;
+      selected_arch = cpu_default;
+      selected_cpu = selected_arch;
     }
-  else if (dyn_mcpu_ext_opt)
-    ARM_MERGE_FEATURE_SETS (selected_cpu, *mcpu_cpu_opt, *dyn_mcpu_ext_opt);
-  else
-    selected_cpu = *mcpu_cpu_opt;
+  ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
 #else
-  if (mcpu_cpu_opt && dyn_mcpu_ext_opt)
-    ARM_MERGE_FEATURE_SETS (selected_cpu, *mcpu_cpu_opt, *dyn_mcpu_ext_opt);
-  else if (mcpu_cpu_opt)
-    selected_cpu = *mcpu_cpu_opt;
+  /*  Autodection of feature mode: allow all features in cpu_variant but leave
+      selected_cpu unset.  It will be set in aeabi_set_public_attributes ()
+      after all instruction have been processed and we can decide what CPU
+      should be selected.  */
+  if (ARM_FEATURE_ZERO (selected_arch))
+    ARM_MERGE_FEATURE_SETS (cpu_variant, arm_arch_any, selected_fpu);
   else
-    mcpu_cpu_opt = &arm_arch_any;
+    ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
 #endif
-
-  ARM_MERGE_FEATURE_SETS (cpu_variant, *mcpu_cpu_opt, *mfpu_opt);
-  if (dyn_mcpu_ext_opt)
-    ARM_MERGE_FEATURE_SETS (cpu_variant, cpu_variant, *dyn_mcpu_ext_opt);
 
   autoselect_thumb_from_cpu_variant ();
 
@@ -25563,6 +25706,7 @@ const char * md_shortopts = "m:k";
 #endif
 #endif
 #define OPTION_FIX_V4BX (OPTION_MD_BASE + 2)
+#define OPTION_FDPIC (OPTION_MD_BASE + 3)
 
 struct option md_longopts[] =
 {
@@ -25573,6 +25717,9 @@ struct option md_longopts[] =
   {"EL", no_argument, NULL, OPTION_EL},
 #endif
   {"fix-v4bx", no_argument, NULL, OPTION_FIX_V4BX},
+#ifdef OBJ_ELF
+  {"fdpic", no_argument, NULL, OPTION_FDPIC},
+#endif
   {NULL, no_argument, NULL, 0}
 };
 
@@ -26050,6 +26197,9 @@ static const struct arm_cpu_option_table arm_cpus[] =
   ARM_CPU_OPT ("cortex-a75",    "Cortex-A75",	       ARM_ARCH_V8_2A,
 	       ARM_FEATURE_CORE_HIGH (ARM_EXT2_FP16_INST),
 	       FPU_ARCH_CRYPTO_NEON_VFP_ARMV8_DOTPROD),
+  ARM_CPU_OPT ("cortex-a76",    "Cortex-A76",	       ARM_ARCH_V8_2A,
+	       ARM_FEATURE_CORE_HIGH (ARM_EXT2_FP16_INST),
+	       FPU_ARCH_CRYPTO_NEON_VFP_ARMV8_DOTPROD),
   ARM_CPU_OPT ("cortex-r4",	  "Cortex-R4",	       ARM_ARCH_V7R,
 	       ARM_ARCH_NONE,
 	       FPU_NONE),
@@ -26204,6 +26354,7 @@ static const struct arm_arch_option_table arm_archs[] =
   ARM_ARCH_OPT ("armv8.3-a",	ARM_ARCH_V8_3A,	 FPU_ARCH_VFP),
   ARM_ARCH_OPT ("armv8-r",	ARM_ARCH_V8R,	 FPU_ARCH_VFP),
   ARM_ARCH_OPT ("armv8.4-a",	ARM_ARCH_V8_4A,	 FPU_ARCH_VFP),
+  ARM_ARCH_OPT ("armv8.5-a",	ARM_ARCH_V8_5A,	 FPU_ARCH_VFP),
   ARM_ARCH_OPT ("xscale",	ARM_ARCH_XSCALE, FPU_ARCH_VFP),
   ARM_ARCH_OPT ("iwmmxt",	ARM_ARCH_IWMMXT, FPU_ARCH_VFP),
   ARM_ARCH_OPT ("iwmmxt2",	ARM_ARCH_IWMMXT2,FPU_ARCH_VFP),
@@ -26280,12 +26431,18 @@ static const struct arm_option_extension_value_table arm_extensions[] =
   ARM_EXT_OPT ("pan",	ARM_FEATURE_CORE_HIGH (ARM_EXT2_PAN),
 			ARM_FEATURE (ARM_EXT_V8, ARM_EXT2_PAN, 0),
 			ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8A)),
+  ARM_EXT_OPT ("predres", ARM_FEATURE_CORE_HIGH (ARM_EXT2_PREDRES),
+			ARM_FEATURE_CORE_HIGH (ARM_EXT2_PREDRES),
+			ARM_ARCH_V8A),
   ARM_EXT_OPT ("ras",	ARM_FEATURE_CORE_HIGH (ARM_EXT2_RAS),
 			ARM_FEATURE (ARM_EXT_V8, ARM_EXT2_RAS, 0),
 			ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8A)),
   ARM_EXT_OPT ("rdma",  FPU_ARCH_NEON_VFP_ARMV8_1,
 			ARM_FEATURE_COPROC (FPU_NEON_ARMV8 | FPU_NEON_EXT_RDMA),
 			ARM_FEATURE_CORE_HIGH (ARM_EXT2_V8A)),
+  ARM_EXT_OPT ("sb",	ARM_FEATURE_CORE_HIGH (ARM_EXT2_SB),
+			ARM_FEATURE_CORE_HIGH (ARM_EXT2_SB),
+			ARM_ARCH_V8A),
   ARM_EXT_OPT2 ("sec",	ARM_FEATURE_CORE_LOW (ARM_EXT_SEC),
 			ARM_FEATURE_CORE_LOW (ARM_EXT_SEC),
 			ARM_FEATURE_CORE_LOW (ARM_EXT_V6K),
@@ -26396,7 +26553,7 @@ struct arm_long_option_table
 
 static bfd_boolean
 arm_parse_extension (const char *str, const arm_feature_set *opt_set,
-		     arm_feature_set **ext_set_p)
+		     arm_feature_set *ext_set)
 {
   /* We insist on extensions being specified in alphabetical order, and with
      extensions being added before being removed.  We achieve this by having
@@ -26407,12 +26564,6 @@ arm_parse_extension (const char *str, const arm_feature_set *opt_set,
   const struct arm_option_extension_value_table * opt = NULL;
   const arm_feature_set arm_any = ARM_ANY;
   int adding_value = -1;
-
-  if (!*ext_set_p)
-    {
-      *ext_set_p = XNEW (arm_feature_set);
-      **ext_set_p = arm_arch_none;
-    }
 
   while (str != NULL && *str != 0)
     {
@@ -26491,10 +26642,9 @@ arm_parse_extension (const char *str, const arm_feature_set *opt_set,
 
 	    /* Add or remove the extension.  */
 	    if (adding_value)
-	      ARM_MERGE_FEATURE_SETS (**ext_set_p, **ext_set_p,
-				      opt->merge_value);
+	      ARM_MERGE_FEATURE_SETS (*ext_set, *ext_set, opt->merge_value);
 	    else
-	      ARM_CLEAR_FEATURE (**ext_set_p, **ext_set_p, opt->clear_value);
+	      ARM_CLEAR_FEATURE (*ext_set, *ext_set, opt->clear_value);
 
 	    /* Allowing Thumb division instructions for ARMv7 in autodetection
 	       rely on this break so that duplicate extensions (extensions
@@ -26555,9 +26705,9 @@ arm_parse_cpu (const char *str)
     if (opt->name_len == len && strncmp (opt->name, str, len) == 0)
       {
 	mcpu_cpu_opt = &opt->value;
-	if (!dyn_mcpu_ext_opt)
-	  dyn_mcpu_ext_opt = XNEW (arm_feature_set);
-	*dyn_mcpu_ext_opt = opt->ext;
+	if (mcpu_ext_opt == NULL)
+	  mcpu_ext_opt = XNEW (arm_feature_set);
+	*mcpu_ext_opt = opt->ext;
 	mcpu_fpu_opt = &opt->default_fpu;
 	if (opt->canonical_name)
 	  {
@@ -26577,7 +26727,7 @@ arm_parse_cpu (const char *str)
 	  }
 
 	if (ext != NULL)
-	  return arm_parse_extension (ext, mcpu_cpu_opt, &dyn_mcpu_ext_opt);
+	  return arm_parse_extension (ext, mcpu_cpu_opt, mcpu_ext_opt);
 
 	return TRUE;
       }
@@ -26608,11 +26758,14 @@ arm_parse_arch (const char *str)
     if (opt->name_len == len && strncmp (opt->name, str, len) == 0)
       {
 	march_cpu_opt = &opt->value;
+	if (march_ext_opt == NULL)
+	  march_ext_opt = XNEW (arm_feature_set);
+	*march_ext_opt = arm_arch_none;
 	march_fpu_opt = &opt->default_fpu;
 	strcpy (selected_cpu_name, opt->name);
 
 	if (ext != NULL)
-	  return arm_parse_extension (ext, march_cpu_opt, &dyn_march_ext_opt);
+	  return arm_parse_extension (ext, march_cpu_opt, march_ext_opt);
 
 	return TRUE;
       }
@@ -26748,6 +26901,12 @@ md_parse_option (int c, const char * arg)
       fix_v4bx = TRUE;
       break;
 
+#ifdef OBJ_ELF
+    case OPTION_FDPIC:
+      arm_fdpic = TRUE;
+      break;
+#endif /* OBJ_ELF */
+
     case 'a':
       /* Listing option.  Just ignore these, we don't support additional
 	 ones.	*/
@@ -26842,6 +27001,11 @@ md_show_usage (FILE * fp)
 
   fprintf (fp, _("\
   --fix-v4bx              Allow BX in ARMv4 code\n"));
+
+#ifdef OBJ_ELF
+  fprintf (fp, _("\
+  --fdpic                 generate an FDPIC object file\n"));
+#endif /* OBJ_ELF */
 }
 
 #ifdef OBJ_ELF
@@ -26859,30 +27023,30 @@ typedef struct
    stable when new architectures are added.  */
 static const cpu_arch_ver_table cpu_arch_ver[] =
 {
-    {0, ARM_ARCH_V1},
-    {0, ARM_ARCH_V2},
-    {0, ARM_ARCH_V2S},
-    {0, ARM_ARCH_V3},
-    {0, ARM_ARCH_V3M},
-    {1, ARM_ARCH_V4xM},
-    {1, ARM_ARCH_V4},
-    {2, ARM_ARCH_V4TxM},
-    {2, ARM_ARCH_V4T},
-    {3, ARM_ARCH_V5xM},
-    {3, ARM_ARCH_V5},
-    {3, ARM_ARCH_V5TxM},
-    {3, ARM_ARCH_V5T},
-    {4, ARM_ARCH_V5TExP},
-    {4, ARM_ARCH_V5TE},
-    {5, ARM_ARCH_V5TEJ},
-    {6, ARM_ARCH_V6},
-    {7, ARM_ARCH_V6Z},
-    {7, ARM_ARCH_V6KZ},
-    {9, ARM_ARCH_V6K},
-    {8, ARM_ARCH_V6T2},
-    {8, ARM_ARCH_V6KT2},
-    {8, ARM_ARCH_V6ZT2},
-    {8, ARM_ARCH_V6KZT2},
+    {TAG_CPU_ARCH_PRE_V4,   ARM_ARCH_V1},
+    {TAG_CPU_ARCH_PRE_V4,   ARM_ARCH_V2},
+    {TAG_CPU_ARCH_PRE_V4,   ARM_ARCH_V2S},
+    {TAG_CPU_ARCH_PRE_V4,   ARM_ARCH_V3},
+    {TAG_CPU_ARCH_PRE_V4,   ARM_ARCH_V3M},
+    {TAG_CPU_ARCH_V4,	    ARM_ARCH_V4xM},
+    {TAG_CPU_ARCH_V4,	    ARM_ARCH_V4},
+    {TAG_CPU_ARCH_V4T,	    ARM_ARCH_V4TxM},
+    {TAG_CPU_ARCH_V4T,	    ARM_ARCH_V4T},
+    {TAG_CPU_ARCH_V5T,	    ARM_ARCH_V5xM},
+    {TAG_CPU_ARCH_V5T,	    ARM_ARCH_V5},
+    {TAG_CPU_ARCH_V5T,	    ARM_ARCH_V5TxM},
+    {TAG_CPU_ARCH_V5T,	    ARM_ARCH_V5T},
+    {TAG_CPU_ARCH_V5TE,	    ARM_ARCH_V5TExP},
+    {TAG_CPU_ARCH_V5TE,	    ARM_ARCH_V5TE},
+    {TAG_CPU_ARCH_V5TEJ,    ARM_ARCH_V5TEJ},
+    {TAG_CPU_ARCH_V6,	    ARM_ARCH_V6},
+    {TAG_CPU_ARCH_V6KZ,	    ARM_ARCH_V6Z},
+    {TAG_CPU_ARCH_V6KZ,	    ARM_ARCH_V6KZ},
+    {TAG_CPU_ARCH_V6K,	    ARM_ARCH_V6K},
+    {TAG_CPU_ARCH_V6T2,	    ARM_ARCH_V6T2},
+    {TAG_CPU_ARCH_V6T2,	    ARM_ARCH_V6KT2},
+    {TAG_CPU_ARCH_V6T2,	    ARM_ARCH_V6ZT2},
+    {TAG_CPU_ARCH_V6T2,	    ARM_ARCH_V6KZT2},
 
     /* When assembling a file with only ARMv6-M or ARMv6S-M instruction, GNU as
        always selected build attributes to match those of ARMv6-M
@@ -26891,24 +27055,25 @@ static const cpu_arch_ver_table cpu_arch_ver[] =
        would be selected when fully respecting chronology of architectures.
        It is thus necessary to make a special case of ARMv6-M and ARMv6S-M and
        move them before ARMv7 architectures.  */
-    {11, ARM_ARCH_V6M},
-    {12, ARM_ARCH_V6SM},
+    {TAG_CPU_ARCH_V6_M,	    ARM_ARCH_V6M},
+    {TAG_CPU_ARCH_V6S_M,    ARM_ARCH_V6SM},
 
-    {10, ARM_ARCH_V7},
-    {10, ARM_ARCH_V7A},
-    {10, ARM_ARCH_V7R},
-    {10, ARM_ARCH_V7M},
-    {10, ARM_ARCH_V7VE},
-    {13, ARM_ARCH_V7EM},
-    {14, ARM_ARCH_V8A},
-    {14, ARM_ARCH_V8_1A},
-    {14, ARM_ARCH_V8_2A},
-    {14, ARM_ARCH_V8_3A},
-    {16, ARM_ARCH_V8M_BASE},
-    {17, ARM_ARCH_V8M_MAIN},
-    {15, ARM_ARCH_V8R},
-    {16, ARM_ARCH_V8_4A},
-    {-1, ARM_ARCH_NONE}
+    {TAG_CPU_ARCH_V7,	    ARM_ARCH_V7},
+    {TAG_CPU_ARCH_V7,	    ARM_ARCH_V7A},
+    {TAG_CPU_ARCH_V7,	    ARM_ARCH_V7R},
+    {TAG_CPU_ARCH_V7,	    ARM_ARCH_V7M},
+    {TAG_CPU_ARCH_V7,	    ARM_ARCH_V7VE},
+    {TAG_CPU_ARCH_V7E_M,    ARM_ARCH_V7EM},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8A},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8_1A},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8_2A},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8_3A},
+    {TAG_CPU_ARCH_V8M_BASE, ARM_ARCH_V8M_BASE},
+    {TAG_CPU_ARCH_V8M_MAIN, ARM_ARCH_V8M_MAIN},
+    {TAG_CPU_ARCH_V8R,	    ARM_ARCH_V8R},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8_4A},
+    {TAG_CPU_ARCH_V8,	    ARM_ARCH_V8_5A},
+    {-1,		    ARM_ARCH_NONE}
 };
 
 /* Set an attribute if it has not already been set by the user.  */
@@ -27084,7 +27249,7 @@ found:
 static void
 aeabi_set_public_attributes (void)
 {
-  char profile;
+  char profile = '\0';
   int arch = -1;
   int virt_sec = 0;
   int fp16_optional = 0;
@@ -27104,26 +27269,31 @@ aeabi_set_public_attributes (void)
 	ARM_MERGE_FEATURE_SETS (flags, flags, arm_ext_v4t);
 
       /* Code run during relaxation relies on selected_cpu being set.  */
+      ARM_CLEAR_FEATURE (flags_arch, flags, fpu_any);
+      flags_ext = arm_arch_none;
+      ARM_CLEAR_FEATURE (selected_arch, flags_arch, flags_ext);
+      selected_ext = flags_ext;
       selected_cpu = flags;
     }
   /* Otherwise, choose the architecture based on the capabilities of the
      requested cpu.  */
   else
-    flags = selected_cpu;
-  ARM_MERGE_FEATURE_SETS (flags, flags, *mfpu_opt);
+    {
+      ARM_MERGE_FEATURE_SETS (flags_arch, selected_arch, selected_ext);
+      ARM_CLEAR_FEATURE (flags_arch, flags_arch, fpu_any);
+      flags_ext = selected_ext;
+      flags = selected_cpu;
+    }
+  ARM_MERGE_FEATURE_SETS (flags, flags, selected_fpu);
 
   /* Allow the user to override the reported architecture.  */
-  if (object_arch)
+  if (!ARM_FEATURE_ZERO (selected_object_arch))
     {
-      ARM_CLEAR_FEATURE (flags_arch, *object_arch, fpu_any);
+      ARM_CLEAR_FEATURE (flags_arch, selected_object_arch, fpu_any);
       flags_ext = arm_arch_none;
     }
   else
-    {
-      ARM_CLEAR_FEATURE (flags_arch, flags, fpu_any);
-      flags_ext = dyn_mcpu_ext_opt ? *dyn_mcpu_ext_opt : arm_arch_none;
-      skip_exact_match = ARM_FEATURE_EQUAL (selected_cpu, arm_arch_any);
-    }
+    skip_exact_match = ARM_FEATURE_EQUAL (selected_cpu, arm_arch_any);
 
   /* When this function is run again after relaxation has happened there is no
      way to determine whether an architecture or CPU was specified by the user:
@@ -27164,7 +27334,7 @@ aeabi_set_public_attributes (void)
     aeabi_set_attribute_int (Tag_CPU_arch_profile, profile);
 
   /* Tag_DSP_extension.  */
-  if (dyn_mcpu_ext_opt && ARM_CPU_HAS_FEATURE (*dyn_mcpu_ext_opt, arm_ext_dsp))
+  if (ARM_CPU_HAS_FEATURE (selected_ext, arm_ext_dsp))
     aeabi_set_attribute_int (Tag_DSP_extension, 1);
 
   ARM_CLEAR_FEATURE (flags_arch, flags, fpu_any);
@@ -27287,10 +27457,10 @@ void
 arm_md_post_relax (void)
 {
   aeabi_set_public_attributes ();
-  XDELETE (dyn_mcpu_ext_opt);
-  dyn_mcpu_ext_opt = NULL;
-  XDELETE (dyn_march_ext_opt);
-  dyn_march_ext_opt = NULL;
+  XDELETE (mcpu_ext_opt);
+  mcpu_ext_opt = NULL;
+  XDELETE (march_ext_opt);
+  march_ext_opt = NULL;
 }
 
 /* Add the default contents for the .ARM.attributes section.  */
@@ -27324,11 +27494,9 @@ s_arm_cpu (int ignored ATTRIBUTE_UNUSED)
   for (opt = arm_cpus + 1; opt->name != NULL; opt++)
     if (streq (opt->name, name))
       {
-	mcpu_cpu_opt = &opt->value;
-	if (!dyn_mcpu_ext_opt)
-	  dyn_mcpu_ext_opt = XNEW (arm_feature_set);
-	*dyn_mcpu_ext_opt = opt->ext;
-	ARM_MERGE_FEATURE_SETS (selected_cpu, *mcpu_cpu_opt, *dyn_mcpu_ext_opt);
+	selected_arch = opt->value;
+	selected_ext = opt->ext;
+	ARM_MERGE_FEATURE_SETS (selected_cpu, selected_arch, selected_ext);
 	if (opt->canonical_name)
 	  strcpy (selected_cpu_name, opt->canonical_name);
 	else
@@ -27339,9 +27507,8 @@ s_arm_cpu (int ignored ATTRIBUTE_UNUSED)
 
 	    selected_cpu_name[i] = 0;
 	  }
-	ARM_MERGE_FEATURE_SETS (cpu_variant, *mcpu_cpu_opt, *mfpu_opt);
-	if (dyn_mcpu_ext_opt)
-	  ARM_MERGE_FEATURE_SETS (cpu_variant, cpu_variant, *dyn_mcpu_ext_opt);
+	ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
+
 	*input_line_pointer = saved_char;
 	demand_empty_rest_of_line ();
 	return;
@@ -27370,12 +27537,11 @@ s_arm_arch (int ignored ATTRIBUTE_UNUSED)
   for (opt = arm_archs + 1; opt->name != NULL; opt++)
     if (streq (opt->name, name))
       {
-	mcpu_cpu_opt = &opt->value;
-	XDELETE (dyn_mcpu_ext_opt);
-	dyn_mcpu_ext_opt = NULL;
-	selected_cpu = *mcpu_cpu_opt;
+	selected_arch = opt->value;
+	selected_ext = arm_arch_none;
+	selected_cpu = selected_arch;
 	strcpy (selected_cpu_name, opt->name);
-	ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, *mfpu_opt);
+	ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
 	*input_line_pointer = saved_char;
 	demand_empty_rest_of_line ();
 	return;
@@ -27405,7 +27571,7 @@ s_arm_object_arch (int ignored ATTRIBUTE_UNUSED)
   for (opt = arm_archs + 1; opt->name != NULL; opt++)
     if (streq (opt->name, name))
       {
-	object_arch = &opt->value;
+	selected_object_arch = opt->value;
 	*input_line_pointer = saved_char;
 	demand_empty_rest_of_line ();
 	return;
@@ -27422,7 +27588,6 @@ static void
 s_arm_arch_extension (int ignored ATTRIBUTE_UNUSED)
 {
   const struct arm_option_extension_value_table *opt;
-  const arm_feature_set arm_any = ARM_ANY;
   char saved_char;
   char *name;
   int adding_value = 1;
@@ -27448,9 +27613,9 @@ s_arm_arch_extension (int ignored ATTRIBUTE_UNUSED)
 	for (i = 0; i < nb_allowed_archs; i++)
 	  {
 	    /* Empty entry.  */
-	    if (ARM_FEATURE_EQUAL (opt->allowed_archs[i], arm_any))
+	    if (ARM_CPU_IS_ANY (opt->allowed_archs[i]))
 	      continue;
-	    if (ARM_FSET_CPU_SUBSET (opt->allowed_archs[i], *mcpu_cpu_opt))
+	    if (ARM_FSET_CPU_SUBSET (opt->allowed_archs[i], selected_arch))
 	      break;
 	  }
 
@@ -27461,20 +27626,14 @@ s_arm_arch_extension (int ignored ATTRIBUTE_UNUSED)
 	    break;
 	  }
 
-	if (!dyn_mcpu_ext_opt)
-	  {
-	    dyn_mcpu_ext_opt = XNEW (arm_feature_set);
-	    *dyn_mcpu_ext_opt = arm_arch_none;
-	  }
 	if (adding_value)
-	  ARM_MERGE_FEATURE_SETS (*dyn_mcpu_ext_opt, *dyn_mcpu_ext_opt,
+	  ARM_MERGE_FEATURE_SETS (selected_ext, selected_ext,
 				  opt->merge_value);
 	else
-	  ARM_CLEAR_FEATURE (*dyn_mcpu_ext_opt, *dyn_mcpu_ext_opt,
-			     opt->clear_value);
+	  ARM_CLEAR_FEATURE (selected_ext, selected_ext, opt->clear_value);
 
-	ARM_MERGE_FEATURE_SETS (selected_cpu, *mcpu_cpu_opt, *dyn_mcpu_ext_opt);
-	ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, *mfpu_opt);
+	ARM_MERGE_FEATURE_SETS (selected_cpu, selected_arch, selected_ext);
+	ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
 	*input_line_pointer = saved_char;
 	demand_empty_rest_of_line ();
 	/* Allowing Thumb division instructions for ARMv7 in autodetection rely
@@ -27509,10 +27668,13 @@ s_arm_fpu (int ignored ATTRIBUTE_UNUSED)
   for (opt = arm_fpus; opt->name != NULL; opt++)
     if (streq (opt->name, name))
       {
-	mfpu_opt = &opt->value;
-	ARM_MERGE_FEATURE_SETS (cpu_variant, *mcpu_cpu_opt, *mfpu_opt);
-	if (dyn_mcpu_ext_opt)
-	  ARM_MERGE_FEATURE_SETS (cpu_variant, cpu_variant, *dyn_mcpu_ext_opt);
+	selected_fpu = opt->value;
+#ifndef CPU_DEFAULT
+	if (no_cpu_selected ())
+	  ARM_MERGE_FEATURE_SETS (cpu_variant, arm_arch_any, selected_fpu);
+	else
+#endif
+	  ARM_MERGE_FEATURE_SETS (cpu_variant, selected_cpu, selected_fpu);
 	*input_line_pointer = saved_char;
 	demand_empty_rest_of_line ();
 	return;

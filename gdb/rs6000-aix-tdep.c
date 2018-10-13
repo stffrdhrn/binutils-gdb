@@ -1,6 +1,6 @@
 /* Native support code for PPC AIX, for GDB the GNU debugger.
 
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
    Free Software Foundation, Inc.
 
@@ -70,12 +70,7 @@ static struct ppc_reg_offsets rs6000_aix32_reg_offsets =
   /* Floating-point registers.  */
   336, /* f0_offset */
   56, /* fpscr_offset */
-  4,  /* fpscr_size */
-
-  /* AltiVec registers.  */
-  -1, /* vr0_offset */
-  -1, /* vscr_offset */
-  -1 /* vrsave_offset */
+  4  /* fpscr_size */
 };
 
 static struct ppc_reg_offsets rs6000_aix64_reg_offsets =
@@ -95,12 +90,7 @@ static struct ppc_reg_offsets rs6000_aix64_reg_offsets =
   /* Floating-point registers.  */
   312, /* f0_offset */
   296, /* fpscr_offset */
-  4,  /* fpscr_size */
-
-  /* AltiVec registers.  */
-  -1, /* vr0_offset */
-  -1, /* vscr_offset */
-  -1 /* vrsave_offset */
+  4  /* fpscr_size */
 };
 
 
@@ -156,9 +146,9 @@ rs6000_aix_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					 const struct regcache *regcache)
 {
   if (gdbarch_tdep (gdbarch)->wordsize == 4)
-    cb (".reg", 592, &rs6000_aix32_regset, NULL, cb_data);
+    cb (".reg", 592, 592, &rs6000_aix32_regset, NULL, cb_data);
   else
-    cb (".reg", 576, &rs6000_aix64_regset, NULL, cb_data);
+    cb (".reg", 576, 576, &rs6000_aix64_regset, NULL, cb_data);
 }
 
 
@@ -260,7 +250,7 @@ rs6000_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 	  gdb_assert (len <= 8);
 
 	  target_float_convert (value_contents (arg), type, reg_val, reg_type);
-	  regcache_cooked_write (regcache, fp_regnum, reg_val);
+	  regcache->cooked_write (fp_regnum, reg_val);
 	  ++f_argno;
 	}
 
@@ -276,9 +266,7 @@ rs6000_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 		      ((char *) value_contents (arg)) + argbytes,
 		      (len - argbytes) > reg_size
 		        ? reg_size : len - argbytes);
-	      regcache_cooked_write (regcache,
-	                            tdep->ppc_gp0_regnum + 3 + ii,
-				    word);
+	      regcache->cooked_write (tdep->ppc_gp0_regnum + 3 + ii, word);
 	      ++ii, argbytes += reg_size;
 
 	      if (ii >= 8)
@@ -294,7 +282,7 @@ rs6000_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
 	  memset (word, 0, reg_size);
 	  memcpy (word, value_contents (arg), len);
-	  regcache_cooked_write (regcache, tdep->ppc_gp0_regnum + 3 +ii, word);
+	  regcache->cooked_write (tdep->ppc_gp0_regnum + 3 +ii, word);
 	}
       ++argno;
     }
@@ -376,9 +364,8 @@ ran_out_of_registers_for_arguments:
 
 	      gdb_assert (len <= 8);
 
-	      regcache_cooked_write (regcache,
-				     tdep->ppc_fp0_regnum + 1 + f_argno,
-				     value_contents (arg));
+	      regcache->cooked_write (tdep->ppc_fp0_regnum + 1 + f_argno,
+				      value_contents (arg));
 	      ++f_argno;
 	    }
 
@@ -430,9 +417,9 @@ rs6000_return_value (struct gdbarch *gdbarch, struct value *function,
       && TYPE_LENGTH (valtype) == 16)
     {
       if (readbuf)
-	regcache_cooked_read (regcache, tdep->ppc_vr0_regnum + 2, readbuf);
+	regcache->cooked_read (tdep->ppc_vr0_regnum + 2, readbuf);
       if (writebuf)
-	regcache_cooked_write (regcache, tdep->ppc_vr0_regnum + 2, writebuf);
+	regcache->cooked_write (tdep->ppc_vr0_regnum + 2, writebuf);
 
       return RETURN_VALUE_REGISTER_CONVENTION;
     }
@@ -462,13 +449,13 @@ rs6000_return_value (struct gdbarch *gdbarch, struct value *function,
 
       if (readbuf)
 	{
-	  regcache_cooked_read (regcache, tdep->ppc_fp0_regnum + 1, regval);
+	  regcache->cooked_read (tdep->ppc_fp0_regnum + 1, regval);
 	  target_float_convert (regval, regtype, readbuf, valtype);
 	}
       if (writebuf)
 	{
 	  target_float_convert (writebuf, valtype, regval, regtype);
-	  regcache_cooked_write (regcache, tdep->ppc_fp0_regnum + 1, regval);
+	  regcache->cooked_write (tdep->ppc_fp0_regnum + 1, regval);
 	}
 
       return RETURN_VALUE_REGISTER_CONVENTION;
@@ -514,16 +501,14 @@ rs6000_return_value (struct gdbarch *gdbarch, struct value *function,
 	{
 	  gdb_byte regval[8];
 
-	  regcache_cooked_read (regcache, tdep->ppc_gp0_regnum + 3, regval);
-	  regcache_cooked_read (regcache, tdep->ppc_gp0_regnum + 4,
-				regval + 4);
+	  regcache->cooked_read (tdep->ppc_gp0_regnum + 3, regval);
+	  regcache->cooked_read (tdep->ppc_gp0_regnum + 4, regval + 4);
 	  memcpy (readbuf, regval, 8);
 	}
       if (writebuf)
 	{
-	  regcache_cooked_write (regcache, tdep->ppc_gp0_regnum + 3, writebuf);
-	  regcache_cooked_write (regcache, tdep->ppc_gp0_regnum + 4,
-				 writebuf + 4);
+	  regcache->cooked_write (tdep->ppc_gp0_regnum + 3, writebuf);
+	  regcache->cooked_write (tdep->ppc_gp0_regnum + 4, writebuf + 4);
 	}
 
       return RETURN_VALUE_REGISTER_CONVENTION;
@@ -1007,9 +992,6 @@ rs6000_aix_core_xfer_shared_libraries_aix (struct gdbarch *gdbarch,
 {
   struct bfd_section *ldinfo_sec;
   int ldinfo_size;
-  gdb_byte *ldinfo_buf;
-  struct cleanup *cleanup;
-  LONGEST result;
 
   ldinfo_sec = bfd_get_section_by_name (core_bfd, ".ldinfo");
   if (ldinfo_sec == NULL)
@@ -1017,19 +999,15 @@ rs6000_aix_core_xfer_shared_libraries_aix (struct gdbarch *gdbarch,
 	   bfd_errmsg (bfd_get_error ()));
   ldinfo_size = bfd_get_section_size (ldinfo_sec);
 
-  ldinfo_buf = (gdb_byte *) xmalloc (ldinfo_size);
-  cleanup = make_cleanup (xfree, ldinfo_buf);
+  gdb::byte_vector ldinfo_buf (ldinfo_size);
 
   if (! bfd_get_section_contents (core_bfd, ldinfo_sec,
-				  ldinfo_buf, 0, ldinfo_size))
+				  ldinfo_buf.data (), 0, ldinfo_size))
     error (_("unable to read .ldinfo section from core file: %s"),
 	  bfd_errmsg (bfd_get_error ()));
 
-  result = rs6000_aix_ld_info_to_xml (gdbarch, ldinfo_buf, readbuf,
-				      offset, len, 0);
-
-  do_cleanups (cleanup);
-  return result;
+  return rs6000_aix_ld_info_to_xml (gdbarch, ldinfo_buf.data (), readbuf,
+				    offset, len, 0);
 }
 
 static void

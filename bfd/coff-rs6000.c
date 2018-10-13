@@ -1,5 +1,5 @@
 /* BFD back-end for IBM RS/6000 "XCOFF" files.
-   Copyright (C) 1990-2017 Free Software Foundation, Inc.
+   Copyright (C) 1990-2018 Free Software Foundation, Inc.
    Written by Metin G. Ozisik, Mimi Phuong-Thao Vo, and John Gilmore.
    Archive support from Damon A. Permezel.
    Contributed by IBM Corporation and Cygnus Support.
@@ -2090,7 +2090,7 @@ xcoff_write_archive_contents_old (bfd *abfd)
   char decbuf[XCOFFARMAG_ELEMENT_SIZE + 1];
 
   memset (&fhdr, 0, sizeof fhdr);
-  (void) strncpy (fhdr.magic, XCOFFARMAG, SXCOFFARMAG);
+  (void) memcpy (fhdr.magic, XCOFFARMAG, SXCOFFARMAG);
   sprintf (fhdr.firstmemoff, "%d", SIZEOF_AR_FILE_HDR);
   sprintf (fhdr.freeoff, "%d", 0);
 
@@ -2770,7 +2770,7 @@ xcoff_reloc_type_fail (bfd *input_bfd,
 {
   _bfd_error_handler
     /* xgettext: c-format */
-    (_("%B: unsupported relocation type 0x%02x"),
+    (_("%pB: unsupported relocation type %#x"),
      input_bfd, (unsigned int) rel->r_type);
   bfd_set_error (bfd_error_bad_value);
   return FALSE;
@@ -2856,8 +2856,8 @@ xcoff_reloc_type_toc (bfd *input_bfd,
 	{
 	  _bfd_error_handler
 	    /* xgettext: c-format */
-	    (_("%B: TOC reloc at %#Lx to symbol `%s' with no TOC entry"),
-	     input_bfd, rel->r_vaddr, h->root.root.string);
+	    (_("%pB: TOC reloc at %#" PRIx64 " to symbol `%s' with no TOC entry"),
+	     input_bfd, (uint64_t) rel->r_vaddr, h->root.root.string);
 	  bfd_set_error (bfd_error_bad_value);
 	  return FALSE;
 	}
@@ -3090,7 +3090,7 @@ xcoff_complain_overflow_bitfield_func (bfd *input_bfd,
      relies on it, and it is the only way to write assembler
      code which can run when loaded at a location 0x80000000
      away from the location at which it is linked.  */
-  if (howto->bitsize + howto->rightshift
+  if ((unsigned) howto->bitsize + howto->rightshift
       == bfd_arch_bits_per_address (input_bfd))
     return FALSE;
 
@@ -3458,10 +3458,6 @@ xcoff_ppc_relocate_section (bfd *output_bfd,
 	 operation, which would be tedious, or we must do the computations
 	 in a type larger than bfd_vma, which would be inefficient.  */
 
-      if ((unsigned int) howto.complain_on_overflow
-	  >= XCOFF_MAX_COMPLAIN_OVERFLOW)
-	abort ();
-
       if (((*xcoff_complain_overflow[howto.complain_on_overflow])
 	   (input_bfd, value_to_relocate, relocation, &howto)))
 	{
@@ -3506,6 +3502,23 @@ xcoff_ppc_relocate_section (bfd *output_bfd,
   return TRUE;
 }
 
+/* gcc-8 warns (*) on all the strncpy calls in this function about
+   possible string truncation.  The "truncation" is not a bug.  We
+   have an external representation of structs with fields that are not
+   necessarily NULL terminated and corresponding internal
+   representation fields that are one larger so that they can always
+   be NULL terminated.
+   gcc versions between 4.2 and 4.6 do not allow pragma control of
+   diagnostics inside functions, giving a hard error if you try to use
+   the finer control available with later versions.
+   gcc prior to 4.2 warns about diagnostic push and pop.
+   gcc-5, gcc-6 and gcc-7 warn that -Wstringop-truncation is unknown,
+   unless you also add #pragma GCC diagnostic ignored "-Wpragma".
+   (*) Depending on your system header files!  */
+#if GCC_VERSION >= 8000
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wstringop-truncation"
+#endif
 static bfd_boolean
 _bfd_xcoff_put_ldsymbol_name (bfd *abfd ATTRIBUTE_UNUSED,
 			      struct xcoff_loader_info *ldinfo,
@@ -3575,6 +3588,9 @@ _bfd_xcoff_put_symbol_name (struct bfd_link_info *info,
     }
   return TRUE;
 }
+#if GCC_VERSION >= 8000
+# pragma GCC diagnostic pop
+#endif
 
 static asection *
 xcoff_create_csect_from_smclas (bfd *abfd,
@@ -3602,7 +3618,7 @@ xcoff_create_csect_from_smclas (bfd *abfd,
     {
       _bfd_error_handler
 	/* xgettext: c-format */
-	(_("%B: symbol `%s' has unrecognized smclas %d"),
+	(_("%pB: symbol `%s' has unrecognized smclas %d"),
 	 abfd, symbol_name, aux->x_csect.x_smclas);
       bfd_set_error (bfd_error_bad_value);
     }
@@ -3970,7 +3986,7 @@ const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
 
 /* For generic entry points.  */
 #define _bfd_xcoff_close_and_cleanup _bfd_archive_close_and_cleanup
-#define _bfd_xcoff_bfd_free_cached_info bfd_true
+#define _bfd_xcoff_bfd_free_cached_info _bfd_bool_bfd_true
 #define _bfd_xcoff_new_section_hook coff_new_section_hook
 #define _bfd_xcoff_get_section_contents _bfd_generic_get_section_contents
 #define _bfd_xcoff_get_section_contents_in_window \
@@ -4001,7 +4017,7 @@ const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
 #define _bfd_xcoff_write_ar_hdr _bfd_generic_write_ar_hdr
 #define _bfd_xcoff_get_elt_at_index _bfd_generic_get_elt_at_index
 #define _bfd_xcoff_generic_stat_arch_elt _bfd_xcoff_stat_arch_elt
-#define _bfd_xcoff_update_armap_timestamp bfd_true
+#define _bfd_xcoff_update_armap_timestamp _bfd_bool_bfd_true
 
 /* For symbols entry points.  */
 #define _bfd_xcoff_get_symtab_upper_bound coff_get_symtab_upper_bound
@@ -4045,6 +4061,7 @@ const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
 #define _bfd_xcoff_bfd_discard_group bfd_generic_discard_group
 #define _bfd_xcoff_section_already_linked _bfd_generic_section_already_linked
 #define _bfd_xcoff_bfd_define_common_symbol _bfd_xcoff_define_common_symbol
+#define _bfd_xcoff_bfd_link_hide_symbol _bfd_generic_link_hide_symbol
 #define _bfd_xcoff_bfd_define_start_stop    bfd_generic_define_start_stop
 #define _bfd_xcoff_bfd_link_check_relocs    _bfd_generic_link_check_relocs
 
@@ -4195,17 +4212,17 @@ const bfd_target rs6000_xcoff_vec =
     },
 
     { /* bfd_set_format */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_mkobject,
       _bfd_generic_mkarchive,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     {/* bfd_write_contents */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_write_object_contents,
       _bfd_xcoff_write_archive_contents,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     BFD_JUMP_TABLE_GENERIC (_bfd_xcoff),
@@ -4376,17 +4393,17 @@ const bfd_target powerpc_xcoff_vec =
     },
 
     { /* bfd_set_format */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_mkobject,
       _bfd_generic_mkarchive,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     {/* bfd_write_contents */
-      bfd_false,
+      _bfd_bool_bfd_false_error,
       coff_write_object_contents,
       _bfd_xcoff_write_archive_contents,
-      bfd_false
+      _bfd_bool_bfd_false_error
     },
 
     BFD_JUMP_TABLE_GENERIC (_bfd_xcoff),

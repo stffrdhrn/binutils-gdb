@@ -1,5 +1,5 @@
 /* BFD back-end for verilog hex memory dump files.
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
    Written by Anthony Green <green@moxielogic.com>
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -293,7 +293,7 @@ verilog_mkobject (bfd *abfd)
 #define verilog_close_and_cleanup		     _bfd_generic_close_and_cleanup
 #define verilog_bfd_free_cached_info		     _bfd_generic_bfd_free_cached_info
 #define verilog_new_section_hook		     _bfd_generic_new_section_hook
-#define verilog_bfd_is_target_special_symbol	     ((bfd_boolean (*) (bfd *, asymbol *)) bfd_false)
+#define verilog_bfd_is_target_special_symbol	     _bfd_bool_bfd_asymbol_false
 #define verilog_bfd_is_local_label_name		     bfd_generic_is_local_label_name
 #define verilog_get_lineno			     _bfd_nosymbols_get_lineno
 #define verilog_find_nearest_line		     _bfd_nosymbols_find_nearest_line
@@ -345,16 +345,16 @@ const bfd_target verilog_vec =
     _bfd_dummy_target,
   },
   {
-    bfd_false,
+    _bfd_bool_bfd_false_error,
     verilog_mkobject,
-    bfd_false,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
+    _bfd_bool_bfd_false_error,
   },
   {				/* bfd_write_contents.  */
-    bfd_false,
+    _bfd_bool_bfd_false_error,
     verilog_write_object_contents,
-    bfd_false,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
+    _bfd_bool_bfd_false_error,
   },
 
   BFD_JUMP_TABLE_GENERIC (_bfd_generic),

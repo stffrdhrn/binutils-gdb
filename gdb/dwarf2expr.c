@@ -1,6 +1,6 @@
 /* DWARF 2 Expression Evaluator.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
 
    Contributed by Daniel Berlin (dan@dberlin.org)
 
@@ -952,12 +952,12 @@ dwarf_expr_context::execute_stack_op (const gdb_byte *op_ptr,
 	       from the type length, we need to zero-extend it.  */
 	    if (TYPE_LENGTH (type) != addr_size)
 	      {
-		ULONGEST result =
+		ULONGEST datum =
 		  extract_unsigned_integer (buf, addr_size, byte_order);
 
 		buf = (gdb_byte *) alloca (TYPE_LENGTH (type));
 		store_unsigned_integer (buf, TYPE_LENGTH (type),
-					byte_order, result);
+					byte_order, datum);
 	      }
 
 	    result_val = value_from_contents_and_address (type, buf, addr);
@@ -1218,12 +1218,12 @@ dwarf_expr_context::execute_stack_op (const gdb_byte *op_ptr,
 
 	case DW_OP_bit_piece:
 	  {
-	    uint64_t size, offset;
+	    uint64_t size, uleb_offset;
 
             /* Record the piece.  */
 	    op_ptr = safe_read_uleb128 (op_ptr, op_end, &size);
-	    op_ptr = safe_read_uleb128 (op_ptr, op_end, &offset);
-	    add_piece (size, offset);
+	    op_ptr = safe_read_uleb128 (op_ptr, op_end, &uleb_offset);
+	    add_piece (size, uleb_offset);
 
             /* Pop off the address/regnum, and reset the location
 	       type.  */
@@ -1259,6 +1259,17 @@ dwarf_expr_context::execute_stack_op (const gdb_byte *op_ptr,
 	    this->dwarf_call (cu_off);
 	  }
 	  goto no_push;
+
+	case DW_OP_GNU_variable_value:
+	  {
+	    sect_offset sect_off
+	      = (sect_offset) extract_unsigned_integer (op_ptr,
+	                                                this->ref_addr_size,
+							byte_order);
+	    op_ptr += this->ref_addr_size;
+	    result_val = this->dwarf_variable_value (sect_off);
+	  }
+	  break;
 	
 	case DW_OP_entry_value:
 	case DW_OP_GNU_entry_value:

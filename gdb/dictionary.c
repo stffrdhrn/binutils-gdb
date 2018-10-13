@@ -1,6 +1,6 @@
 /* Routines for name->symbol lookups in GDB.
    
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    Contributed by David Carlton <carlton@bactrian.org> and by Kealia,
    Inc.
@@ -631,7 +631,7 @@ iter_match_first_hashed (const struct dictionary *dict,
   unsigned int hash_index = (name.search_name_hash (lang->la_language)
 			     % DICT_HASHED_NBUCKETS (dict));
   symbol_name_matcher_ftype *matches_name
-    = language_get_symbol_name_matcher (lang, name);
+    = get_symbol_name_matcher (lang, name);
   struct symbol *sym;
 
   DICT_ITERATOR_DICT (iterator) = dict;
@@ -659,7 +659,7 @@ iter_match_next_hashed (const lookup_name_info &name,
 {
   const language_defn *lang = DICT_LANGUAGE (DICT_ITERATOR_DICT (iterator));
   symbol_name_matcher_ftype *matches_name
-    = language_get_symbol_name_matcher (lang, name);
+    = get_symbol_name_matcher (lang, name);
   struct symbol *next;
 
   for (next = DICT_ITERATOR_CURRENT (iterator)->hash_next;
@@ -875,7 +875,7 @@ iter_match_next_linear (const lookup_name_info &name,
   const struct dictionary *dict = DICT_ITERATOR_DICT (iterator);
   const language_defn *lang = DICT_LANGUAGE (dict);
   symbol_name_matcher_ftype *matches_name
-    = language_get_symbol_name_matcher (lang, name);
+    = get_symbol_name_matcher (lang, name);
 
   int i, nsyms = DICT_LINEAR_NSYMS (dict);
   struct symbol *sym, *retval = NULL;

@@ -1,5 +1,5 @@
 /* objcopy.c -- copy object file from input to output, optionally massaging it.
-   Copyright (C) 1991-2017 Free Software Foundation, Inc.
+   Copyright (C) 1991-2018 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -252,6 +252,14 @@ static htab_t redefine_specific_htab = NULL;
 static htab_t redefine_specific_reverse_htab = NULL;
 static struct addsym_node *add_sym_list = NULL, **add_sym_tail = &add_sym_list;
 static int add_symbols = 0;
+
+static char *strip_specific_buffer = NULL;
+static char *strip_unneeded_buffer = NULL;
+static char *keep_specific_buffer = NULL;
+static char *localize_specific_buffer = NULL;
+static char *globalize_specific_buffer = NULL;
+static char *keepglobal_specific_buffer = NULL;
+static char *weaken_specific_buffer = NULL;
 
 /* If this is TRUE, we weaken global symbols (set BSF_WEAK).  */
 static bfd_boolean weaken = FALSE;
@@ -1034,7 +1042,7 @@ add_specific_symbol_node (const void *node, htab_t htab)
 #define IS_LINE_TERMINATOR(c) ((c) == '\n' || (c) == '\r' || (c) == '\0')
 
 static void
-add_specific_symbols (const char *filename, htab_t htab)
+add_specific_symbols (const char *filename, htab_t htab, char **buffer_p)
 {
   off_t  size;
   FILE * f;
@@ -1142,6 +1150,10 @@ add_specific_symbols (const char *filename, htab_t htab)
       line = eol;
       line_count ++;
     }
+
+  /* Do not free the buffer.  Parts of it will have been referenced
+     in the calls to add_specific_symbol.  */
+  *buffer_p = buffer;
 }
 
 /* See whether a symbol should be stripped or kept
@@ -1211,14 +1223,13 @@ group_signature (asection *group)
     return NULL;
 
   ghdr = &elf_section_data (group)->this_hdr;
-  if (ghdr->sh_link < elf_numsections (abfd))
+  if (ghdr->sh_link == elf_onesymtab (abfd))
     {
       const struct elf_backend_data *bed = get_elf_backend_data (abfd);
-      Elf_Internal_Shdr *symhdr = elf_elfsections (abfd) [ghdr->sh_link];
+      Elf_Internal_Shdr *symhdr = &elf_symtab_hdr (abfd);
 
-      if (symhdr->sh_type == SHT_SYMTAB
-	  && ghdr->sh_info > 0
-	  && ghdr->sh_info < (symhdr->sh_size / bed->s->sizeof_sym))
+      if (ghdr->sh_info > 0
+	  && ghdr->sh_info < symhdr->sh_size / bed->s->sizeof_sym)
 	return isympp[ghdr->sh_info - 1];
     }
   return NULL;
@@ -1344,14 +1355,15 @@ is_strip_section (bfd *abfd ATTRIBUTE_UNUSED, asection *sec)
       const char *gname;
       asection *elt, *first;
 
+      gsym = group_signature (sec);
+      /* Strip groups without a valid signature.  */
+      if (gsym == NULL)
+	return TRUE;
+
       /* PR binutils/3181
 	 If we are going to strip the group signature symbol, then
 	 strip the group section too.  */
-      gsym = group_signature (sec);
-      if (gsym != NULL)
-	gname = gsym->name;
-      else
-	gname = sec->name;
+      gname = gsym->name;
       if ((strip_symbols == STRIP_ALL
 	   && !is_specified_symbol (gname, keep_specific_htab))
 	  || is_specified_symbol (gname, strip_specific_htab))
@@ -1817,6 +1829,7 @@ add_redefine_syms_file (const char *filename)
     fatal (_("%s:%d: premature end of file"), filename, lineno);
 
   free (buf);
+  fclose (file);
 }
 
 /* Copy unknown object file IBFD onto OBFD.
@@ -1905,84 +1918,229 @@ num_bytes (unsigned long val)
   return count;
 }
 
+typedef struct objcopy_internal_note
+{
+  Elf_Internal_Note  note;
+  bfd_vma            start;
+  bfd_vma            end;
+  bfd_boolean        modified;
+} objcopy_internal_note;
+  
+/* Returns TRUE if a gap does, or could, exist between the address range
+   covered by PNOTE1 and PNOTE2.  */
+
+static bfd_boolean
+gap_exists (objcopy_internal_note * pnote1,
+	    objcopy_internal_note * pnote2)
+{
+  /* Without range end notes, we assume that a gap might exist.  */
+  if (pnote1->end == 0 || pnote2->end == 0)
+    return TRUE;
+
+  /* FIXME: Alignment of 16 bytes taken from x86_64 binaries.
+     Really we should extract the alignment of the section covered by the notes.  */
+  return BFD_ALIGN (pnote1->end, 16) < pnote2->start;
+}
+
+static bfd_boolean
+is_open_note (objcopy_internal_note * pnote)
+{
+  return (pnote->note.type == NT_GNU_BUILD_ATTRIBUTE_OPEN);
+}
+
+static bfd_boolean
+is_func_note (objcopy_internal_note * pnote)
+{
+  return (pnote->note.type == NT_GNU_BUILD_ATTRIBUTE_FUNC);
+}
+
+static bfd_boolean
+is_64bit (bfd * abfd)
+{
+  /* Should never happen, but let's be paranoid.  */
+  if (bfd_get_flavour (abfd) != bfd_target_elf_flavour)
+    return FALSE;
+
+  return elf_elfheader (abfd)->e_ident[EI_CLASS] == ELFCLASS64;
+}
+
 /* Merge the notes on SEC, removing redundant entries.
    Returns the new, smaller size of the section upon success.  */
 
 static bfd_size_type
 merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte * contents)
 {
-  Elf_Internal_Note * pnotes_end;
-  Elf_Internal_Note * pnotes;
-  Elf_Internal_Note * pnote;
+  objcopy_internal_note *  pnotes_end;
+  objcopy_internal_note *  pnotes = NULL;
+  objcopy_internal_note *  pnote;
   bfd_size_type       remain = size;
   unsigned            version_1_seen = 0;
   unsigned            version_2_seen = 0;
+  unsigned            version_3_seen = 0;
   bfd_boolean         duplicate_found = FALSE;
   const char *        err = NULL;
   bfd_byte *          in = contents;
   int                 attribute_type_byte;
   int                 val_start;
+  unsigned long       previous_func_start = 0;
+  unsigned long       previous_open_start = 0;
+  unsigned long       previous_func_end = 0;
+  unsigned long       previous_open_end = 0;
+  long                relsize;
 
-  /* Make a copy of the notes.
+
+  relsize = bfd_get_reloc_upper_bound (abfd, sec);
+  if (relsize > 0)
+    {
+      arelent **  relpp;
+      long        relcount;
+
+      /* If there are relocs associated with this section then we
+	 cannot safely merge it.  */
+      relpp = (arelent **) xmalloc (relsize);
+      relcount = bfd_canonicalize_reloc (abfd, sec, relpp, isympp);
+      free (relpp);
+      if (relcount != 0)
+	goto done;
+    }
+  
+  /* Make a copy of the notes and convert to our internal format.
      Minimum size of a note is 12 bytes.  */
-  pnote = pnotes = (Elf_Internal_Note *) xcalloc ((size / 12), sizeof (Elf_Internal_Note));
+  pnote = pnotes = (objcopy_internal_note *) xcalloc ((size / 12), sizeof (* pnote));
   while (remain >= 12)
     {
-      pnote->namesz = (bfd_get_32 (abfd, in    ) + 3) & ~3;
-      pnote->descsz = (bfd_get_32 (abfd, in + 4) + 3) & ~3;
-      pnote->type   =  bfd_get_32 (abfd, in + 8);
+      bfd_vma start, end;
 
-      if (pnote->type    != NT_GNU_BUILD_ATTRIBUTE_OPEN
-	  && pnote->type != NT_GNU_BUILD_ATTRIBUTE_FUNC)
+      pnote->note.namesz = (bfd_get_32 (abfd, in    ) + 3) & ~3;
+      pnote->note.descsz = (bfd_get_32 (abfd, in + 4) + 3) & ~3;
+      pnote->note.type   =  bfd_get_32 (abfd, in + 8);
+
+      if (pnote->note.type    != NT_GNU_BUILD_ATTRIBUTE_OPEN
+	  && pnote->note.type != NT_GNU_BUILD_ATTRIBUTE_FUNC)
 	{
 	  err = _("corrupt GNU build attribute note: wrong note type");
 	  goto done;
 	}
 
-      if (pnote->namesz + pnote->descsz + 12 > remain)
+      if (pnote->note.namesz + pnote->note.descsz + 12 > remain)
 	{
 	  err = _("corrupt GNU build attribute note: note too big");
 	  goto done;
 	}
 
-      if (pnote->namesz < 2)
+      if (pnote->note.namesz < 2)
 	{
 	  err = _("corrupt GNU build attribute note: name too small");
 	  goto done;
 	}
 
-      if (pnote->descsz != 0
-	  && pnote->descsz != 4
-	  && pnote->descsz != 8)
+      pnote->note.namedata = (char *)(in + 12);
+      pnote->note.descdata = (char *)(in + 12 + pnote->note.namesz);
+
+      remain -= 12 + pnote->note.namesz + pnote->note.descsz;
+      in     += 12 + pnote->note.namesz + pnote->note.descsz;
+
+      if (pnote->note.namesz > 2
+	  && pnote->note.namedata[0] == '$'
+	  && pnote->note.namedata[1] == GNU_BUILD_ATTRIBUTE_VERSION
+	  && pnote->note.namedata[2] == '1')
+	++ version_1_seen;
+      else if (pnote->note.namesz > 4
+	       && pnote->note.namedata[0] == 'G'
+	       && pnote->note.namedata[1] == 'A'
+	       && pnote->note.namedata[2] == '$'
+	       && pnote->note.namedata[3] == GNU_BUILD_ATTRIBUTE_VERSION)
 	{
+	  if (pnote->note.namedata[4] == '2')
+	    ++ version_2_seen;
+	  else if (pnote->note.namedata[4] == '3')
+	    ++ version_3_seen;
+	  else
+	    {
+	      err = _("corrupt GNU build attribute note: unsupported version");
+	      goto done;
+	    }
+	}
+
+      switch (pnote->note.descsz)
+	{
+	case 0:
+	  start = end = 0;
+	  break;
+
+	case 4:
+	  start = bfd_get_32 (abfd, pnote->note.descdata);
+	  /* FIXME: For version 1 and 2 notes we should try to
+	     calculate the end address by finding a symbol whose
+	     value is START, and then adding in its size.
+
+	     For now though, since v1 and v2 was not intended to
+	     handle gaps, we chose an artificially large end
+	     address.  */
+	  end = (bfd_vma) -1;
+	  break;
+	  
+	case 8:
+	  if (! is_64bit (abfd))
+	    {
+	      start = bfd_get_32 (abfd, pnote->note.descdata);
+	      end = bfd_get_32 (abfd, pnote->note.descdata + 4);
+	    }
+	  else
+	    {
+	      start = bfd_get_64 (abfd, pnote->note.descdata);
+	      /* FIXME: For version 1 and 2 notes we should try to
+		 calculate the end address by finding a symbol whose
+		 value is START, and then adding in its size.
+
+		 For now though, since v1 and v2 was not intended to
+		 handle gaps, we chose an artificially large end
+		 address.  */
+	      end = (bfd_vma) -1;
+	    }
+	  break;
+
+	case 16:
+	  start = bfd_get_64 (abfd, pnote->note.descdata);
+	  end = bfd_get_64 (abfd, pnote->note.descdata + 8);
+	  break;
+	  
+	default:
 	  err = _("corrupt GNU build attribute note: bad description size");
 	  goto done;
 	}
 
-      pnote->namedata = (char *)(in + 12);
-      pnote->descdata = (char *)(in + 12 + pnote->namesz);
+      if (is_open_note (pnote))
+	{
+	  if (start)
+	    previous_open_start = start;
 
-      remain -= 12 + pnote->namesz + pnote->descsz;
-      in     += 12 + pnote->namesz + pnote->descsz;
+	  pnote->start = previous_open_start;
 
-      if (pnote->namedata[pnote->namesz - 1] != 0)
+	  if (end)
+	    previous_open_end = end;
+
+	  pnote->end = previous_open_end;
+	}
+      else
+	{
+	  if (start)
+	    previous_func_start = start;
+
+	  pnote->start = previous_func_start;
+
+	  if (end)
+	    previous_func_end = end;
+
+	  pnote->end = previous_func_end;
+	}
+
+      if (pnote->note.namedata[pnote->note.namesz - 1] != 0)
 	{
 	  err = _("corrupt GNU build attribute note: name not NUL terminated");
 	  goto done;
 	}
-      
-      if (pnote->namesz > 2
-	  && pnote->namedata[0] == '$'
-	  && pnote->namedata[1] == GNU_BUILD_ATTRIBUTE_VERSION
-	  && pnote->namedata[2] == '1')
-	++ version_1_seen;
-      else if (pnote->namesz > 4
-	  && pnote->namedata[0] == 'G'
-	  && pnote->namedata[1] == 'A'
-	  && pnote->namedata[2] == '$'
-	  && pnote->namedata[3] == GNU_BUILD_ATTRIBUTE_VERSION
-	  && pnote->namedata[4] == '2')
-	++ version_2_seen;
+
       pnote ++;
     }
 
@@ -1995,27 +2153,29 @@ merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte 
       goto done;
     }
 
-  if (version_1_seen == 0 && version_2_seen == 0)
+  if (version_1_seen == 0 && version_2_seen == 0 && version_3_seen == 0)
     {
       err = _("bad GNU build attribute notes: no known versions detected");
       goto done;
     }
 
-  if (version_1_seen > 0 && version_2_seen > 0)
+  if ((version_1_seen > 0 && version_2_seen > 0)
+      || (version_1_seen > 0 && version_3_seen > 0)
+      || (version_2_seen > 0 && version_3_seen > 0))
     {
       err = _("bad GNU build attribute notes: multiple different versions");
       goto done;
     }
 
   /* Merging is only needed if there is more than one version note...  */
-  if (version_1_seen == 1 || version_2_seen == 1)
+  if (version_1_seen == 1 || version_2_seen == 1 || version_3_seen == 1)
     goto done;
 
   attribute_type_byte = version_1_seen ? 1 : 3;
   val_start = attribute_type_byte + 1;
 
   /* The first note should be the first version note.  */
-  if (pnotes[0].namedata[attribute_type_byte] != GNU_BUILD_ATTRIBUTE_VERSION)
+  if (pnotes[0].note.namedata[attribute_type_byte] != GNU_BUILD_ATTRIBUTE_VERSION)
     {
       err = _("bad GNU build attribute notes: first note not version note");
       goto done;
@@ -2026,113 +2186,178 @@ merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte 
      2. Preserve any NT_GNU_BUILD_ATTRIBUTE_FUNC notes.
      3. Eliminate any NT_GNU_BUILD_ATTRIBUTE_OPEN notes that have the same
         full name field as the immediately preceeding note with the same type
-	of name.
+	of name and whose address ranges coincide.
+	IE - if there are gaps in the coverage of the notes, then these gaps
+	must be preserved.
      4. Combine the numeric value of any NT_GNU_BUILD_ATTRIBUTE_OPEN notes
         of type GNU_BUILD_ATTRIBUTE_STACK_SIZE.
      5. If an NT_GNU_BUILD_ATTRIBUTE_OPEN note is going to be preserved and
         its description field is empty then the nearest preceeding OPEN note
 	with a non-empty description field must also be preserved *OR* the
 	description field of the note must be changed to contain the starting
-	address to which it refers.  */
+	address to which it refers.
+     6. Notes with the same start and end address can be deleted.  */
   for (pnote = pnotes + 1; pnote < pnotes_end; pnote ++)
     {
-      Elf_Internal_Note * back;
-      Elf_Internal_Note * prev_open = NULL;
+      int                      note_type;
+      objcopy_internal_note *  back;
+      objcopy_internal_note *  prev_open_with_range = NULL;
 
-      if (pnote->type == NT_GNU_BUILD_ATTRIBUTE_FUNC)
-	continue;
+      /* Rule 6 - delete 0-range notes.  */
+      if (pnote->start == pnote->end)
+	{
+	  duplicate_found = TRUE;
+	  pnote->note.type = 0;
+	  continue;
+	}
 
-      /* Scan for duplicates.  Clear the type field of any found - but do not
-	 delete them just yet.  */
+      /* Rule 2 - preserve function notes.  */
+      if (! is_open_note (pnote))
+	{
+	  int iter;
+
+	  /* Check to see if there is an identical previous function note.
+	     This can happen with overlays for example.  */
+	  for (iter = 0, back = pnote -1; back >= pnotes; back --)
+	    {
+	      if (back->start == pnote->start
+		  && back->end == pnote->end
+		  && back->note.namesz == pnote->note.namesz
+		  && memcmp (back->note.namedata, pnote->note.namedata, pnote->note.namesz) == 0)
+		{
+ fprintf (stderr, "DUP FUNXC\n");
+		  duplicate_found = TRUE;
+		  pnote->note.type = 0;
+		  break;
+		}
+
+	      /* Don't scan too far back however.  */
+	      if (iter ++ > 16)
+		break;
+	    }
+	  continue;
+	}
+
+      note_type = pnote->note.namedata[attribute_type_byte];
+
+      /* Scan backwards from pnote, looking for duplicates.
+	 Clear the type field of any found - but do not delete them just yet.  */
       for (back = pnote - 1; back >= pnotes; back --)
 	{
-	  if (back->descsz > 0
-	      && back->type != NT_GNU_BUILD_ATTRIBUTE_FUNC
-	      && prev_open == NULL)
-	    prev_open = back;
+	  int back_type = back->note.namedata[attribute_type_byte];
 
-	  if (back->type == pnote->type
-	      && back->namedata[attribute_type_byte] == pnote->namedata[attribute_type_byte])
+	  /* If this is the first open note with an address
+	     range that	we have encountered then record it.  */
+	  if (prev_open_with_range == NULL
+	      && back->note.descsz > 0
+	      && ! is_func_note (back))
+	    prev_open_with_range = back;
+
+	  if (! is_open_note (back))
+	    continue;
+
+	  /* If the two notes are different then keep on searching.  */
+	  if (back_type != note_type)
+	    continue;
+
+	  /* Rule 4 - combine stack size notes.  */
+	  if (back_type == GNU_BUILD_ATTRIBUTE_STACK_SIZE)
 	    {
-	      if (back->namedata[attribute_type_byte] == GNU_BUILD_ATTRIBUTE_STACK_SIZE)
+	      unsigned char * name;
+	      unsigned long   note_val;
+	      unsigned long   back_val;
+	      unsigned int    shift;
+	      unsigned int    bytes;
+	      unsigned long   byte;
+
+	      for (shift = 0, note_val = 0,
+		     bytes = pnote->note.namesz - val_start,
+		     name = (unsigned char *) pnote->note.namedata + val_start;
+		   bytes--;)
 		{
-		  unsigned char * name;
-		  unsigned long   note_val;
-		  unsigned long   back_val;
-		  unsigned int    shift;
-		  unsigned int    bytes;
-		  unsigned long   byte;
-
-		  for (shift = 0, note_val = 0,
-			 bytes = pnote->namesz - val_start,
-			 name = (unsigned char *) pnote->namedata + val_start;
-		       bytes--;)
-		    {
-		      byte = (* name ++) & 0xff;
-		      note_val |= byte << shift;
-		      shift += 8;
-		    }
-
-		  for (shift = 0, back_val = 0,
-			 bytes = back->namesz - val_start,
-			 name = (unsigned char *) back->namedata + val_start;
-		       bytes--;)
-		    {
-		      byte = (* name ++) & 0xff;
-		      back_val |= byte << shift;
-		      shift += 8;
-		    }
-
-		  back_val += note_val;
-		  if (num_bytes (back_val) >= back->namesz - val_start)
-		    {
-		      /* We have a problem - the new value requires more bytes of
-			 storage in the name field than are available.  Currently
-			 we have no way of fixing this, so we just preserve both
-			 notes.  */
-		      continue;
-		    }
-
-		  /* Write the new val into back.  */
-		  name = (unsigned char *) back->namedata + val_start;
-		  while (name < (unsigned char *) back->namedata + back->namesz)
-		    {
-		      byte = back_val & 0xff;
-		      * name ++ = byte;
-		      if (back_val == 0)
-			break;
-		      back_val >>= 8;
-		    }
-
-		  duplicate_found = TRUE;
-		  pnote->type = 0;
-		  break;
-		}
-		  
-	      if (back->namesz == pnote->namesz
-		  && memcmp (back->namedata, pnote->namedata, back->namesz) == 0)
-		{
-		  duplicate_found = TRUE;
-		  pnote->type = 0;
-		  break;
+		  byte = (* name ++) & 0xff;
+		  note_val |= byte << shift;
+		  shift += 8;
 		}
 
-	      /* If we have found an attribute match then stop searching backwards.  */
-	      if (! ISPRINT (back->namedata[attribute_type_byte])
-		  /* Names are NUL terminated, so this is safe.  */
-		  || strcmp (back->namedata + val_start, pnote->namedata + val_start) == 0)
+	      for (shift = 0, back_val = 0,
+		     bytes = back->note.namesz - val_start,
+		     name = (unsigned char *) back->note.namedata + val_start;
+		   bytes--;)
 		{
-		  /* Since we are keeping this note we must check to see if its
-		     description refers back to an earlier OPEN version note.  If so
-		     then we must make sure that version note is also preserved.  */
-		  if (pnote->descsz == 0
-		      && prev_open != NULL
-		      && prev_open->type == 0)
-		    prev_open->type = NT_GNU_BUILD_ATTRIBUTE_FUNC;
-
-		  break;
+		  byte = (* name ++) & 0xff;
+		  back_val |= byte << shift;
+		  shift += 8;
 		}
+
+	      back_val += note_val;
+	      if (num_bytes (back_val) >= back->note.namesz - val_start)
+		{
+		  /* We have a problem - the new value requires more bytes of
+		     storage in the name field than are available.  Currently
+		     we have no way of fixing this, so we just preserve both
+		     notes.  */
+		  continue;
+		}
+
+	      /* Write the new val into back.  */
+	      name = (unsigned char *) back->note.namedata + val_start;
+	      while (name < (unsigned char *) back->note.namedata
+		     + back->note.namesz)
+		{
+		  byte = back_val & 0xff;
+		  * name ++ = byte;
+		  if (back_val == 0)
+		    break;
+		  back_val >>= 8;
+		}
+
+	      duplicate_found = TRUE;
+	      pnote->note.type = 0;
+	      break;
 	    }
+
+	  /* Rule 3 - combine identical open notes.  */
+	  if (back->note.namesz == pnote->note.namesz
+	      && memcmp (back->note.namedata,
+			 pnote->note.namedata, back->note.namesz) == 0
+	      && ! gap_exists (back, pnote))
+	    {
+	      duplicate_found = TRUE;
+	      pnote->note.type = 0;
+
+	      if (pnote->end > back->end)
+		back->end = pnote->end;
+
+	      if (version_3_seen)
+		back->modified = TRUE;
+	      break;
+	    }
+
+	  /* Rule 5 - Since we are keeping this note we must check to see
+	     if its description refers back to an earlier OPEN version
+	     note that has been scheduled for deletion.  If so then we
+	     must make sure that version note is also preserved.  */
+	  if (version_3_seen)
+	    {
+	      /* As of version 3 we can just
+		 move the range into the note.  */
+	      pnote->modified = TRUE;
+	      pnote->note.type = NT_GNU_BUILD_ATTRIBUTE_FUNC;
+	      back->modified = TRUE;
+	      back->note.type = NT_GNU_BUILD_ATTRIBUTE_FUNC;
+	    }
+	  else
+	    {
+	      if (pnote->note.descsz == 0
+		  && prev_open_with_range != NULL
+		  && prev_open_with_range->note.type == 0)
+		prev_open_with_range->note.type = NT_GNU_BUILD_ATTRIBUTE_OPEN;
+	    }
+
+	  /* We have found a similar attribute but the details do not match.
+	     Stop searching backwards.  */
+	  break;
 	}
     }
 
@@ -2142,22 +2367,8 @@ merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte 
       bfd_byte *     old;
       bfd_byte *     new;
       bfd_size_type  new_size;
-      arelent **     relpp = NULL;
-      long           relsize;
-      long           relcount = 0;
-
-      relsize = bfd_get_reloc_upper_bound (abfd, sec);
-      if (relsize > 0)
-	{
-	  /* If there are relocs associated with this section then we may
-	     have to adjust them as well, as we remove notes.  */
-	  relpp = (arelent **) xmalloc (relsize);
-	  relcount = bfd_canonicalize_reloc (abfd, sec, relpp, isympp);
-	  if (relcount < 0)
-	    /* Do not bother complaining here - copy_relocations_in_section
-	       will do that for us.  */
-	    relcount = 0;
-	}
+      bfd_vma        prev_start = 0;
+      bfd_vma        prev_end = 0;
 
       /* Eliminate the duplicates.  */
       new = new_contents = xmalloc (size);
@@ -2165,36 +2376,52 @@ merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte 
 	   pnote < pnotes_end;
 	   pnote ++)
 	{
-	  bfd_size_type note_size = 12 + pnote->namesz + pnote->descsz;
+	  bfd_size_type note_size = 12 + pnote->note.namesz + pnote->note.descsz;
 
-	  if (pnote->type == 0)
+	  if (pnote->note.type != 0)
 	    {
-	      if (relcount > 0)
+	      if (pnote->modified)
 		{
-		  arelent ** rel;
-
-		  /* If there is a reloc at the current offset, delete it.
-		     Adjust the location of any relocs above the current
-		     location downwards by the size of the note being deleted.
-		     FIXME: We could optimize this loop by retaining a pointer to
-		     the last reloc below the current note.  */
-		  for (rel = relpp; rel < relpp + relcount; rel ++)
+		  /* If the note has been modified then we must copy it by
+		     hand, potentially adding in a new description field.  */
+		  if (pnote->start == prev_start && pnote->end == prev_end)
 		    {
-		      if ((* rel)->howto == NULL)
-			continue;
-		      if ((* rel)->address < (bfd_vma) (new - new_contents))
-			continue;
-		      if ((* rel)->address >= (bfd_vma) ((new + note_size) - new_contents))
-			  (* rel)->address -= note_size;
+		      bfd_put_32 (abfd, pnote->note.namesz, new);
+		      bfd_put_32 (abfd, 0, new + 4);
+		      bfd_put_32 (abfd, pnote->note.type, new + 8);
+		      new += 12;
+		      memcpy (new, pnote->note.namedata, pnote->note.namesz);
+		      new += pnote->note.namesz;
+		    }
+		  else
+		    {
+		      bfd_put_32 (abfd, pnote->note.namesz, new);
+		      bfd_put_32 (abfd, is_64bit (abfd) ? 16 : 8, new + 4);
+		      bfd_put_32 (abfd, pnote->note.type, new + 8);
+		      new += 12;
+		      memcpy (new, pnote->note.namedata, pnote->note.namesz);
+		      new += pnote->note.namesz;
+		      if (is_64bit (abfd))
+			{
+			  bfd_put_64 (abfd, pnote->start, new);
+			  bfd_put_64 (abfd, pnote->end, new + 8);
+			  new += 16;
+			}
 		      else
-			(* rel)->howto = NULL;
+			{
+			  bfd_put_32 (abfd, pnote->start, new);
+			  bfd_put_32 (abfd, pnote->end, new + 4);
+			  new += 8;
+			}
 		    }
 		}
-	    }
-	  else
-	    {
-	      memcpy (new, old, note_size);
-	      new += note_size;
+	      else
+		{
+		  memcpy (new, old, note_size);
+		  new += note_size;
+		}
+	      prev_start = pnote->start;
+	      prev_end = pnote->end;
 	    }
 
 	  old += note_size;
@@ -2204,24 +2431,6 @@ merge_gnu_build_notes (bfd * abfd, asection * sec, bfd_size_type size, bfd_byte 
       memcpy (contents, new_contents, new_size);
       size = new_size;
       free (new_contents);
-
-      if (relcount > 0)
-	{
-	  arelent **rel = relpp;
-
-	  while (rel < relpp + relcount)
-	    if ((*rel)->howto != NULL)
-	      rel++;
-	    else
-	      {
-		/* Delete eliminated relocs.
-		   FIXME: There are better ways to do this.  */
-		memmove (rel, rel + 1,
-			 ((relcount - (rel - relpp)) - 1) * sizeof (*rel));
-		relcount--;
-	      }
-	  bfd_set_reloc (abfd, sec, relpp, relcount);
-	}
     }
 
  done:
@@ -2659,6 +2868,7 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 			     pdump->filename,
 			     strerror (errno));
 		  free (contents);
+		  fclose (f);
 		  return FALSE;
 		}
 	    }
@@ -2859,9 +3069,18 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 	 ignore input sections which have no corresponding output
 	 section.  */
       if (strip_symbols != STRIP_ALL)
-	bfd_map_over_sections (ibfd,
-			       mark_symbols_used_in_relocations,
-			       isympp);
+	{
+	  bfd_set_error (bfd_error_no_error);
+	  bfd_map_over_sections (ibfd,
+				 mark_symbols_used_in_relocations,
+				 isympp);
+	  if (bfd_get_error () != bfd_error_no_error)
+	    {
+	      status = 1;
+	      return FALSE;
+	    }
+	}
+
       osympp = (asymbol **) xmalloc ((symcount + add_symbols + 1) * sizeof (asymbol *));
       symcount = filter_symbols (ibfd, obfd, osympp, isympp, symcount);
     }
@@ -2980,6 +3199,7 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 						  off, now))
 		    {
 		      bfd_nonfatal_message (NULL, obfd, osections[i], NULL);
+		      free (buf);
 		      return FALSE;
 		    }
 
@@ -2988,6 +3208,10 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 		}
 	    }
 	}
+
+      free (buf);
+      free (gaps);
+      gaps = NULL;
     }
 
   /* Allow the BFD backend to copy any private data it understands
@@ -3098,8 +3322,10 @@ copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
       /* If the file already exists, make another temp dir.  */
       if (stat (output_name, &buf) >= 0)
 	{
-	  output_name = make_tempdir (output_name);
-	  if (output_name == NULL)
+	  char * tmpdir = make_tempdir (output_name);
+
+	  free (output_name);
+	  if (tmpdir == NULL)
 	    {
 	      non_fatal (_("cannot create tempdir for archive copying (error: %s)"),
 			 strerror (errno));
@@ -3108,11 +3334,11 @@ copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
 	    }
 
 	  l = (struct name_list *) xmalloc (sizeof (struct name_list));
-	  l->name = output_name;
+	  l->name = tmpdir;
 	  l->next = list;
 	  l->obfd = NULL;
 	  list = l;
-	  output_name = concat (output_name, "/",
+	  output_name = concat (tmpdir, "/",
 				bfd_get_filename (this_element), (char *) 0);
 	}
 
@@ -3219,16 +3445,22 @@ copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
 
  cleanup_and_exit:
   /* Delete all the files that we opened.  */
-  for (l = list; l != NULL; l = l->next)
-    {
-      if (l->obfd == NULL)
-	rmdir (l->name);
-      else
-	{
-	  bfd_close (l->obfd);
-	  unlink (l->name);
-	}
-    }
+  {
+    struct name_list * next;
+
+    for (l = list; l != NULL; l = next)
+      {
+	if (l->obfd == NULL)
+	  rmdir (l->name);
+	else
+	  {
+	    bfd_close (l->obfd);
+	    unlink (l->name);
+	  }
+	next = l->next;
+	free (l);
+      }
+  }
 
   rmdir (dir);
 }
@@ -3720,21 +3952,22 @@ discard_relocations (bfd *ibfd ATTRIBUTE_UNUSED, asection *isection)
 
 /* Wrapper for dealing with --remove-section (-R) command line arguments.
    A special case is detected here, if the user asks to remove a relocation
-   section (one starting with ".rela." or ".rel.") then this removal must
-   be done using a different technique.  */
+   section (one starting with ".rela" or ".rel") then this removal must
+   be done using a different technique in a relocatable object.  */
 
 static void
 handle_remove_section_option (const char *section_pattern)
 {
-  if (strncmp (section_pattern, ".rela.", 6) == 0)
-    handle_remove_relocations_option (section_pattern + 5);
-  else if (strncmp (section_pattern, ".rel.", 5) == 0)
-    handle_remove_relocations_option (section_pattern + 4);
-  else
+  find_section_list (section_pattern, TRUE, SECTION_CONTEXT_REMOVE);
+  if (strncmp (section_pattern, ".rel", 4) == 0)
     {
-      find_section_list (section_pattern, TRUE, SECTION_CONTEXT_REMOVE);
-      sections_removed = TRUE;
+      section_pattern += 4;
+      if (*section_pattern == 'a')
+	section_pattern++;
+      if (*section_pattern)
+	handle_remove_relocations_option (section_pattern);
     }
+  sections_removed = TRUE;
 }
 
 /* Copy relocations in input section ISECTION of IBFD to an output
@@ -4078,13 +4311,10 @@ write_debugging_info (bfd *obfd, void *dhandle,
 		      long *symcountp ATTRIBUTE_UNUSED,
 		      asymbol ***symppp ATTRIBUTE_UNUSED)
 {
-  if (bfd_get_flavour (obfd) == bfd_target_ieee_flavour)
-    return write_ieee_debugging_info (obfd, dhandle);
-
   if (bfd_get_flavour (obfd) == bfd_target_coff_flavour
       || bfd_get_flavour (obfd) == bfd_target_elf_flavour)
     {
-      bfd_byte *syms, *strings;
+      bfd_byte *syms, *strings = NULL;
       bfd_size_type symsize, stringsize;
       asection *stabsec, *stabstrsec;
       flagword flags;
@@ -4106,6 +4336,7 @@ write_debugging_info (bfd *obfd, void *dhandle,
 	{
 	  bfd_nonfatal_message (NULL, obfd, NULL,
 				_("can't create debugging section"));
+	  free (strings);
 	  return FALSE;
 	}
 
@@ -4119,6 +4350,7 @@ write_debugging_info (bfd *obfd, void *dhandle,
 	{
 	  bfd_nonfatal_message (NULL, obfd, NULL,
 				_("can't set debugging section contents"));
+	  free (strings);
 	  return FALSE;
 	}
 
@@ -4521,6 +4753,8 @@ copy_main (int argc, char *argv[])
   bfd_boolean show_version = FALSE;
   bfd_boolean change_warn = TRUE;
   bfd_boolean formats_info = FALSE;
+  bfd_boolean use_globalize = FALSE;
+  bfd_boolean use_keep_global = FALSE;
   int c;
   struct stat statbuf;
   const bfd_arch_info_type *input_arch = NULL;
@@ -4639,10 +4873,12 @@ copy_main (int argc, char *argv[])
 	  break;
 
 	case OPTION_GLOBALIZE_SYMBOL:
+	  use_globalize = TRUE;
 	  add_specific_symbol (optarg, globalize_specific_htab);
 	  break;
 
 	case 'G':
+	  use_keep_global = TRUE;
 	  add_specific_symbol (optarg, keepglobal_specific_htab);
 	  break;
 
@@ -5039,15 +5275,18 @@ copy_main (int argc, char *argv[])
 	  break;
 
 	case OPTION_STRIP_SYMBOLS:
-	  add_specific_symbols (optarg, strip_specific_htab);
+	  add_specific_symbols (optarg, strip_specific_htab,
+				&strip_specific_buffer);
 	  break;
 
 	case OPTION_STRIP_UNNEEDED_SYMBOLS:
-	  add_specific_symbols (optarg, strip_unneeded_htab);
+	  add_specific_symbols (optarg, strip_unneeded_htab,
+				&strip_unneeded_buffer);
 	  break;
 
 	case OPTION_KEEP_SYMBOLS:
-	  add_specific_symbols (optarg, keep_specific_htab);
+	  add_specific_symbols (optarg, keep_specific_htab,
+				&keep_specific_buffer);
 	  break;
 
 	case OPTION_LOCALIZE_HIDDEN:
@@ -5055,7 +5294,8 @@ copy_main (int argc, char *argv[])
 	  break;
 
 	case OPTION_LOCALIZE_SYMBOLS:
-	  add_specific_symbols (optarg, localize_specific_htab);
+	  add_specific_symbols (optarg, localize_specific_htab,
+				&localize_specific_buffer);
 	  break;
 
 	case OPTION_LONG_SECTION_NAMES:
@@ -5070,15 +5310,20 @@ copy_main (int argc, char *argv[])
 	  break;
 
 	case OPTION_GLOBALIZE_SYMBOLS:
-	  add_specific_symbols (optarg, globalize_specific_htab);
+	  use_globalize = TRUE;
+	  add_specific_symbols (optarg, globalize_specific_htab,
+				&globalize_specific_buffer);
 	  break;
 
 	case OPTION_KEEPGLOBAL_SYMBOLS:
-	  add_specific_symbols (optarg, keepglobal_specific_htab);
+	  use_keep_global = TRUE;
+	  add_specific_symbols (optarg, keepglobal_specific_htab,
+				&keepglobal_specific_buffer);
 	  break;
 
 	case OPTION_WEAKEN_SYMBOLS:
-	  add_specific_symbols (optarg, weaken_specific_htab);
+	  add_specific_symbols (optarg, weaken_specific_htab,
+				&weaken_specific_buffer);
 	  break;
 
 	case OPTION_ALT_MACH_CODE:
@@ -5206,6 +5451,9 @@ copy_main (int argc, char *argv[])
 	  copy_usage (stderr, 1);
 	}
     }
+
+  if (use_globalize && use_keep_global)
+    fatal(_("--globalize-symbol(s) is incompatible with -G/--keep-global-symbol(s)"));
 
   if (formats_info)
     {
@@ -5364,6 +5612,27 @@ copy_main (int argc, char *argv[])
 	    }
 	}
     }
+
+  if (strip_specific_buffer)
+    free (strip_specific_buffer);
+
+  if (strip_unneeded_buffer)
+    free (strip_unneeded_buffer);
+
+  if (keep_specific_buffer)
+    free (keep_specific_buffer);
+
+  if (localize_specific_buffer)
+    free (globalize_specific_buffer);
+
+  if (globalize_specific_buffer)
+    free (globalize_specific_buffer);
+
+  if (keepglobal_specific_buffer)
+    free (keepglobal_specific_buffer);
+
+  if (weaken_specific_buffer)
+    free (weaken_specific_buffer);
 
   return 0;
 }

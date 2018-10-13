@@ -1,5 +1,5 @@
 /* Inferior process information for the remote server for GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -211,18 +211,6 @@ current_process (void)
 {
   gdb_assert (current_thread != NULL);
   return get_thread_process (current_thread);
-}
-
-static void
-do_restore_current_thread_cleanup (void *arg)
-{
-  current_thread = (struct thread_info *) arg;
-}
-
-struct cleanup *
-make_cleanup_restore_current_thread (void)
-{
-  return make_cleanup (do_restore_current_thread_cleanup, current_thread);
 }
 
 /* See common/common-gdbthread.h.  */

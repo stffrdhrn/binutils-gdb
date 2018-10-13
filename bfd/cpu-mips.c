@@ -1,5 +1,5 @@
 /* bfd back-end for mips support
-   Copyright (C) 1990-2017 Free Software Foundation, Inc.
+   Copyright (C) 1990-2018 Free Software Foundation, Inc.
    Written by Steve Chamberlain of Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -98,7 +98,9 @@ enum
   I_sb1,
   I_loongson_2e,
   I_loongson_2f,
-  I_loongson_3a,
+  I_gs464,
+  I_gs464e,
+  I_gs264e,
   I_mipsocteon,
   I_mipsocteonp,
   I_mipsocteon2,
@@ -150,7 +152,9 @@ static const bfd_arch_info_type arch_info_struct[] =
   N (64, 64, bfd_mach_mips_sb1, "mips:sb1",	  FALSE, NN(I_sb1)),
   N (64, 64, bfd_mach_mips_loongson_2e, "mips:loongson_2e",	  FALSE, NN(I_loongson_2e)),
   N (64, 64, bfd_mach_mips_loongson_2f, "mips:loongson_2f",	  FALSE, NN(I_loongson_2f)),
-  N (64, 64, bfd_mach_mips_loongson_3a, "mips:loongson_3a",	  FALSE, NN(I_loongson_3a)),
+  N (64, 64, bfd_mach_mips_gs464, "mips:gs464",	  FALSE, NN(I_gs464)),
+  N (64, 64, bfd_mach_mips_gs464e, "mips:gs464e",	  FALSE, NN(I_gs464e)),
+  N (64, 64, bfd_mach_mips_gs264e, "mips:gs264e",	  FALSE, NN(I_gs264e)),
   N (64, 64, bfd_mach_mips_octeon,"mips:octeon",  FALSE, NN(I_mipsocteon)),
   N (64, 64, bfd_mach_mips_octeonp,"mips:octeon+",  FALSE, NN(I_mipsocteonp)),
   N (64, 64, bfd_mach_mips_octeon2,"mips:octeon2",  FALSE, NN(I_mipsocteon2)),

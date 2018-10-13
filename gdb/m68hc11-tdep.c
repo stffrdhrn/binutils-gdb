@@ -1,6 +1,6 @@
 /* Target-dependent code for Motorola 68HC11 & 68HC12
 
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
 
    Contributed by Stephane Carrez, stcarrez@nerim.fr
 
@@ -279,7 +279,7 @@ m68hc11_which_soft_register (CORE_ADDR addr)
    fetch into a memory read.  */
 static enum register_status
 m68hc11_pseudo_register_read (struct gdbarch *gdbarch,
-			      struct regcache *regcache,
+			      readable_regcache *regcache,
 			      int regno, gdb_byte *buf)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
@@ -292,14 +292,14 @@ m68hc11_pseudo_register_read (struct gdbarch *gdbarch,
       const int regsize = 4;
       enum register_status status;
 
-      status = regcache_cooked_read_unsigned (regcache, HARD_PC_REGNUM, &pc);
+      status = regcache->cooked_read (HARD_PC_REGNUM, &pc);
       if (status != REG_VALID)
 	return status;
       if (pc >= 0x8000 && pc < 0xc000)
         {
           ULONGEST page;
 
-          regcache_cooked_read_unsigned (regcache, HARD_PAGE_REGNUM, &page);
+	  regcache->cooked_read (HARD_PAGE_REGNUM, &page);
           pc -= 0x8000;
           pc += (page << 14);
           pc += 0x1000000;
@@ -919,13 +919,11 @@ m68hc11_frame_prev_register (struct frame_info *this_frame,
           CORE_ADDR page;
 
 	  release_value (value);
-	  value_free (value);
 
 	  value = trad_frame_get_prev_register (this_frame, info->saved_regs,
 						HARD_PAGE_REGNUM);
 	  page = value_as_long (value);
 	  release_value (value);
-	  value_free (value);
 
           pc -= 0x08000;
           pc += ((page & 0x0ff) << 14);
@@ -1261,12 +1259,11 @@ m68hc11_store_return_value (struct type *type, struct regcache *regcache,
 
   /* First argument is passed in D and X registers.  */
   if (len <= 2)
-    regcache_raw_write_part (regcache, HARD_D_REGNUM, 2 - len, len, valbuf);
+    regcache->raw_write_part (HARD_D_REGNUM, 2 - len, len, valbuf);
   else if (len <= 4)
     {
-      regcache_raw_write_part (regcache, HARD_X_REGNUM, 4 - len,
-                               len - 2, valbuf);
-      regcache_raw_write (regcache, HARD_D_REGNUM, valbuf + (len - 2));
+      regcache->raw_write_part (HARD_X_REGNUM, 4 - len, len - 2, valbuf);
+      regcache->raw_write (HARD_D_REGNUM, valbuf + (len - 2));
     }
   else
     error (_("return of value > 4 is not supported."));
@@ -1282,7 +1279,7 @@ m68hc11_extract_return_value (struct type *type, struct regcache *regcache,
 {
   gdb_byte buf[M68HC11_REG_SIZE];
 
-  regcache_raw_read (regcache, HARD_D_REGNUM, buf);
+  regcache->raw_read (HARD_D_REGNUM, buf);
   switch (TYPE_LENGTH (type))
     {
     case 1:
@@ -1295,13 +1292,13 @@ m68hc11_extract_return_value (struct type *type, struct regcache *regcache,
 
     case 3:
       memcpy ((char*) valbuf + 1, buf, 2);
-      regcache_raw_read (regcache, HARD_X_REGNUM, buf);
+      regcache->raw_read (HARD_X_REGNUM, buf);
       memcpy (valbuf, buf + 1, 1);
       break;
 
     case 4:
       memcpy ((char*) valbuf + 2, buf, 2);
-      regcache_raw_read (regcache, HARD_X_REGNUM, buf);
+      regcache->raw_read (HARD_X_REGNUM, buf);
       memcpy (valbuf, buf, 2);
       break;
 

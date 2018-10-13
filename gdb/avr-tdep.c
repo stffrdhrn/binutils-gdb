@@ -1,6 +1,6 @@
 /* Target-dependent code for Atmel AVR, for GDB.
 
-   Copyright (C) 1996-2017 Free Software Foundation, Inc.
+   Copyright (C) 1996-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -367,10 +367,11 @@ avr_integer_to_address (struct gdbarch *gdbarch,
 }
 
 static CORE_ADDR
-avr_read_pc (struct regcache *regcache)
+avr_read_pc (readable_regcache *regcache)
 {
   ULONGEST pc;
-  regcache_cooked_read_unsigned (regcache, AVR_PC_REGNUM, &pc);
+
+  regcache->cooked_read (AVR_PC_REGNUM, &pc);
   return avr_make_iaddr (pc);
 }
 
@@ -382,7 +383,7 @@ avr_write_pc (struct regcache *regcache, CORE_ADDR val)
 }
 
 static enum register_status
-avr_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+avr_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
                           int regnum, gdb_byte *buf)
 {
   ULONGEST val;
@@ -391,7 +392,7 @@ avr_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
   switch (regnum)
     {
     case AVR_PSEUDO_PC_REGNUM:
-      status = regcache_raw_read_unsigned (regcache, AVR_PC_REGNUM, &val);
+      status = regcache->raw_read (AVR_PC_REGNUM, &val);
       if (status != REG_VALID)
 	return status;
       val >>= 1;
@@ -952,13 +953,13 @@ avr_return_value (struct gdbarch *gdbarch, struct value *function,
   if (writebuf != NULL)
     {
       for (i = 0; i < TYPE_LENGTH (valtype); i++)
-        regcache_cooked_write (regcache, lsb_reg + i, writebuf + i);
+	regcache->cooked_write (lsb_reg + i, writebuf + i);
     }
 
   if (readbuf != NULL)
     {
       for (i = 0; i < TYPE_LENGTH (valtype); i++)
-        regcache_cooked_read (regcache, lsb_reg + i, readbuf + i);
+	regcache->cooked_read (lsb_reg + i, readbuf + i);
     }
 
   return RETURN_VALUE_REGISTER_CONVENTION;
@@ -1548,21 +1549,15 @@ avr_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 static void
 avr_io_reg_read_command (const char *args, int from_tty)
 {
-  LONGEST bufsiz = 0;
-  gdb_byte *buf;
-  const char *bufstr;
   char query[400];
-  const char *p;
   unsigned int nreg = 0;
   unsigned int val;
-  int i, j, k, step;
 
   /* Find out how many io registers the target has.  */
-  bufsiz = target_read_alloc (&current_target, TARGET_OBJECT_AVR,
-			      "avr.io_reg", &buf);
-  bufstr = (const char *) buf;
+  gdb::optional<gdb::byte_vector> buf
+    = target_read_alloc (current_top_target (), TARGET_OBJECT_AVR, "avr.io_reg");
 
-  if (bufsiz <= 0)
+  if (!buf)
     {
       fprintf_unfiltered (gdb_stderr,
 			  _("ERR: info io_registers NOT supported "
@@ -1570,36 +1565,42 @@ avr_io_reg_read_command (const char *args, int from_tty)
       return;
     }
 
+  const char *bufstr = (const char *) buf->data ();
+
   if (sscanf (bufstr, "%x", &nreg) != 1)
     {
       fprintf_unfiltered (gdb_stderr,
 			  _("Error fetching number of io registers\n"));
-      xfree (buf);
       return;
     }
-
-  xfree (buf);
 
   reinitialize_more_filter ();
 
   printf_unfiltered (_("Target has %u io registers:\n\n"), nreg);
 
   /* only fetch up to 8 registers at a time to keep the buffer small */
-  step = 8;
+  int step = 8;
 
-  for (i = 0; i < nreg; i += step)
+  for (int i = 0; i < nreg; i += step)
     {
       /* how many registers this round? */
-      j = step;
+      int j = step;
       if ((i+j) >= nreg)
         j = nreg - i;           /* last block is less than 8 registers */
 
       snprintf (query, sizeof (query) - 1, "avr.io_reg:%x,%x", i, j);
-      bufsiz = target_read_alloc (&current_target, TARGET_OBJECT_AVR,
-				  query, &buf);
+      buf = target_read_alloc (current_top_target (), TARGET_OBJECT_AVR, query);
 
-      p = (const char *) buf;
-      for (k = i; k < (i + j); k++)
+      if (!buf)
+        {
+          fprintf_unfiltered (gdb_stderr,
+			      _("ERR: error reading avr.io_reg:%x,%x\n"),
+			      i, j);
+          return;
+        }
+
+      const char *p = (const char *) buf->data ();
+      for (int k = i; k < (i + j); k++)
 	{
 	  if (sscanf (p, "%[^,],%x;", query, &val) == 2)
 	    {
@@ -1611,8 +1612,6 @@ avr_io_reg_read_command (const char *args, int from_tty)
 		break;
 	    }
 	}
-
-      xfree (buf);
     }
 }
 

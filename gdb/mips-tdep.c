@@ -1,6 +1,6 @@
 /* Target-dependent code for the MIPS architecture, for GDB, the GNU Debugger.
 
-   Copyright (C) 1988-2017 Free Software Foundation, Inc.
+   Copyright (C) 1988-2018 Free Software Foundation, Inc.
 
    Contributed by Alessandro Forin(af@cs.cmu.edu) at CMU
    and by Per Bothner(bothner@cs.wisc.edu) at U.Wisconsin.
@@ -213,6 +213,18 @@ static unsigned int mips_debug = 0;
 
 struct target_desc *mips_tdesc_gp32;
 struct target_desc *mips_tdesc_gp64;
+
+/* The current set of options to be passed to the disassembler.  */
+static char *mips_disassembler_options;
+
+/* Implicit disassembler options for individual ABIs.  These tell
+   libopcodes to use general-purpose register names corresponding
+   to the ABI we have selected, perhaps via a `set mips abi ...'
+   override, rather than ones inferred from the ABI set in the ELF
+   headers of the binary file selected for debugging.  */
+static const char mips_disassembler_options_o32[] = "gpr-names=32";
+static const char mips_disassembler_options_n32[] = "gpr-names=n32";
+static const char mips_disassembler_options_n64[] = "gpr-names=64";
 
 const struct mips_regnum *
 mips_regnum (struct gdbarch *gdbarch)
@@ -510,11 +522,9 @@ mips_xfer_register (struct gdbarch *gdbarch, struct regcache *regcache,
 	fprintf_unfiltered (gdb_stdlog, "%02x", out[buf_offset + i]);
     }
   if (in != NULL)
-    regcache_cooked_read_part (regcache, reg_num, reg_offset, length,
-			       in + buf_offset);
+    regcache->cooked_read_part (reg_num, reg_offset, length, in + buf_offset);
   if (out != NULL)
-    regcache_cooked_write_part (regcache, reg_num, reg_offset, length,
-				out + buf_offset);
+    regcache->cooked_write_part (reg_num, reg_offset, length, out + buf_offset);
   if (mips_debug && in != NULL)
     {
       int i;
@@ -737,26 +747,26 @@ mips_tdesc_register_reggroup_p (struct gdbarch *gdbarch, int regnum,
    registers.  Take care of alignment and size problems.  */
 
 static enum register_status
-mips_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+mips_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
 			   int cookednum, gdb_byte *buf)
 {
   int rawnum = cookednum % gdbarch_num_regs (gdbarch);
   gdb_assert (cookednum >= gdbarch_num_regs (gdbarch)
 	      && cookednum < 2 * gdbarch_num_regs (gdbarch));
   if (register_size (gdbarch, rawnum) == register_size (gdbarch, cookednum))
-    return regcache_raw_read (regcache, rawnum, buf);
+    return regcache->raw_read (rawnum, buf);
   else if (register_size (gdbarch, rawnum) >
 	   register_size (gdbarch, cookednum))
     {
       if (gdbarch_tdep (gdbarch)->mips64_transfers_32bit_regs_p)
-	return regcache_raw_read_part (regcache, rawnum, 0, 4, buf);
+	return regcache->raw_read_part (rawnum, 0, 4, buf);
       else
 	{
 	  enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
 	  LONGEST regval;
 	  enum register_status status;
 
-	  status = regcache_raw_read_signed (regcache, rawnum, &regval);
+	  status = regcache->raw_read (rawnum, &regval);
 	  if (status == REG_VALID)
 	    store_signed_integer (buf, 4, byte_order, regval);
 	  return status;
@@ -775,12 +785,12 @@ mips_pseudo_register_write (struct gdbarch *gdbarch,
   gdb_assert (cookednum >= gdbarch_num_regs (gdbarch)
 	      && cookednum < 2 * gdbarch_num_regs (gdbarch));
   if (register_size (gdbarch, rawnum) == register_size (gdbarch, cookednum))
-    regcache_raw_write (regcache, rawnum, buf);
+    regcache->raw_write (rawnum, buf);
   else if (register_size (gdbarch, rawnum) >
 	   register_size (gdbarch, cookednum))
     {
       if (gdbarch_tdep (gdbarch)->mips64_transfers_32bit_regs_p)
-	regcache_raw_write_part (regcache, rawnum, 0, 4, buf);
+	regcache->raw_write_part (rawnum, 0, 4, buf);
       else
 	{
 	  /* Sign extend the shortened version of the register prior
@@ -1122,7 +1132,7 @@ mips_pseudo_register_type (struct gdbarch *gdbarch, int regnum)
 }
 
 /* Should the upper word of 64-bit addresses be zeroed?  */
-enum auto_boolean mask_address_var = AUTO_BOOLEAN_AUTO;
+static enum auto_boolean mask_address_var = AUTO_BOOLEAN_AUTO;
 
 static int
 mips_mask_address_p (struct gdbarch_tdep *tdep)
@@ -1362,12 +1372,12 @@ mips_in_frame_stub (CORE_ADDR pc)
    all registers should be sign extended for simplicity?  */
 
 static CORE_ADDR
-mips_read_pc (struct regcache *regcache)
+mips_read_pc (readable_regcache *regcache)
 {
   int regnum = gdbarch_pc_regnum (regcache->arch ());
   LONGEST pc;
 
-  regcache_cooked_read_signed (regcache, regnum, &pc);
+  regcache->cooked_read (regnum, &pc);
   return pc;
 }
 
@@ -1888,12 +1898,30 @@ micromips_next_pc (struct regcache *regcache, CORE_ADDR pc)
       switch (micromips_op (insn >> 16))
 	{
 	case 0x00: /* POOL32A: bits 000000 */
-	  if (b0s6_op (insn) == 0x3c
-				/* POOL32Axf: bits 000000 ... 111100 */
-	      && (b6s10_ext (insn) & 0x2bf) == 0x3c)
-				/* JALR, JALR.HB: 000000 000x111100 111100 */
-				/* JALRS, JALRS.HB: 000000 010x111100 111100 */
-	    pc = regcache_raw_get_signed (regcache, b0s5_reg (insn >> 16));
+	  switch (b0s6_op (insn))
+	    {
+	    case 0x3c: /* POOL32Axf: bits 000000 ... 111100 */
+	      switch (b6s10_ext (insn))
+		{
+		case 0x3c:  /* JALR:     000000 0000111100 111100 */
+		case 0x7c:  /* JALR.HB:  000000 0001111100 111100 */
+		case 0x13c: /* JALRS:    000000 0100111100 111100 */
+		case 0x17c: /* JALRS.HB: 000000 0101111100 111100 */
+		  pc = regcache_raw_get_signed (regcache,
+						b0s5_reg (insn >> 16));
+		  break;
+		case 0x22d: /* SYSCALL:  000000 1000101101 111100 */
+		  {
+		    struct gdbarch_tdep *tdep;
+
+		    tdep = gdbarch_tdep (gdbarch);
+		    if (tdep->syscall_next_pc != NULL)
+		      pc = tdep->syscall_next_pc (get_current_frame ());
+		  }
+		  break;
+		}
+	      break;
+	    }
 	  break;
 
 	case 0x10: /* POOL32I: bits 010000 */
@@ -3882,7 +3910,7 @@ mips_addr_bits_remove (struct gdbarch *gdbarch, CORE_ADDR addr)
 static std::vector<CORE_ADDR>
 mips_deal_with_atomic_sequence (struct gdbarch *gdbarch, CORE_ADDR pc)
 {
-  CORE_ADDR breaks[2] = {-1, -1};
+  CORE_ADDR breaks[2] = {CORE_ADDR_MAX, CORE_ADDR_MAX};
   CORE_ADDR loc = pc;
   CORE_ADDR branch_bp; /* Breakpoint at branch instruction's destination.  */
   ULONGEST insn;
@@ -3985,7 +4013,7 @@ micromips_deal_with_atomic_sequence (struct gdbarch *gdbarch,
 {
   const int atomic_sequence_length = 16; /* Instruction sequence length.  */
   int last_breakpoint = 0; /* Defaults to 0 (no breakpoints placed).  */
-  CORE_ADDR breaks[2] = {-1, -1};
+  CORE_ADDR breaks[2] = {CORE_ADDR_MAX, CORE_ADDR_MAX};
   CORE_ADDR branch_bp = 0; /* Breakpoint at branch instruction's
 			      destination.  */
   CORE_ADDR loc = pc;
@@ -4472,7 +4500,7 @@ mips_eabi_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   int argreg;
   int float_argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset = 0;
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR func_addr = find_function_addr (function, NULL);
@@ -4499,13 +4527,14 @@ mips_eabi_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
      than necessary for EABI, because the first few arguments are
      passed in registers, but that's OK.  */
   for (argnum = 0; argnum < nargs; argnum++)
-    len += align_up (TYPE_LENGTH (value_type (args[argnum])), abi_regsize);
-  sp -= align_up (len, 16);
+    arg_space += align_up (TYPE_LENGTH (value_type (args[argnum])), abi_regsize);
+  sp -= align_up (arg_space, 16);
 
   if (mips_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"mips_eabi_push_dummy_call: sp=%s allocated %ld\n",
-			paddress (gdbarch, sp), (long) align_up (len, 16));
+			paddress (gdbarch, sp),
+			(long) align_up (arg_space, 16));
 
   /* Initialize the integer and float register pointers.  */
   argreg = MIPS_A0_REGNUM;
@@ -4866,7 +4895,7 @@ mips_n32n64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   int argreg;
   int float_argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset = 0;
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR func_addr = find_function_addr (function, NULL);
@@ -4890,13 +4919,14 @@ mips_n32n64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
   /* Now make space on the stack for the args.  */
   for (argnum = 0; argnum < nargs; argnum++)
-    len += align_up (TYPE_LENGTH (value_type (args[argnum])), MIPS64_REGSIZE);
-  sp -= align_up (len, 16);
+    arg_space += align_up (TYPE_LENGTH (value_type (args[argnum])), MIPS64_REGSIZE);
+  sp -= align_up (arg_space, 16);
 
   if (mips_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"mips_n32n64_push_dummy_call: sp=%s allocated %ld\n",
-			paddress (gdbarch, sp), (long) align_up (len, 16));
+			paddress (gdbarch, sp),
+			(long) align_up (arg_space, 16));
 
   /* Initialize the integer and float register pointers.  */
   argreg = MIPS_A0_REGNUM;
@@ -5322,7 +5352,7 @@ mips_o32_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   int argreg;
   int float_argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset = 0;
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR func_addr = find_function_addr (function, NULL);
@@ -5351,16 +5381,17 @@ mips_o32_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 
       /* Align to double-word if necessary.  */
       if (mips_type_needs_double_align (arg_type))
-	len = align_up (len, MIPS32_REGSIZE * 2);
+	arg_space = align_up (arg_space, MIPS32_REGSIZE * 2);
       /* Allocate space on the stack.  */
-      len += align_up (TYPE_LENGTH (arg_type), MIPS32_REGSIZE);
+      arg_space += align_up (TYPE_LENGTH (arg_type), MIPS32_REGSIZE);
     }
-  sp -= align_up (len, 16);
+  sp -= align_up (arg_space, 16);
 
   if (mips_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"mips_o32_push_dummy_call: sp=%s allocated %ld\n",
-			paddress (gdbarch, sp), (long) align_up (len, 16));
+			paddress (gdbarch, sp),
+			(long) align_up (arg_space, 16));
 
   /* Initialize the integer and float register pointers.  */
   argreg = MIPS_A0_REGNUM;
@@ -5846,7 +5877,7 @@ mips_o64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
   int argreg;
   int float_argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset = 0;
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   CORE_ADDR func_addr = find_function_addr (function, NULL);
@@ -5874,14 +5905,15 @@ mips_o64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
       struct type *arg_type = check_typedef (value_type (args[argnum]));
 
       /* Allocate space on the stack.  */
-      len += align_up (TYPE_LENGTH (arg_type), MIPS64_REGSIZE);
+      arg_space += align_up (TYPE_LENGTH (arg_type), MIPS64_REGSIZE);
     }
-  sp -= align_up (len, 16);
+  sp -= align_up (arg_space, 16);
 
   if (mips_debug)
     fprintf_unfiltered (gdb_stdlog,
 			"mips_o64_push_dummy_call: sp=%s allocated %ld\n",
-			paddress (gdbarch, sp), (long) align_up (len, 16));
+			paddress (gdbarch, sp),
+			(long) align_up (arg_space, 16));
 
   /* Initialize the integer and float register pointers.  */
   argreg = MIPS_A0_REGNUM;
@@ -6992,38 +7024,7 @@ gdb_print_insn_mips (bfd_vma memaddr, struct disassemble_info *info)
   memaddr &= (info->mach == bfd_mach_mips16
 	      || info->mach == bfd_mach_mips_micromips) ? ~1 : ~3;
 
-  /* Set the disassembler options.  */
-  if (!info->disassembler_options)
-    /* This string is not recognized explicitly by the disassembler,
-       but it tells the disassembler to not try to guess the ABI from
-       the bfd elf headers, such that, if the user overrides the ABI
-       of a program linked as NewABI, the disassembly will follow the
-       register naming conventions specified by the user.  */
-    info->disassembler_options = "gpr-names=32";
-
   return default_print_insn (memaddr, info);
-}
-
-static int
-gdb_print_insn_mips_n32 (bfd_vma memaddr, struct disassemble_info *info)
-{
-  /* Set up the disassembler info, so that we get the right
-     register names from libopcodes.  */
-  info->disassembler_options = "gpr-names=n32";
-  info->flavour = bfd_target_elf_flavour;
-
-  return gdb_print_insn_mips (memaddr, info);
-}
-
-static int
-gdb_print_insn_mips_n64 (bfd_vma memaddr, struct disassemble_info *info)
-{
-  /* Set up the disassembler info, so that we get the right
-     register names from libopcodes.  */
-  info->disassembler_options = "gpr-names=64";
-  info->flavour = bfd_target_elf_flavour;
-
-  return gdb_print_insn_mips (memaddr, info);
 }
 
 /* Implement the breakpoint_kind_from_pc gdbarch method.  */
@@ -8084,6 +8085,195 @@ mips_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   int dspacc;
   int dspctl;
 
+  /* First of all, extract the elf_flags, if available.  */
+  if (info.abfd && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour)
+    elf_flags = elf_elfheader (info.abfd)->e_flags;
+  else if (arches != NULL)
+    elf_flags = gdbarch_tdep (arches->gdbarch)->elf_flags;
+  else
+    elf_flags = 0;
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"mips_gdbarch_init: elf_flags = 0x%08x\n", elf_flags);
+
+  /* Check ELF_FLAGS to see if it specifies the ABI being used.  */
+  switch ((elf_flags & EF_MIPS_ABI))
+    {
+    case E_MIPS_ABI_O32:
+      found_abi = MIPS_ABI_O32;
+      break;
+    case E_MIPS_ABI_O64:
+      found_abi = MIPS_ABI_O64;
+      break;
+    case E_MIPS_ABI_EABI32:
+      found_abi = MIPS_ABI_EABI32;
+      break;
+    case E_MIPS_ABI_EABI64:
+      found_abi = MIPS_ABI_EABI64;
+      break;
+    default:
+      if ((elf_flags & EF_MIPS_ABI2))
+	found_abi = MIPS_ABI_N32;
+      else
+	found_abi = MIPS_ABI_UNKNOWN;
+      break;
+    }
+
+  /* GCC creates a pseudo-section whose name describes the ABI.  */
+  if (found_abi == MIPS_ABI_UNKNOWN && info.abfd != NULL)
+    bfd_map_over_sections (info.abfd, mips_find_abi_section, &found_abi);
+
+  /* If we have no useful BFD information, use the ABI from the last
+     MIPS architecture (if there is one).  */
+  if (found_abi == MIPS_ABI_UNKNOWN && info.abfd == NULL && arches != NULL)
+    found_abi = gdbarch_tdep (arches->gdbarch)->found_abi;
+
+  /* Try the architecture for any hint of the correct ABI.  */
+  if (found_abi == MIPS_ABI_UNKNOWN
+      && info.bfd_arch_info != NULL
+      && info.bfd_arch_info->arch == bfd_arch_mips)
+    {
+      switch (info.bfd_arch_info->mach)
+	{
+	case bfd_mach_mips3900:
+	  found_abi = MIPS_ABI_EABI32;
+	  break;
+	case bfd_mach_mips4100:
+	case bfd_mach_mips5000:
+	  found_abi = MIPS_ABI_EABI64;
+	  break;
+	case bfd_mach_mips8000:
+	case bfd_mach_mips10000:
+	  /* On Irix, ELF64 executables use the N64 ABI.  The
+	     pseudo-sections which describe the ABI aren't present
+	     on IRIX.  (Even for executables created by gcc.)  */
+	  if (info.abfd != NULL
+	      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour
+	      && elf_elfheader (info.abfd)->e_ident[EI_CLASS] == ELFCLASS64)
+	    found_abi = MIPS_ABI_N64;
+	  else
+	    found_abi = MIPS_ABI_N32;
+	  break;
+	}
+    }
+
+  /* Default 64-bit objects to N64 instead of O32.  */
+  if (found_abi == MIPS_ABI_UNKNOWN
+      && info.abfd != NULL
+      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour
+      && elf_elfheader (info.abfd)->e_ident[EI_CLASS] == ELFCLASS64)
+    found_abi = MIPS_ABI_N64;
+
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: found_abi = %d\n",
+			found_abi);
+
+  /* What has the user specified from the command line?  */
+  wanted_abi = global_mips_abi ();
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: wanted_abi = %d\n",
+			wanted_abi);
+
+  /* Now that we have found what the ABI for this binary would be,
+     check whether the user is overriding it.  */
+  if (wanted_abi != MIPS_ABI_UNKNOWN)
+    mips_abi = wanted_abi;
+  else if (found_abi != MIPS_ABI_UNKNOWN)
+    mips_abi = found_abi;
+  else
+    mips_abi = MIPS_ABI_O32;
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: mips_abi = %d\n",
+			mips_abi);
+
+  /* Make sure we don't use a 32-bit architecture with a 64-bit ABI.  */
+  if (mips_abi != MIPS_ABI_EABI32
+      && mips_abi != MIPS_ABI_O32
+      && info.bfd_arch_info != NULL
+      && info.bfd_arch_info->arch == bfd_arch_mips
+      && info.bfd_arch_info->bits_per_word < 64)
+    info.bfd_arch_info = bfd_lookup_arch (bfd_arch_mips, bfd_mach_mips4000);
+
+  /* Determine the default compressed ISA.  */
+  if ((elf_flags & EF_MIPS_ARCH_ASE_MICROMIPS) != 0
+      && (elf_flags & EF_MIPS_ARCH_ASE_M16) == 0)
+    mips_isa = ISA_MICROMIPS;
+  else if ((elf_flags & EF_MIPS_ARCH_ASE_M16) != 0
+	   && (elf_flags & EF_MIPS_ARCH_ASE_MICROMIPS) == 0)
+    mips_isa = ISA_MIPS16;
+  else
+    mips_isa = global_mips_compression ();
+  mips_compression_string = mips_compression_strings[mips_isa];
+
+  /* Also used when doing an architecture lookup.  */
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"mips_gdbarch_init: "
+			"mips64_transfers_32bit_regs_p = %d\n",
+			mips64_transfers_32bit_regs_p);
+
+  /* Determine the MIPS FPU type.  */
+#ifdef HAVE_ELF
+  if (info.abfd
+      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour)
+    elf_fpu_type = bfd_elf_get_obj_attr_int (info.abfd, OBJ_ATTR_GNU,
+					     Tag_GNU_MIPS_ABI_FP);
+#endif /* HAVE_ELF */
+
+  if (!mips_fpu_type_auto)
+    fpu_type = mips_fpu_type;
+  else if (elf_fpu_type != Val_GNU_MIPS_ABI_FP_ANY)
+    {
+      switch (elf_fpu_type)
+	{
+	case Val_GNU_MIPS_ABI_FP_DOUBLE:
+	  fpu_type = MIPS_FPU_DOUBLE;
+	  break;
+	case Val_GNU_MIPS_ABI_FP_SINGLE:
+	  fpu_type = MIPS_FPU_SINGLE;
+	  break;
+	case Val_GNU_MIPS_ABI_FP_SOFT:
+	default:
+	  /* Soft float or unknown.  */
+	  fpu_type = MIPS_FPU_NONE;
+	  break;
+	}
+    }
+  else if (info.bfd_arch_info != NULL
+	   && info.bfd_arch_info->arch == bfd_arch_mips)
+    switch (info.bfd_arch_info->mach)
+      {
+      case bfd_mach_mips3900:
+      case bfd_mach_mips4100:
+      case bfd_mach_mips4111:
+      case bfd_mach_mips4120:
+	fpu_type = MIPS_FPU_NONE;
+	break;
+      case bfd_mach_mips4650:
+	fpu_type = MIPS_FPU_SINGLE;
+	break;
+      default:
+	fpu_type = MIPS_FPU_DOUBLE;
+	break;
+      }
+  else if (arches != NULL)
+    fpu_type = MIPS_FPU_TYPE (arches->gdbarch);
+  else
+    fpu_type = MIPS_FPU_DOUBLE;
+  if (gdbarch_debug)
+    fprintf_unfiltered (gdb_stdlog,
+			"mips_gdbarch_init: fpu_type = %d\n", fpu_type);
+
+  /* Check for blatant incompatibilities.  */
+
+  /* If we have only 32-bit registers, then we can't debug a 64-bit
+     ABI.  */
+  if (info.target_desc
+      && tdesc_property (info.target_desc, PROPERTY_GP32) != NULL
+      && mips_abi != MIPS_ABI_EABI32
+      && mips_abi != MIPS_ABI_O32)
+    return NULL;
+
   /* Fill in the OS dependent register numbers and names.  */
   if (info.osabi == GDB_OSABI_LINUX)
     {
@@ -8261,191 +8451,6 @@ mips_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
       /* It would be nice to detect an attempt to use a 64-bit ABI
 	 when only 32-bit registers are provided.  */
       reg_names = NULL;
-    }
-
-  /* First of all, extract the elf_flags, if available.  */
-  if (info.abfd && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour)
-    elf_flags = elf_elfheader (info.abfd)->e_flags;
-  else if (arches != NULL)
-    elf_flags = gdbarch_tdep (arches->gdbarch)->elf_flags;
-  else
-    elf_flags = 0;
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog,
-			"mips_gdbarch_init: elf_flags = 0x%08x\n", elf_flags);
-
-  /* Check ELF_FLAGS to see if it specifies the ABI being used.  */
-  switch ((elf_flags & EF_MIPS_ABI))
-    {
-    case E_MIPS_ABI_O32:
-      found_abi = MIPS_ABI_O32;
-      break;
-    case E_MIPS_ABI_O64:
-      found_abi = MIPS_ABI_O64;
-      break;
-    case E_MIPS_ABI_EABI32:
-      found_abi = MIPS_ABI_EABI32;
-      break;
-    case E_MIPS_ABI_EABI64:
-      found_abi = MIPS_ABI_EABI64;
-      break;
-    default:
-      if ((elf_flags & EF_MIPS_ABI2))
-	found_abi = MIPS_ABI_N32;
-      else
-	found_abi = MIPS_ABI_UNKNOWN;
-      break;
-    }
-
-  /* GCC creates a pseudo-section whose name describes the ABI.  */
-  if (found_abi == MIPS_ABI_UNKNOWN && info.abfd != NULL)
-    bfd_map_over_sections (info.abfd, mips_find_abi_section, &found_abi);
-
-  /* If we have no useful BFD information, use the ABI from the last
-     MIPS architecture (if there is one).  */
-  if (found_abi == MIPS_ABI_UNKNOWN && info.abfd == NULL && arches != NULL)
-    found_abi = gdbarch_tdep (arches->gdbarch)->found_abi;
-
-  /* Try the architecture for any hint of the correct ABI.  */
-  if (found_abi == MIPS_ABI_UNKNOWN
-      && info.bfd_arch_info != NULL
-      && info.bfd_arch_info->arch == bfd_arch_mips)
-    {
-      switch (info.bfd_arch_info->mach)
-	{
-	case bfd_mach_mips3900:
-	  found_abi = MIPS_ABI_EABI32;
-	  break;
-	case bfd_mach_mips4100:
-	case bfd_mach_mips5000:
-	  found_abi = MIPS_ABI_EABI64;
-	  break;
-	case bfd_mach_mips8000:
-	case bfd_mach_mips10000:
-	  /* On Irix, ELF64 executables use the N64 ABI.  The
-	     pseudo-sections which describe the ABI aren't present
-	     on IRIX.  (Even for executables created by gcc.)  */
-	  if (info.abfd != NULL
-	      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour
-	      && elf_elfheader (info.abfd)->e_ident[EI_CLASS] == ELFCLASS64)
-	    found_abi = MIPS_ABI_N64;
-	  else
-	    found_abi = MIPS_ABI_N32;
-	  break;
-	}
-    }
-
-  /* Default 64-bit objects to N64 instead of O32.  */
-  if (found_abi == MIPS_ABI_UNKNOWN
-      && info.abfd != NULL
-      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour
-      && elf_elfheader (info.abfd)->e_ident[EI_CLASS] == ELFCLASS64)
-    found_abi = MIPS_ABI_N64;
-
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: found_abi = %d\n",
-			found_abi);
-
-  /* What has the user specified from the command line?  */
-  wanted_abi = global_mips_abi ();
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: wanted_abi = %d\n",
-			wanted_abi);
-
-  /* Now that we have found what the ABI for this binary would be,
-     check whether the user is overriding it.  */
-  if (wanted_abi != MIPS_ABI_UNKNOWN)
-    mips_abi = wanted_abi;
-  else if (found_abi != MIPS_ABI_UNKNOWN)
-    mips_abi = found_abi;
-  else
-    mips_abi = MIPS_ABI_O32;
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog, "mips_gdbarch_init: mips_abi = %d\n",
-			mips_abi);
-
-  /* Determine the default compressed ISA.  */
-  if ((elf_flags & EF_MIPS_ARCH_ASE_MICROMIPS) != 0
-      && (elf_flags & EF_MIPS_ARCH_ASE_M16) == 0)
-    mips_isa = ISA_MICROMIPS;
-  else if ((elf_flags & EF_MIPS_ARCH_ASE_M16) != 0
-	   && (elf_flags & EF_MIPS_ARCH_ASE_MICROMIPS) == 0)
-    mips_isa = ISA_MIPS16;
-  else
-    mips_isa = global_mips_compression ();
-  mips_compression_string = mips_compression_strings[mips_isa];
-
-  /* Also used when doing an architecture lookup.  */
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog,
-			"mips_gdbarch_init: "
-			"mips64_transfers_32bit_regs_p = %d\n",
-			mips64_transfers_32bit_regs_p);
-
-  /* Determine the MIPS FPU type.  */
-#ifdef HAVE_ELF
-  if (info.abfd
-      && bfd_get_flavour (info.abfd) == bfd_target_elf_flavour)
-    elf_fpu_type = bfd_elf_get_obj_attr_int (info.abfd, OBJ_ATTR_GNU,
-					     Tag_GNU_MIPS_ABI_FP);
-#endif /* HAVE_ELF */
-
-  if (!mips_fpu_type_auto)
-    fpu_type = mips_fpu_type;
-  else if (elf_fpu_type != Val_GNU_MIPS_ABI_FP_ANY)
-    {
-      switch (elf_fpu_type)
-	{
-	case Val_GNU_MIPS_ABI_FP_DOUBLE:
-	  fpu_type = MIPS_FPU_DOUBLE;
-	  break;
-	case Val_GNU_MIPS_ABI_FP_SINGLE:
-	  fpu_type = MIPS_FPU_SINGLE;
-	  break;
-	case Val_GNU_MIPS_ABI_FP_SOFT:
-	default:
-	  /* Soft float or unknown.  */
-	  fpu_type = MIPS_FPU_NONE;
-	  break;
-	}
-    }
-  else if (info.bfd_arch_info != NULL
-	   && info.bfd_arch_info->arch == bfd_arch_mips)
-    switch (info.bfd_arch_info->mach)
-      {
-      case bfd_mach_mips3900:
-      case bfd_mach_mips4100:
-      case bfd_mach_mips4111:
-      case bfd_mach_mips4120:
-	fpu_type = MIPS_FPU_NONE;
-	break;
-      case bfd_mach_mips4650:
-	fpu_type = MIPS_FPU_SINGLE;
-	break;
-      default:
-	fpu_type = MIPS_FPU_DOUBLE;
-	break;
-      }
-  else if (arches != NULL)
-    fpu_type = MIPS_FPU_TYPE (arches->gdbarch);
-  else
-    fpu_type = MIPS_FPU_DOUBLE;
-  if (gdbarch_debug)
-    fprintf_unfiltered (gdb_stdlog,
-			"mips_gdbarch_init: fpu_type = %d\n", fpu_type);
-
-  /* Check for blatant incompatibilities.  */
-
-  /* If we have only 32-bit registers, then we can't debug a 64-bit
-     ABI.  */
-  if (info.target_desc
-      && tdesc_property (info.target_desc, PROPERTY_GP32) != NULL
-      && mips_abi != MIPS_ABI_EABI32
-      && mips_abi != MIPS_ABI_O32)
-    {
-      if (tdesc_data != NULL)
-	tdesc_data_cleanup (tdesc_data);
-      return NULL;
     }
 
   /* Try to find a pre-existing architecture.  */
@@ -8725,12 +8730,19 @@ mips_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
   set_gdbarch_print_registers_info (gdbarch, mips_print_registers_info);
 
-  if (mips_abi == MIPS_ABI_N32)
-    set_gdbarch_print_insn (gdbarch, gdb_print_insn_mips_n32);
-  else if (mips_abi == MIPS_ABI_N64)
-    set_gdbarch_print_insn (gdbarch, gdb_print_insn_mips_n64);
+  set_gdbarch_print_insn (gdbarch, gdb_print_insn_mips);
+  if (mips_abi == MIPS_ABI_N64)
+    set_gdbarch_disassembler_options_implicit
+      (gdbarch, (const char *) mips_disassembler_options_n64);
+  else if (mips_abi == MIPS_ABI_N32)
+    set_gdbarch_disassembler_options_implicit
+      (gdbarch, (const char *) mips_disassembler_options_n32);
   else
-    set_gdbarch_print_insn (gdbarch, gdb_print_insn_mips);
+    set_gdbarch_disassembler_options_implicit
+      (gdbarch, (const char *) mips_disassembler_options_o32);
+  set_gdbarch_disassembler_options (gdbarch, &mips_disassembler_options);
+  set_gdbarch_valid_disassembler_options (gdbarch,
+					  disassembler_options_mips ());
 
   /* FIXME: cagney/2003-08-29: The macros target_have_steppable_watchpoint,
      HAVE_NONSTEPPABLE_WATCHPOINT, and target_have_continuable_watchpoint

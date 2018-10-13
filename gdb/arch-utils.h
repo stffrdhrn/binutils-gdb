@@ -1,6 +1,6 @@
 /* Dynamic architecture support for GDB, the GNU debugger.
 
-   Copyright (C) 1998-2017 Free Software Foundation, Inc.
+   Copyright (C) 1998-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -202,7 +202,7 @@ extern struct gdbarch *get_current_arch (void);
 extern int default_has_shared_address_space (struct gdbarch *);
 
 extern int default_fast_tracepoint_valid_at (struct gdbarch *gdbarch,
-					     CORE_ADDR addr, char **msg);
+					     CORE_ADDR addr, std::string *msg);
 
 extern const gdb_byte *default_breakpoint_from_pc (struct gdbarch *gdbarch,
 						   CORE_ADDR *pcptr,
@@ -261,5 +261,14 @@ extern int default_print_insn (bfd_vma memaddr, disassemble_info *info);
 
 extern CORE_ADDR gdbarch_skip_prologue_noexcept (gdbarch *gdbarch,
 						 CORE_ADDR pc) noexcept;
+
+/* Default implementation of gdbarch_in_indirect_branch_thunk that returns
+   false.  */
+extern bool default_in_indirect_branch_thunk (gdbarch *gdbarch,
+					      CORE_ADDR pc);
+
+/* Default implementation of gdbarch type_align method.  */
+extern ULONGEST default_type_align (struct gdbarch *gdbarch,
+				    struct type *type);
 
 #endif

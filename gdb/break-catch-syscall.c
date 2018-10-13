@@ -1,6 +1,6 @@
 /* Everything about syscall catchpoints, for GDB.
 
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -27,7 +27,7 @@
 #include "mi/mi-common.h"
 #include "valprint.h"
 #include "arch-utils.h"
-#include "observer.h"
+#include "observable.h"
 #include "xml-syscall.h"
 
 /* An instance of this type is used to represent a syscall catchpoint.
@@ -110,7 +110,7 @@ insert_catch_syscall (struct bp_location *bl)
 	}
     }
 
-  return target_set_syscall_catchpoint (ptid_get_pid (inferior_ptid),
+  return target_set_syscall_catchpoint (inferior_ptid.pid (),
 					inf_data->total_syscalls_count != 0,
 					inf_data->any_syscall_count,
 					inf_data->syscalls_counts);
@@ -141,7 +141,7 @@ remove_catch_syscall (struct bp_location *bl, enum remove_bp_reason reason)
         }
     }
 
-  return target_set_syscall_catchpoint (ptid_get_pid (inferior_ptid),
+  return target_set_syscall_catchpoint (inferior_ptid.pid (),
 					inf_data->total_syscalls_count != 0,
 					inf_data->any_syscall_count,
 					inf_data->syscalls_counts);
@@ -632,7 +632,7 @@ _initialize_break_catch_syscall (void)
 {
   initialize_syscall_catchpoint_ops ();
 
-  observer_attach_inferior_exit (clear_syscall_counts);
+  gdb::observers::inferior_exit.attach (clear_syscall_counts);
   catch_syscall_inferior_data
     = register_inferior_data_with_cleanup (NULL,
 					   catch_syscall_inferior_data_cleanup);

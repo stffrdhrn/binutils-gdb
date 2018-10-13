@@ -1,6 +1,6 @@
 /* TID parsing for GDB, the GNU debugger.
 
-   Copyright (C) 2015-2017 Free Software Foundation, Inc.
+   Copyright (C) 2015-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -92,7 +92,7 @@ parse_thread_id (const char *tidstr, const char **end)
 
   ALL_THREADS (tp)
     {
-      if (ptid_get_pid (tp->ptid) == inf->pid
+      if (tp->ptid.pid () == inf->pid
 	  && tp->per_inf_num == thr_num)
 	break;
     }
@@ -301,7 +301,7 @@ tid_range_parser::in_star_range () const
   return m_state == STATE_STAR_RANGE;
 }
 
-/* See gdbthread.h.  */
+/* See tid-parse.h.  */
 
 int
 tid_is_in_list (const char *list, int default_inferior,

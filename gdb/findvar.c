@@ -1,6 +1,6 @@
 /* Find a variable's value in memory, for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -50,7 +50,7 @@ template<typename T, typename>
 T
 extract_integer (const gdb_byte *addr, int len, enum bfd_endian byte_order)
 {
-  T retval = 0;
+  typename std::make_unsigned<T>::type retval = 0;
   const unsigned char *p;
   const unsigned char *startaddr = addr;
   const unsigned char *endaddr = startaddr + len;
@@ -632,7 +632,7 @@ default_read_var_value (struct symbol *var, const struct block *var_block,
       v = allocate_value (type);
       if (overlay_debugging)
 	{
-	  CORE_ADDR addr
+	  addr
 	    = symbol_overlayed_address (SYMBOL_VALUE_ADDRESS (var),
 					SYMBOL_OBJ_SECTION (symbol_objfile (var),
 							    var));
@@ -702,10 +702,10 @@ default_read_var_value (struct symbol *var, const struct block *var_block,
     case LOC_BLOCK:
       if (overlay_debugging)
 	addr = symbol_overlayed_address
-	  (BLOCK_START (SYMBOL_BLOCK_VALUE (var)),
+	  (BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (var)),
 	   SYMBOL_OBJ_SECTION (symbol_objfile (var), var));
       else
-	addr = BLOCK_START (SYMBOL_BLOCK_VALUE (var));
+	addr = BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (var));
       break;
 
     case LOC_REGISTER:
@@ -789,6 +789,8 @@ default_read_var_value (struct symbol *var, const struct block *var_block,
       break;
 
     case LOC_OPTIMIZED_OUT:
+      if (is_dynamic_type (type))
+	type = resolve_dynamic_type (type, NULL, /* Unused address.  */ 0);
       return allocate_optimized_out_value (type);
 
     default:
@@ -1004,7 +1006,6 @@ address_from_register (int regnum, struct frame_info *frame)
 
   result = value_as_address (value);
   release_value (value);
-  value_free (value);
 
   return result;
 }

@@ -1,5 +1,5 @@
 /* Plugin support for BFD.
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -80,7 +80,7 @@ dlerror (void)
 #define bfd_plugin_bfd_set_private_flags	      _bfd_generic_bfd_set_private_flags
 #define bfd_plugin_core_file_matches_executable_p     generic_core_file_matches_executable_p
 #define bfd_plugin_bfd_is_local_label_name	      _bfd_nosymbols_bfd_is_local_label_name
-#define bfd_plugin_bfd_is_target_special_symbol	      ((bfd_boolean (*) (bfd *, asymbol *)) bfd_false)
+#define bfd_plugin_bfd_is_target_special_symbol	      _bfd_bool_bfd_asymbol_false
 #define bfd_plugin_get_lineno			      _bfd_nosymbols_get_lineno
 #define bfd_plugin_find_nearest_line		      _bfd_nosymbols_find_nearest_line
 #define bfd_plugin_find_line			      _bfd_nosymbols_find_line
@@ -105,6 +105,7 @@ dlerror (void)
 #define bfd_plugin_bfd_discard_group		      bfd_generic_discard_group
 #define bfd_plugin_section_already_linked	      _bfd_generic_section_already_linked
 #define bfd_plugin_bfd_define_common_symbol	      bfd_generic_define_common_symbol
+#define bfd_plugin_bfd_link_hide_symbol		      _bfd_generic_link_hide_symbol
 #define bfd_plugin_bfd_define_start_stop	      bfd_generic_define_start_stop
 #define bfd_plugin_bfd_copy_link_hash_symbol_type     _bfd_generic_copy_link_hash_symbol_type
 #define bfd_plugin_bfd_link_check_relocs	      _bfd_generic_link_check_relocs
@@ -123,7 +124,7 @@ message (int level ATTRIBUTE_UNUSED,
 }
 
 /* Register a claim-file handler. */
-static ld_plugin_claim_file_handler claim_file;
+static ld_plugin_claim_file_handler claim_file = NULL;
 
 static enum ld_plugin_status
 register_claim_file (ld_plugin_claim_file_handler handler)
@@ -165,20 +166,33 @@ bfd_plugin_open_input (bfd *ibfd, struct ld_plugin_input_file *file)
   bfd *iobfd;
 
   iobfd = ibfd;
-  if (ibfd->my_archive && !bfd_is_thin_archive (ibfd->my_archive))
-    iobfd = ibfd->my_archive;
+  while (iobfd->my_archive
+	 && !bfd_is_thin_archive (iobfd->my_archive))
+    iobfd = iobfd->my_archive;
   file->name = iobfd->filename;
 
   if (!iobfd->iostream && !bfd_open_file (iobfd))
     return 0;
 
-  file->fd = fileno ((FILE *) iobfd->iostream);
+  /* The plugin API expects that the file descriptor won't be closed
+     and reused as done by the bfd file cache.  So open it again.
+     dup isn't good enough.  plugin IO uses lseek/read while BFD uses
+     fseek/fread.  It isn't wise to mix the unistd and stdio calls on
+     the same underlying file descriptor.  */
+  file->fd = open (file->name, O_RDONLY | O_BINARY);
+  if (file->fd < 0)
+    return 0;
 
   if (iobfd == ibfd)
     {
       struct stat stat_buf;
+
       if (fstat (file->fd, &stat_buf))
-	return 0;
+	{
+	  close(file->fd);
+	  return 0;
+	}
+
       file->offset = 0;
       file->filesize = stat_buf.st_size;
     }
@@ -196,23 +210,33 @@ try_claim (bfd *abfd)
   int claimed = 0;
   struct ld_plugin_input_file file;
 
+  file.handle = abfd;
   if (!bfd_plugin_open_input (abfd, &file))
     return 0;
-  file.handle = abfd;
-  off_t cur_offset = lseek (file.fd, 0, SEEK_CUR);
-  claim_file (&file, &claimed);
-  lseek (file.fd, cur_offset, SEEK_SET);
+  if (claim_file)
+    claim_file (&file, &claimed);
+  close (file.fd);
   return claimed;
 }
+
+struct plugin_list_entry
+{
+  void *                        handle;
+  ld_plugin_claim_file_handler  claim_file;
+  struct plugin_list_entry *    next;
+};
+
+static struct plugin_list_entry * plugin_list = NULL;
 
 static int
 try_load_plugin (const char *pname, bfd *abfd, int *has_plugin_p)
 {
-  void *plugin_handle;
+  void *plugin_handle = NULL;
   struct ld_plugin_tv tv[4];
   int i;
   ld_plugin_onload onload;
   enum ld_plugin_status status;
+  struct plugin_list_entry *plugin_list_iter;
 
   *has_plugin_p = 0;
 
@@ -223,9 +247,30 @@ try_load_plugin (const char *pname, bfd *abfd, int *has_plugin_p)
       return 0;
     }
 
+  for (plugin_list_iter = plugin_list;
+       plugin_list_iter;
+       plugin_list_iter = plugin_list_iter->next)
+    {
+      if (plugin_handle == plugin_list_iter->handle)
+        {
+          dlclose (plugin_handle);
+          if (!plugin_list_iter->claim_file)
+            return 0;
+
+          register_claim_file (plugin_list_iter->claim_file);
+          goto have_claim_file;
+        }
+    }
+
+  plugin_list_iter = (struct plugin_list_entry *) xmalloc (sizeof *plugin_list_iter);
+  plugin_list_iter->handle = plugin_handle;
+  plugin_list_iter->claim_file = NULL;
+  plugin_list_iter->next = plugin_list;
+  plugin_list = plugin_list_iter;
+
   onload = dlsym (plugin_handle, "onload");
   if (!onload)
-    goto err;
+    return 0;
 
   i = 0;
   tv[i].tv_tag = LDPT_MESSAGE;
@@ -246,24 +291,23 @@ try_load_plugin (const char *pname, bfd *abfd, int *has_plugin_p)
   status = (*onload)(tv);
 
   if (status != LDPS_OK)
-    goto err;
+    return 0;
 
+  plugin_list_iter->claim_file = claim_file;
+
+have_claim_file:
   *has_plugin_p = 1;
 
   abfd->plugin_format = bfd_plugin_no;
 
   if (!claim_file)
-    goto err;
+    return 0;
 
   if (!try_claim (abfd))
-    goto err;
+    return 0;
 
   abfd->plugin_format = bfd_plugin_yes;
-
   return 1;
-
- err:
-  return 0;
 }
 
 /* There may be plugin libraries in lib/bfd-plugins.  */
@@ -353,7 +397,7 @@ load_plugin (bfd *abfd)
       int valid_plugin;
 
       full_name = concat (p, "/", ent->d_name, NULL);
-      if (stat(full_name, &s) == 0 && S_ISREG (s.st_mode))
+      if (stat (full_name, &s) == 0 && S_ISREG (s.st_mode))
 	found = try_load_plugin (full_name, abfd, &valid_plugin);
       if (has_plugin <= 0)
 	has_plugin = valid_plugin;
@@ -594,16 +638,16 @@ const bfd_target plugin_vec =
     _bfd_dummy_target
   },
   {				/* bfd_set_format.  */
-    bfd_false,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
+    _bfd_bool_bfd_false_error,
     _bfd_generic_mkarchive,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
   },
   {				/* bfd_write_contents.  */
-    bfd_false,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
+    _bfd_bool_bfd_false_error,
     _bfd_write_archive_contents,
-    bfd_false,
+    _bfd_bool_bfd_false_error,
   },
 
   BFD_JUMP_TABLE_GENERIC (bfd_plugin),

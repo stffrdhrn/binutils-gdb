@@ -1,6 +1,6 @@
 /* Branch trace support for GDB, the GNU debugger.
 
-   Copyright (C) 2013-2017 Free Software Foundation, Inc.
+   Copyright (C) 2013-2018 Free Software Foundation, Inc.
 
    Contributed by Intel Corp. <markus.t.metzger@intel.com>.
 
@@ -228,7 +228,7 @@ struct btrace_call_history
 };
 
 /* Branch trace thread flags.  */
-enum btrace_thread_flag
+enum btrace_thread_flag : unsigned
 {
   /* The thread is to be stepped forwards.  */
   BTHR_STEP = (1 << 0),
@@ -385,8 +385,10 @@ extern void btrace_teardown (struct thread_info *);
 
 extern const char *btrace_decode_error (enum btrace_format format, int errcode);
 
-/* Fetch the branch trace for a single thread.  */
-extern void btrace_fetch (struct thread_info *);
+/* Fetch the branch trace for a single thread.  If CPU is not NULL, assume
+   CPU for trace decode.  */
+extern void btrace_fetch (struct thread_info *,
+			  const struct btrace_cpu *cpu);
 
 /* Clear the branch trace for a single thread.  */
 extern void btrace_clear (struct thread_info *);
@@ -504,8 +506,5 @@ extern int btrace_is_replaying (struct thread_info *tp);
 
 /* Return non-zero if the branch trace for TP is empty; zero otherwise.  */
 extern int btrace_is_empty (struct thread_info *tp);
-
-/* Create a cleanup for DATA.  */
-extern struct cleanup *make_cleanup_btrace_data (struct btrace_data *data);
 
 #endif /* BTRACE_H */

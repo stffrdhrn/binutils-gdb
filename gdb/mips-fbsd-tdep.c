@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/mips.
 
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -245,10 +245,10 @@ mips_fbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 {
   size_t regsize = mips_abi_regsize (gdbarch);
 
-  cb (".reg", MIPS_FBSD_NUM_GREGS * regsize, &mips_fbsd_gregset,
-      NULL, cb_data);
-  cb (".reg2", MIPS_FBSD_NUM_FPREGS * regsize, &mips_fbsd_fpregset,
-      NULL, cb_data);
+  cb (".reg", MIPS_FBSD_NUM_GREGS * regsize, MIPS_FBSD_NUM_GREGS * regsize,
+      &mips_fbsd_gregset, NULL, cb_data);
+  cb (".reg2", MIPS_FBSD_NUM_FPREGS * regsize, MIPS_FBSD_NUM_FPREGS * regsize,
+      &mips_fbsd_fpregset, NULL, cb_data);
 }
 
 /* Signal trampoline support.  */
@@ -342,11 +342,11 @@ static const struct tramp_frame mips_fbsd_sigframe =
   SIGTRAMP_FRAME,
   MIPS_INSN32_SIZE,
   {
-    { MIPS_INST_ADDIU_A0_SP_O32, -1 },	/* addiu   a0, sp, SIGF_UC */
-    { MIPS_INST_LI_V0_SIGRETURN, -1 },	/* li      v0, SYS_sigreturn */
-    { MIPS_INST_SYSCALL, -1 },		/* syscall */
-    { MIPS_INST_BREAK, -1 },		/* break */
-    { TRAMP_SENTINEL_INSN, -1 }
+    { MIPS_INST_ADDIU_A0_SP_O32, ULONGEST_MAX },	/* addiu   a0, sp, SIGF_UC */
+    { MIPS_INST_LI_V0_SIGRETURN, ULONGEST_MAX },	/* li      v0, SYS_sigreturn */
+    { MIPS_INST_SYSCALL, ULONGEST_MAX },		/* syscall */
+    { MIPS_INST_BREAK, ULONGEST_MAX },		/* break */
+    { TRAMP_SENTINEL_INSN, ULONGEST_MAX }
   },
   mips_fbsd_sigframe_init
 };
@@ -434,11 +434,11 @@ static const struct tramp_frame mipsn32_fbsd_sigframe =
   SIGTRAMP_FRAME,
   MIPS_INSN32_SIZE,
   {
-    { MIPS_INST_ADDIU_A0_SP_N32, -1 },	/* addiu   a0, sp, SIGF_UC */
-    { MIPS_INST_LI_V0_SIGRETURN, -1 },	/* li      v0, SYS_sigreturn */
-    { MIPS_INST_SYSCALL, -1 },		/* syscall */
-    { MIPS_INST_BREAK, -1 },		/* break */
-    { TRAMP_SENTINEL_INSN, -1 }
+    { MIPS_INST_ADDIU_A0_SP_N32, ULONGEST_MAX },	/* addiu   a0, sp, SIGF_UC */
+    { MIPS_INST_LI_V0_SIGRETURN, ULONGEST_MAX },	/* li      v0, SYS_sigreturn */
+    { MIPS_INST_SYSCALL, ULONGEST_MAX },		/* syscall */
+    { MIPS_INST_BREAK, ULONGEST_MAX },		/* break */
+    { TRAMP_SENTINEL_INSN, ULONGEST_MAX }
   },
   mips64_fbsd_sigframe_init
 };
@@ -451,11 +451,11 @@ static const struct tramp_frame mips64_fbsd_sigframe =
   SIGTRAMP_FRAME,
   MIPS_INSN32_SIZE,
   {
-    { MIPS_INST_DADDIU_A0_SP_N64, -1 },	/* daddiu  a0, sp, SIGF_UC */
-    { MIPS_INST_LI_V0_SIGRETURN, -1 },	/* li      v0, SYS_sigreturn */
-    { MIPS_INST_SYSCALL, -1 },		/* syscall */
-    { MIPS_INST_BREAK, -1 },		/* break */
-    { TRAMP_SENTINEL_INSN, -1 }
+    { MIPS_INST_DADDIU_A0_SP_N64, ULONGEST_MAX },	/* daddiu  a0, sp, SIGF_UC */
+    { MIPS_INST_LI_V0_SIGRETURN, ULONGEST_MAX },	/* li      v0, SYS_sigreturn */
+    { MIPS_INST_SYSCALL, ULONGEST_MAX },		/* syscall */
+    { MIPS_INST_BREAK, ULONGEST_MAX },		/* break */
+    { TRAMP_SENTINEL_INSN, ULONGEST_MAX }
   },
   mips64_fbsd_sigframe_init
 };

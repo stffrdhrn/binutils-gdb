@@ -1,5 +1,5 @@
 /* ns32k.c  -- Assemble on the National Semiconductor 32k series
-   Copyright (C) 1987-2017 Free Software Foundation, Inc.
+   Copyright (C) 1987-2018 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -493,7 +493,7 @@ addr_mode (char *operand,
 	default:
 	  break;
 	}
-      /* Drop through.  */
+      /* Fall through.  */
 
     case 3:
       if (!strncmp (str, "tos", 3))

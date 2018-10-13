@@ -1,4 +1,4 @@
-# Copyright 2015-2017 Free Software Foundation, Inc.
+# Copyright 2015-2018 Free Software Foundation, Inc.
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -69,8 +69,8 @@ if { [gdb_test "info sharedlibrary" ".*${remote_libipa}.*" "IPA loaded"] != 0 } 
     return 1
 }
 
-gdb_test "break end" ""
-gdb_test "break fail" ""
+gdb_breakpoint "end" qualified
+gdb_breakpoint "fail" qualified
 
 gdb_test "ftrace set_point" "Fast tracepoint .*" \
     "fast tracepoint at a long insn"

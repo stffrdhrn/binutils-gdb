@@ -1,6 +1,6 @@
 /* CLI utilities.
 
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2011-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -58,15 +58,16 @@ get_number_trailer (const char **pp, int trailer)
 	     null-terminate it to pass to lookup_internalvar().  */
 	  char *varname;
 	  const char *start = ++p;
-	  LONGEST val;
+	  LONGEST longest_val;
 
 	  while (isalnum (*p) || *p == '_')
 	    p++;
 	  varname = (char *) alloca (p - start + 1);
 	  strncpy (varname, start, p - start);
 	  varname[p - start] = '\0';
-	  if (get_internalvar_integer (lookup_internalvar (varname), &val))
-	    retval = (int) val;
+	  if (get_internalvar_integer (lookup_internalvar (varname),
+				       &longest_val))
+	    retval = (int) longest_val;
 	  else
 	    {
 	      printf_filtered (_("Convenience variable must "
@@ -137,7 +138,6 @@ number_or_range_parser::number_or_range_parser (const char *string)
 void
 number_or_range_parser::init (const char *string)
 {
-  m_finished = false;
   m_cur_tok = string;
   m_last_retval = 0;
   m_end_value = 0;
@@ -169,7 +169,10 @@ number_or_range_parser::get_number ()
       /* Default case: state->m_cur_tok is pointing either to a solo
 	 number, or to the first number of a range.  */
       m_last_retval = get_number_trailer (&m_cur_tok, '-');
-      if (*m_cur_tok == '-')
+      /* If get_number_trailer has found a -, it might be the start
+	 of a command option.  So, do not parse a range if the - is
+	 followed by an alpha.  */
+      if (*m_cur_tok == '-' && !isalpha (*(m_cur_tok + 1)))
 	{
 	  const char **temp;
 
@@ -196,8 +199,17 @@ number_or_range_parser::get_number ()
 	}
     }
   else
-    error (_("negative value"));
-  m_finished = *m_cur_tok == '\0';
+    {
+      if (isdigit (*(m_cur_tok + 1)))
+	error (_("negative value"));
+      if (*(m_cur_tok + 1) == '$')
+	{
+	  /* Convenience variable.  */
+	  m_last_retval = ::get_number (&m_cur_tok);
+	  if (m_last_retval < 0)
+	    error (_("negative value"));
+	}
+    }
   return m_last_retval;
 }
 
@@ -215,6 +227,21 @@ number_or_range_parser::setup_range (int start_value, int end_value,
   m_end_value = end_value;
 }
 
+/* See documentation in cli-utils.h.  */
+
+bool
+number_or_range_parser::finished () const
+{
+  /* Parsing is finished when at end of string or null string,
+     or we are not in a range and not in front of an integer, negative
+     integer, convenience var or negative convenience var.  */
+  return (m_cur_tok == NULL || *m_cur_tok == '\0'
+	  || (!m_in_range
+	      && !(isdigit (*m_cur_tok) || *m_cur_tok == '$')
+	      && !(*m_cur_tok == '-'
+		   && (isdigit (m_cur_tok[1]) || m_cur_tok[1] == '$'))));
+}
+
 /* Accept a number and a string-form list of numbers such as is 
    accepted by get_number_or_range.  Return TRUE if the number is
    in the list.
@@ -230,12 +257,15 @@ number_is_in_list (const char *list, int number)
     return 1;
 
   number_or_range_parser parser (list);
+
+  if (parser.finished ())
+    error (_("Arguments must be numbers or '$' variables."));
   while (!parser.finished ())
     {
       int gotnum = parser.get_number ();
 
       if (gotnum == 0)
-	error (_("Args must be numbers or '$' variables."));
+	error (_("Arguments must be numbers or '$' variables."));
       if (gotnum == number)
 	return 1;
     }
@@ -303,4 +333,61 @@ check_for_argument (const char **str, const char *arg, int arg_len)
       return 1;
     }
   return 0;
+}
+
+/* See documentation in cli-utils.h.  */
+
+int
+parse_flags (const char **str, const char *flags)
+{
+  const char *p = skip_spaces (*str);
+
+  if (p[0] == '-'
+      && isalpha (p[1])
+      && (p[2] == '\0' || isspace (p[2])))
+    {
+      const char pf = p[1];
+      const char *f = flags;
+
+      while (*f != '\0')
+	{
+	  if (*f == pf)
+	    {
+	      *str = skip_spaces (p + 2);
+	      return f - flags + 1;
+	    }
+	  f++;
+	}
+    }
+
+  return 0;
+}
+
+/* See documentation in cli-utils.h.  */
+
+bool
+parse_flags_qcs (const char *which_command, const char **str,
+		 qcs_flags *flags)
+{
+  switch (parse_flags (str, "qcs"))
+    {
+    case 0:
+      return false;
+    case 1:
+      flags->quiet = true;
+      break;
+    case 2:
+      flags->cont = true;
+      break;
+    case 3:
+      flags->silent = true;
+      break;
+    default:
+      gdb_assert_not_reached ("int qcs flag out of bound");
+    }
+
+  if (flags->cont && flags->silent)
+    error (_("%s: -c and -s are mutually exclusive"), which_command);
+
+  return true;
 }

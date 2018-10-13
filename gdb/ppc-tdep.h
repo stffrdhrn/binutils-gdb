@@ -1,6 +1,6 @@
 /* Target-dependent code for GDB, the GNU debugger.
 
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -100,11 +100,6 @@ struct ppc_reg_offsets
   int f0_offset;
   int fpscr_offset;
   int fpscr_size;
-
-  /* AltiVec registers.  */
-  int vr0_offset;
-  int vscr_offset;
-  int vrsave_offset;
 };
 
 extern void ppc_supply_reg (struct regcache *regcache, int regnum,
@@ -330,7 +325,7 @@ struct ppc_insn_pattern
 };
 
 extern int ppc_insns_match_pattern (struct frame_info *frame, CORE_ADDR pc,
-				    struct ppc_insn_pattern *pattern,
+				    const struct ppc_insn_pattern *pattern,
 				    unsigned int *insns);
 extern CORE_ADDR ppc_insn_d_field (unsigned int insn);
 

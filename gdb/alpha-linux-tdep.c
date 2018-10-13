@@ -1,5 +1,5 @@
 /* Target-dependent code for GNU/Linux on Alpha.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -238,8 +238,8 @@ alpha_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					  void *cb_data,
 					  const struct regcache *regcache)
 {
-  cb (".reg", 32 * 8, &alpha_linux_gregset, NULL, cb_data);
-  cb (".reg2", 32 * 8, &alpha_linux_fpregset, NULL, cb_data);
+  cb (".reg", 32 * 8, 32 * 8, &alpha_linux_gregset, NULL, cb_data);
+  cb (".reg2", 32 * 8, 32 * 8, &alpha_linux_fpregset, NULL, cb_data);
 }
 
 /* Implementation of `gdbarch_gdb_signal_from_target', as defined in

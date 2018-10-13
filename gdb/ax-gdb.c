@@ -1,6 +1,6 @@
 /* GDB-specific functions for operating on agent expressions.
 
-   Copyright (C) 1998-2017 Free Software Foundation, Inc.
+   Copyright (C) 1998-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -679,7 +679,7 @@ gen_var_ref (struct agent_expr *ax, struct axs_value *value, struct symbol *var)
       break;
 
     case LOC_BLOCK:
-      ax_const_l (ax, BLOCK_START (SYMBOL_BLOCK_VALUE (var)));
+      ax_const_l (ax, BLOCK_ENTRY_PC (SYMBOL_BLOCK_VALUE (var)));
       value->kind = axs_rvalue;
       break;
 
@@ -1533,7 +1533,7 @@ gen_struct_ref (struct agent_expr *ax, struct axs_value *value,
   
   if (!found)
     error (_("Couldn't find member named `%s' in struct/union/class `%s'"),
-	   field, TYPE_TAG_NAME (type));
+	   field, TYPE_NAME (type));
 }
 
 static int
@@ -1629,7 +1629,7 @@ gen_namespace_elt (struct agent_expr *ax, struct axs_value *value,
 
   if (!found)
     error (_("No symbol \"%s\" in namespace \"%s\"."), 
-	   name, TYPE_TAG_NAME (curtype));
+	   name, TYPE_NAME (curtype));
 
   return found;
 }
@@ -1644,7 +1644,7 @@ static int
 gen_maybe_namespace_elt (struct agent_expr *ax, struct axs_value *value,
 			 const struct type *curtype, char *name)
 {
-  const char *namespace_name = TYPE_TAG_NAME (curtype);
+  const char *namespace_name = TYPE_NAME (curtype);
   struct block_symbol sym;
 
   sym = cp_lookup_symbol_namespace (namespace_name, name,

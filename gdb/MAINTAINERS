@@ -153,7 +153,8 @@ Joel Brobecker			brobecker@adacore.com
 Kevin Buettner			kevinb@redhat.com
 Doug Evans			dje@google.com
 Simon Marchi			simon.marchi@ericsson.com
-Yao Qi				yao.qi@arm.com
+Yao Qi				qiyao@sourceware.org
+Tom Tromey			tom@tromey.com
 Ulrich Weigand			Ulrich.Weigand@de.ibm.com
 Eli Zaretskii			eliz@gnu.org
 
@@ -261,8 +262,6 @@ the native maintainer when resolving ABI issues.
 	m68hc11		--target=m68hc11-elf ,-Werror ,
 	m68k		--target=m68k-elf ,-Werror
 
-	m88k		--target=m88k-openbsd ,-Werror
-
 	mcore		Deleted
 
 	mep		--target=mep-elf ,-Werror
@@ -272,8 +271,8 @@ the native maintainer when resolving ABI issues.
 			--target=microblaze-linux-gnu ,-Werror
 			Michael Eager		eager@eagercon.com
 
-	mips		--target=mips-elf ,-Werror
-			Maciej W. Rozycki	macro@imgtec.com
+	mips I-IV	--target=mips-elf ,-Werror
+			Maciej W. Rozycki	macro@linux-mips.org
 
 	mn10300		--target=mn10300-elf broken
 			(sim/ dies with make -j)
@@ -286,13 +285,21 @@ the native maintainer when resolving ABI issues.
 
 	nios2		--target=nios2-elf ,-Werror
 			--target=nios2-linux-gnu ,-Werror
-			Yao Qi			yao.qi@arm.com
+			Yao Qi			qiyao@sourceware.org
 
 	ns32k		Deleted
+
+	or1k		--target=or1k-elf ,-Werror
+			Stafford Horne		shorne@gmail.com
 
 	pa		--target=hppa-elf ,-Werror
 
 	powerpc		--target=powerpc-eabi ,-Werror
+
+	riscv		--target=riscv32-elf ,-Werror
+			--target=riscv64-elf ,-Werror
+			Andrew Burgess		andrew.burgess@embecosm.com
+			Palmer Dabbelt		palmer@sifive.com
 
 	rl78		--target=rl78-elf ,-Werror
 
@@ -303,7 +310,6 @@ the native maintainer when resolving ABI issues.
 
 	score	--target=score-elf
 	sh		--target=sh-elf ,-Werror
-			--target=sh64-elf ,-Werror
 
 	sparc		--target=sparc64-solaris2.10 ,-Werror
 			(--target=sparc-elf broken)
@@ -312,7 +318,7 @@ the native maintainer when resolving ABI issues.
 			Ulrich Weigand		uweigand@de.ibm.com
 
 	tic6x		--target=tic6x-elf ,-Werror
-			Yao Qi			yao.qi@arm.com
+			Yao Qi			qiyao@sourceware.org
 
 	v850		--target=v850-elf ,-Werror
 
@@ -489,6 +495,7 @@ Adam Fedor					fedor@gnu.org
 Max Filippov					jcmvbkbc@gmail.com
 Brian Ford					ford@vss.fsi.com
 Matthew Fortune					matthew.fortune@imgtec.com
+Pedro Franco de Carvalho			pedromfc@linux.vnet.ibm.com
 Orjan Friberg					orjanf@axis.com
 Andreas From					andreas.from@ericsson.com
 Nathan Froyd					froydnj@codesourcery.com
@@ -507,6 +514,7 @@ Matthew Gretton-Dann				matthew.gretton-dann@arm.com
 Maxim Grigoriev					maxim2405@gmail.com
 Jerome Guitton					guitton@act-europe.fr
 Ben Harris					bjh21@netbsd.org
+Alan Hayward					alan.hayward@arm.com
 Bernhard Heckel					heckel_bernhard@web.de
 Richard Henderson				rth@redhat.com
 Aldy Hernandez					aldyh@redhat.com
@@ -531,7 +539,7 @@ Ruslan Kabatsayev				b7.10110111@gmail.com
 Geoff Keating					geoffk@redhat.com
 Mark Kettenis					kettenis@gnu.org
 Marc Khouzam					marc.khouzam@ericsson.com
-Toshihito Kikuchi					k.toshihito@yahoo.de
+Toshihito Kikuchi				k.toshihito@yahoo.de
 Jim Kingdon					kingdon@panix.com
 Anton Kolesov					anton.kolesov@synopsys.com
 Paul Koning					paul_koning@dell.com
@@ -548,7 +556,7 @@ Yan-Ting Lin					currygt52@gmail.com
 Robert Lipe					rjl@sco.com
 Lei Liu						lei.liu2@windriver.com
 Sandra Loosemore				sandra@codesourcery.com
-Carl Love                  cel@us.ibm.com
+Carl Love                  			cel@us.ibm.com
 H.J. Lu						hjl.tools@gmail.com
 Michal Ludvig                                   mludvig@suse.cz
 Edjunior B. Machado				emachado@linux.vnet.ibm.com
@@ -579,9 +587,11 @@ Nathanael Nerode				neroden@gcc.gnu.org
 Hans-Peter Nilsson				hp@bitrange.com
 David O'Brien					obrien@freebsd.org
 Alexandre Oliva					aoliva@redhat.com
+Rainer Orth					ro@cebitec.uni-bielefeld.de
 Karen Osmond					karen.osmond@gmail.com
 Pawandeep Oza					oza.pawandeep@gmail.com
 Patrick Palka					patrick@parcs.ath.cx
+Weimin Pan					weimin.pan@oracle.com
 Denis Pilat					denis.pilat@st.com
 Andrew Pinski					apinski@cavium.com
 Kevin Pouget					kevin.pouget@st.com
@@ -589,7 +599,7 @@ Paul Pluzhnikov					ppluzhnikov@google.com
 Marek Polacek					mpolacek@redhat.com
 Siddhesh Poyarekar				siddhesh@redhat.com
 Vladimir Prus                                   vladimir@codesourcery.com
-Yao Qi						yao.qi@arm.com
+Yao Qi						qiyao@sourceware.org
 Qinwei						qinwei@sunnorth.com.cn
 Ramana Radhakrishnan				ramana.radhakrishnan@arm.com
 Siva Chandra Reddy				sivachandra@google.com
@@ -634,16 +644,17 @@ Alfred M. Szmidt				ams@gnu.org
 David Taylor					david.taylor@emc.com
 Ian Lance Taylor				ian@airs.com
 Walfred Tedeschi				walfred.tedeschi@intel.com
+Petr Tesarik					ptesarik@suse.cz
 Gary Thomas					gthomas@redhat.com
 Jason Thorpe					thorpej@netbsd.org
 Caroline Tice					ctice@apple.com
 Kai Tietz					ktietz@redhat.com
 Andreas Tobler					andreast@fgznet.ch
-Antoine Tremblay				antoine.tremblay@ericsson.com
 Jon Turney					jon.turney@dronecode.org.uk
 David Ung					davidu@mips.com
 D Venkatasubramanian				dvenkat@noida.hcltech.com
 Corinna Vinschen				vinschen@redhat.com
+Tom de Vries					tdevries@suse.de
 Sami Wagiaalla					swagiaal@redhat.com
 Keith Walker					keith.walker@arm.com
 Ricard Wanderlof				ricardw@axis.com

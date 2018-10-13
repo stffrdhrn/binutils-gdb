@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 Free Software Foundation, Inc.
+/* Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -15,17 +15,18 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-
+#include "common-defs.h"
 #include "aarch64.h"
 #include <stdlib.h>
 
 #include "../features/aarch64-core.c"
 #include "../features/aarch64-fpu.c"
+#include "../features/aarch64-sve.c"
 
-/* Create the aarch64 target description.  */
+/* See arch/aarch64.h.  */
 
 target_desc *
-aarch64_create_target_description ()
+aarch64_create_target_description (uint64_t vq)
 {
   target_desc *tdesc = allocate_target_description ();
 
@@ -36,7 +37,11 @@ aarch64_create_target_description ()
   long regnum = 0;
 
   regnum = create_feature_aarch64_core (tdesc, regnum);
-  regnum = create_feature_aarch64_fpu (tdesc, regnum);
+
+  if (vq == 0)
+    regnum = create_feature_aarch64_fpu (tdesc, regnum);
+  else
+    regnum = create_feature_aarch64_sve (tdesc, regnum, vq);
 
   return tdesc;
 }

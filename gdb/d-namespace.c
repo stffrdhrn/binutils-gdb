@@ -1,6 +1,6 @@
 /* Helper routines for D support in GDB.
 
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -318,7 +318,7 @@ d_lookup_nested_symbol (struct type *parent_type,
     case TYPE_CODE_MODULE:
 	{
 	  int size;
-	  const char *parent_name = type_name_no_tag_or_error (saved_parent_type);
+	  const char *parent_name = type_name_or_error (saved_parent_type);
 	  struct block_symbol sym
 	    = d_lookup_symbol_in_module (parent_name, nested_name,
 					 block, VAR_DOMAIN, 0);

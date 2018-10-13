@@ -1,5 +1,5 @@
 /* SPARC-specific support for 64-bit ELF
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -97,12 +97,20 @@ elf64_sparc_slurp_one_reloc_table (bfd *abfd, asection *asect,
       else
 	relent->address = rela.r_offset - asect->vma;
 
-      if (ELF64_R_SYM (rela.r_info) == STN_UNDEF
-	  /* PR 17512: file: 996185f8.  */
-	  || (!dynamic && ELF64_R_SYM(rela.r_info) > bfd_get_symcount(abfd))
-	  || (dynamic
-	      && ELF64_R_SYM(rela.r_info) > bfd_get_dynamic_symcount(abfd)))
+      if (ELF64_R_SYM (rela.r_info) == STN_UNDEF)
 	relent->sym_ptr_ptr = bfd_abs_section_ptr->symbol_ptr_ptr;
+      else if (/* PR 17512: file: 996185f8.  */
+               (!dynamic && ELF64_R_SYM(rela.r_info) > bfd_get_symcount(abfd))
+               || (dynamic
+                   && ELF64_R_SYM(rela.r_info) > bfd_get_dynamic_symcount(abfd)))
+        {
+          _bfd_error_handler
+	    /* xgettext:c-format */
+	    (_("%pB(%pA): relocation %d has invalid symbol index %ld"),
+	     abfd, asect, i, (long) ELF64_R_SYM (rela.r_info));
+	  bfd_set_error (bfd_error_bad_value);
+	  relent->sym_ptr_ptr = bfd_abs_section_ptr->symbol_ptr_ptr;
+        }
       else
 	{
 	  asymbol **ps, *s;
@@ -122,15 +130,19 @@ elf64_sparc_slurp_one_reloc_table (bfd *abfd, asection *asect,
       r_type = ELF64_R_TYPE_ID (rela.r_info);
       if (r_type == R_SPARC_OLO10)
 	{
-	  relent->howto = _bfd_sparc_elf_info_to_howto_ptr (R_SPARC_LO10);
+	  relent->howto = _bfd_sparc_elf_info_to_howto_ptr (abfd, R_SPARC_LO10);
 	  relent[1].address = relent->address;
 	  relent++;
 	  relent->sym_ptr_ptr = bfd_abs_section_ptr->symbol_ptr_ptr;
 	  relent->addend = ELF64_R_TYPE_DATA (rela.r_info);
-	  relent->howto = _bfd_sparc_elf_info_to_howto_ptr (R_SPARC_13);
+	  relent->howto = _bfd_sparc_elf_info_to_howto_ptr (abfd, R_SPARC_13);
 	}
       else
-	relent->howto = _bfd_sparc_elf_info_to_howto_ptr (r_type);
+	{
+	  relent->howto = _bfd_sparc_elf_info_to_howto_ptr (abfd, r_type);
+	  if (relent->howto == NULL)
+	    goto error_return;
+	}
     }
 
   canon_reloc_count (asect) += relent - relents;
@@ -440,11 +452,6 @@ elf64_sparc_add_symbol_hook (bfd *abfd, struct bfd_link_info *info,
 {
   static const char *const stt_types[] = { "NOTYPE", "OBJECT", "FUNCTION" };
 
-  if (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
-      && (abfd->flags & DYNAMIC) == 0
-      && bfd_get_flavour (info->output_bfd) == bfd_target_elf_flavour)
-    elf_tdata (info->output_bfd)->has_gnu_symbols |= elf_gnu_symbol_ifunc;
-
   if (ELF_ST_TYPE (sym->st_info) == STT_REGISTER)
     {
       int reg;
@@ -457,7 +464,7 @@ elf64_sparc_add_symbol_hook (bfd *abfd, struct bfd_link_info *info,
 	case 6: reg -= 4; break;
 	default:
 	  _bfd_error_handler
-	    (_("%B: Only registers %%g[2367] can be declared using STT_REGISTER"),
+	    (_("%pB: only registers %%g[2367] can be declared using STT_REGISTER"),
 	     abfd);
 	  return FALSE;
 	}
@@ -478,8 +485,8 @@ elf64_sparc_add_symbol_hook (bfd *abfd, struct bfd_link_info *info,
 	{
 	  _bfd_error_handler
 	    /* xgettext:c-format */
-	    (_("Register %%g%d used incompatibly: %s in %B,"
-	       " previously %s in %B"),
+	    (_("register %%g%d used incompatibly: %s in %pB,"
+	       " previously %s in %pB"),
 	     (int) sym->st_value, **namep ? *namep : "#scratch", abfd,
 	     *p->name ? p->name : "#scratch", p->abfd);
 	  return FALSE;
@@ -502,8 +509,8 @@ elf64_sparc_add_symbol_hook (bfd *abfd, struct bfd_link_info *info,
 		    type = 0;
 		  _bfd_error_handler
 		    /* xgettext:c-format */
-		    (_("Symbol `%s' has differing types: REGISTER in %B,"
-		       " previously %s in %B"),
+		    (_("symbol `%s' has differing types: REGISTER in %pB,"
+		       " previously %s in %pB"),
 		     *namep, abfd, stt_types[type], p->abfd);
 		  return FALSE;
 		}
@@ -549,8 +556,8 @@ elf64_sparc_add_symbol_hook (bfd *abfd, struct bfd_link_info *info,
 	      type = 0;
 	    _bfd_error_handler
 	      /* xgettext:c-format */
-	      (_("Symbol `%s' has differing types: %s in %B,"
-		 " previously REGISTER in %B"),
+	      (_("Symbol `%s' has differing types: %s in %pB,"
+		 " previously REGISTER in %pB"),
 	       *namep, stt_types[type], abfd, p->abfd);
 	    return FALSE;
 	  }
@@ -574,29 +581,6 @@ elf64_sparc_output_arch_syms (bfd *output_bfd ATTRIBUTE_UNUSED,
   struct _bfd_sparc_elf_app_reg *app_regs =
     _bfd_sparc_elf_hash_table(info)->app_regs;
   Elf_Internal_Sym sym;
-
-  /* We arranged in size_dynamic_sections to put the STT_REGISTER entries
-     at the end of the dynlocal list, so they came at the end of the local
-     symbols in the symtab.  Except that they aren't STB_LOCAL, so we need
-     to back up symtab->sh_info.  */
-  if (elf_hash_table (info)->dynlocal)
-    {
-      bfd * dynobj = elf_hash_table (info)->dynobj;
-      asection *dynsymsec = bfd_get_linker_section (dynobj, ".dynsym");
-      struct elf_link_local_dynamic_entry *e;
-
-      for (e = elf_hash_table (info)->dynlocal; e ; e = e->next)
-	if (e->input_indx == -1)
-	  break;
-      if (e)
-	{
-	  elf_section_data (dynsymsec->output_section)->this_hdr.sh_info
-	    = e->dynindx;
-	}
-    }
-
-  if (info->strip == strip_all)
-    return TRUE;
 
   for (reg = 0; reg < 4; reg++)
     if (app_regs [reg].name != NULL)
@@ -704,7 +688,7 @@ elf64_sparc_merge_private_bfd_data (bfd *ibfd, struct bfd_link_info *info)
 	    {
 	      error = TRUE;
 	      _bfd_error_handler
-		(_("%B: linking UltraSPARC specific with HAL specific code"),
+		(_("%pB: linking UltraSPARC specific with HAL specific code"),
 		 ibfd);
 	    }
 	  /* Choose the most restrictive memory ordering.  */
@@ -724,7 +708,7 @@ elf64_sparc_merge_private_bfd_data (bfd *ibfd, struct bfd_link_info *info)
 	  error = TRUE;
 	  _bfd_error_handler
 	    /* xgettext:c-format */
-	    (_("%B: uses different e_flags (%#x) fields than previous modules (%#x)"),
+	    (_("%pB: uses different e_flags (%#x) fields than previous modules (%#x)"),
 	     ibfd, new_flags, old_flags);
 	}
 

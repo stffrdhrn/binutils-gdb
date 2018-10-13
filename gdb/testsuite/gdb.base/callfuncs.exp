@@ -1,4 +1,4 @@
-# Copyright 1992-2017 Free Software Foundation, Inc.
+# Copyright 1992-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -280,6 +280,16 @@ proc fetch_all_registers {test} {
 	    if [istarget "s390*-*-*"] {
 		# Filter out last_break which is read-only,
 		# giving spurious differences.
+	    } else {
+		lappend all_registers_lines $expect_out(0,string)
+	    }
+	    exp_continue
+	}
+	-re "^\(?:cycle\|instret\)\[ \t\]+\[^\r\n\]+\r\n" {
+	    if [istarget "riscv*-*-*"] {
+		# Filter out the cycle counter and instructions
+		# retired counter CSRs which are read-only, giving
+		# spurious differences.
 	    } else {
 		lappend all_registers_lines $expect_out(0,string)
 	    }

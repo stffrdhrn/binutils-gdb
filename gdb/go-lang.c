@@ -1,6 +1,6 @@
 /* Go language support routines for GDB, the GNU debugger.
 
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -106,8 +106,8 @@ static int
 sixg_string_p (struct type *type)
 {
   if (TYPE_NFIELDS (type) == 2
-      && TYPE_TAG_NAME (type) != NULL
-      && strcmp (TYPE_TAG_NAME (type), "string") == 0)
+      && TYPE_NAME (type) != NULL
+      && strcmp (TYPE_NAME (type), "string") == 0)
     return 1;
 
   return 0;
@@ -577,7 +577,6 @@ extern const struct language_defn go_language_defn =
   NULL,
   &exp_descriptor_c,
   go_parse,
-  go_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant.  */
   c_printstr,			/* Function to print string constant.  */
@@ -590,6 +589,7 @@ extern const struct language_defn go_language_defn =
   default_read_var_value,	/* la_read_var_value */
   NULL,				/* Language specific skip_trampoline.  */
   NULL,				/* name_of_this */
+  false,			/* la_store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal, 
   basic_lookup_transparent_type,
   go_demangle,			/* Language specific symbol demangler.  */

@@ -1,5 +1,5 @@
 # Expect script for ld-powerpc tests
-#   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -70,7 +70,7 @@ if {[istarget "*-*-vxworks"]} {
 # is ELF, because we pass -melf32ppc to ld and powerpc-nto-ld wants
 # -melf32ppcnto.
 
-if { [istarget "*-*-macos*"] || [istarget "*-*-netware*"]
+if { [istarget "*-*-macos*"]
      || [istarget "*-*-pe"] || [istarget "*-*-winnt*"]
      || [istarget "*-*-cygwin*"] || [istarget "*-*-aix*"]
      || [istarget "*-*-beos*"] || [istarget "*-*-lynxos*"]
@@ -121,11 +121,11 @@ set ppcelftests {
      "tls32"}
     {"TLS32 helper shared library" "-shared -melf32ppc tmpdir/tlslib32.o" "" "" {}
      {} "libtlslib32.so"}
-    {"TLS32 dynamic exec" "-melf32ppc --no-ld-generated-unwind-info --hash-style=sysv tmpdir/tls32.o tmpdir/libtlslib32.so" "" "" {}
+    {"TLS32 dynamic exec" "-melf32ppc --no-plt-align --no-ld-generated-unwind-info --hash-style=sysv tmpdir/tls32.o tmpdir/libtlslib32.so" "" "" {}
      {{readelf -WSsrl tlsexe32.r} {objdump -dr tlsexe32.d}
       {objdump -sj.got tlsexe32.g} {objdump -sj.tdata tlsexe32.t}}
      "tlsexe32"}
-    {"TLS32 shared" "-shared -melf32ppc --no-ld-generated-unwind-info --hash-style=sysv tmpdir/tls32.o" "" "" {}
+    {"TLS32 shared" "-shared -melf32ppc --no-plt-align --no-ld-generated-unwind-info --hash-style=sysv tmpdir/tls32.o" "" "" {}
      {{readelf -WSsrl tlsso32.r} {objdump -dr tlsso32.d}
       {objdump -sj.got tlsso32.g} {objdump -sj.tdata tlsso32.t}}
      "tls32.so"}
@@ -147,7 +147,7 @@ set ppcelftests {
     {"TLS32 DLL" "-shared -melf32ppc --version-script tlsdll.ver" ""
      "-a32" {tlsdll_32.s}
      {} "tlsdll32.so"}
-    {"TLS32 opt 5" "-melf32ppc -shared --gc-sections --secure-plt tmpdir/tlsdll32.so" "" "-a32"  {tlsopt5_32.s}
+    {"TLS32 opt 5" "-melf32ppc -shared --gc-sections --secure-plt --no-plt-align tmpdir/tlsdll32.so" "" "-a32"  {tlsopt5_32.s}
      {{objdump -dr tlsopt5_32.d}}
      "tlsopt5_32"}
     {"Shared library with global symbol" "-shared -melf32ppc" "" "-a32" {sdalib.s}
@@ -159,6 +159,9 @@ set ppcelftests {
      "relax"}
     {"relocatable relaxing" "-melf32ppc -r --relax" "" "-a32" "relax.s"
      {{objdump -dr relaxr.d}}
+     "rrelax"}
+    {"relocatable relaxing large" "-melf32ppc -r --relax" "" "-a32" "relax.s big.s"
+     {{objdump -dr relaxrl.d}}
      "rrelax"}
 }
 
@@ -221,7 +224,7 @@ set ppc64elftests {
      "tlsopt4"}
     {"TLS DLL" "-shared -melf64ppc --version-script tlsdll.ver" "" "-a64" {tlsdll.s}
      {} "tlsdll.so"}
-    {"TLS opt 5" "-melf64ppc --no-plt-align -shared --gc-sections --no-plt-localentry tmpdir/tlsdll.so" "" "-a64"  {tlsopt5.s}
+    {"TLS opt 5" "-melf64ppc -shared --hash-style=both --gc-sections --no-plt-localentry tmpdir/tlsdll.so" "" "-a64"  {tlsopt5.s}
      {{objdump -dr tlsopt5.d} {readelf -wf tlsopt5.wf}}
      "tlsopt5"}
     {"sym@tocbase" "-shared -melf64ppc" "" "-a64" {symtocbase-1.s symtocbase-2.s}
@@ -254,6 +257,9 @@ set ppc64elftests {
 	{{objdump -dr tocsave2a.d}} "tocsave2a"}
     {"ambig shared v1" "-shared -melf64ppc" "" "-a64" {funv1.s} {} "funv1.so"}
     {"ambig shared v2" "-shared -melf64ppc" "" "-a64" {funv2.s} {} "funv2.so"}
+    {"notoc ext" "" "" "-a64" {ext.s} {} ""}
+    {"notoc" "-melf64ppc --no-plt-localentry -T ext.lnk" "" "-a64" {notoc.s}
+	{{objdump -d notoc.d} {readelf {-wf -W} notoc.wf}} "notoc"}
 }
 
 set ppceabitests {

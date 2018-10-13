@@ -1,6 +1,6 @@
 /* DTrace probe support for GDB.
 
-   Copyright (C) 2014-2017 Free Software Foundation, Inc.
+   Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    Contributed by Oracle, Inc.
 
@@ -607,8 +607,7 @@ dtrace_process_dof (asection *sect, struct objfile *objfile,
   return;
 	  
  invalid_dof_data:
-  complaint (&symfile_complaints,
-	     _("skipping section '%s' which does not contain valid DOF data."),
+  complaint (_("skipping section '%s' which does not contain valid DOF data."),
 	     sect->name);
 }
 
@@ -625,20 +624,14 @@ dtrace_probe::build_arg_exprs (struct gdbarch *gdbarch)
      value of the argument when executed at the PC of the probe.  */
   for (dtrace_probe_arg &arg : m_args)
     {
-      struct cleanup *back_to;
-      struct parser_state pstate;
-
       /* Initialize the expression buffer in the parser state.  The
 	 language does not matter, since we are using our own
 	 parser.  */
-      initialize_expout (&pstate, 10, current_language, gdbarch);
-      back_to = make_cleanup (free_current_contents, &pstate.expout);
+      parser_state pstate (10, current_language, gdbarch);
 
       /* The argument value, which is ABI dependent and casted to
 	 `long int'.  */
       gdbarch_dtrace_parse_probe_argument (gdbarch, &pstate, argc);
-
-      discard_cleanups (back_to);
 
       /* Casting to the expected type, but only if the type was
 	 recognized at probe load time.  Otherwise the argument will
@@ -650,8 +643,7 @@ dtrace_probe::build_arg_exprs (struct gdbarch *gdbarch)
 	  write_exp_elt_opcode (&pstate, UNOP_CAST);
 	}
 
-      reallocate_expout (&pstate);
-      arg.expr = expression_up (pstate.expout);
+      arg.expr = pstate.release ();
       prefixify_expression (arg.expr.get ());
       ++argc;
     }
@@ -786,7 +778,7 @@ dtrace_probe::enable ()
 
   /* Enabling a dtrace probe implies patching the text section of the
      running process, so make sure the inferior is indeed running.  */
-  if (ptid_equal (inferior_ptid, null_ptid))
+  if (inferior_ptid == null_ptid)
     error (_("No inferior running"));
 
   /* Fast path.  */
@@ -810,7 +802,7 @@ dtrace_probe::disable ()
 
   /* Disabling a dtrace probe implies patching the text section of the
      running process, so make sure the inferior is indeed running.  */
-  if (ptid_equal (inferior_ptid, null_ptid))
+  if (inferior_ptid == null_ptid)
     error (_("No inferior running"));
 
   /* Fast path.  */
@@ -865,8 +857,7 @@ dtrace_static_probe_ops::get_probes (std::vector<probe *> *probesp,
 	  /* Read the contents of the DOF section and then process it to
 	     extract the information of any probe defined into it.  */
 	  if (!bfd_malloc_and_get_section (abfd, sect, &dof))
-	    complaint (&symfile_complaints,
-		       _("could not obtain the contents of"
+	    complaint (_("could not obtain the contents of"
 			 "section '%s' in objfile `%s'."),
 		       sect->name, abfd->filename);
       

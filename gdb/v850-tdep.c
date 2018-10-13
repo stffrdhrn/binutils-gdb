@@ -1,6 +1,6 @@
 /* Target-dependent code for the NEC V850 for GDB, the GNU debugger.
 
-   Copyright (C) 1996-2017 Free Software Foundation, Inc.
+   Copyright (C) 1996-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1019,7 +1019,7 @@ v850_push_dummy_call (struct gdbarch *gdbarch,
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   int argreg;
   int argnum;
-  int len = 0;
+  int arg_space = 0;
   int stack_offset;
 
   if (gdbarch_tdep (gdbarch)->abi == V850_ABI_RH850)
@@ -1034,8 +1034,8 @@ v850_push_dummy_call (struct gdbarch *gdbarch,
 
   /* Now make space on the stack for the args.  */
   for (argnum = 0; argnum < nargs; argnum++)
-    len += ((TYPE_LENGTH (value_type (args[argnum])) + 3) & ~3);
-  sp -= len + stack_offset;
+    arg_space += ((TYPE_LENGTH (value_type (args[argnum])) + 3) & ~3);
+  sp -= arg_space + stack_offset;
 
   argreg = E_ARG0_REGNUM;
   /* The struct_return pointer occupies the first parameter register.  */
@@ -1128,7 +1128,7 @@ v850_extract_return_value (struct type *type, struct regcache *regcache,
       gdb_byte buf[v850_reg_size];
       for (i = 0; len > 0; i += 4, len -= 4)
 	{
-	  regcache_raw_read (regcache, regnum++, buf);
+	  regcache->raw_read (regnum++, buf);
 	  memcpy (valbuf + i, buf, len > 4 ? 4 : len);
 	}
     }
@@ -1150,7 +1150,7 @@ v850_store_return_value (struct type *type, struct regcache *regcache,
     {
       int i, regnum = E_V0_REGNUM;
       for (i = 0; i < len; i += 4)
-	regcache_raw_write (regcache, regnum++, valbuf + i);
+	regcache->raw_write (regnum++, valbuf + i);
     }
 }
 

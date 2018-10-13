@@ -1,5 +1,5 @@
 /* Thread management interface, for the remote server for GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -167,7 +167,7 @@ find_one_thread (ptid_t ptid)
   td_err_e err;
   struct lwp_info *lwp;
   struct thread_db *thread_db = current_process ()->priv->thread_db;
-  int lwpid = ptid_get_lwp (ptid);
+  int lwpid = ptid.lwp ();
 
   thread_info *thread = find_thread_ptid (ptid);
   lwp = get_thread_lwp (thread);
@@ -215,7 +215,7 @@ attach_thread (const td_thrhandle_t *th_p, td_thrinfo_t *ti_p)
 {
   struct process_info *proc = current_process ();
   int pid = pid_of (proc);
-  ptid_t ptid = ptid_build (pid, ti_p->ti_lid, 0);
+  ptid_t ptid = ptid_t (pid, ti_p->ti_lid, 0);
   struct lwp_info *lwp;
   int err;
 
@@ -225,9 +225,11 @@ attach_thread (const td_thrhandle_t *th_p, td_thrinfo_t *ti_p)
   err = linux_attach_lwp (ptid);
   if (err != 0)
     {
+      std::string reason = linux_ptrace_attach_fail_reason_string (ptid, err);
+
       warning ("Could not attach to thread %ld (LWP %d): %s\n",
-	       (unsigned long) ti_p->ti_tid, ti_p->ti_lid,
-	       linux_ptrace_attach_fail_reason_string (ptid, err));
+	       (unsigned long) ti_p->ti_tid, ti_p->ti_lid, reason.c_str ());
+
       return 0;
     }
 
@@ -250,7 +252,7 @@ maybe_attach_thread (const td_thrhandle_t *th_p, td_thrinfo_t *ti_p,
 {
   struct lwp_info *lwp;
 
-  lwp = find_lwp_pid (pid_to_ptid (ti_p->ti_lid));
+  lwp = find_lwp_pid (ptid_t (ti_p->ti_lid));
   if (lwp != NULL)
     return 1;
 
@@ -681,17 +683,17 @@ try_thread_db_load_from_dir (const char *dir, size_t dir_len)
 static int
 thread_db_load_search (void)
 {
-  VEC (char_ptr) *dir_vec;
-  char *this_dir;
-  int i, rc = 0;
+  int rc = 0;
 
   if (libthread_db_search_path == NULL)
     libthread_db_search_path = xstrdup (LIBTHREAD_DB_SEARCH_PATH);
 
-  dir_vec = dirnames_to_char_ptr_vec (libthread_db_search_path);
+  std::vector<gdb::unique_xmalloc_ptr<char>> dir_vec
+    = dirnames_to_char_ptr_vec (libthread_db_search_path);
 
-  for (i = 0; VEC_iterate (char_ptr, dir_vec, i, this_dir); ++i)
+  for (const gdb::unique_xmalloc_ptr<char> &this_dir_up : dir_vec)
     {
+      char *this_dir = this_dir_up.get ();
       const int pdir_len = sizeof ("$pdir") - 1;
       size_t this_dir_len;
 
@@ -723,7 +725,6 @@ thread_db_load_search (void)
 	}
     }
 
-  free_char_ptr_vec (dir_vec);
   if (debug_threads)
     debug_printf ("thread_db_load_search returning %d\n", rc);
   return rc;

@@ -1,6 +1,6 @@
 /* Core dump and executable file functions above target vector, for GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,7 +30,7 @@
 #include "dis-asm.h"
 #include <sys/stat.h>
 #include "completer.h"
-#include "observer.h"
+#include "observable.h"
 #include "cli/cli-utils.h"
 
 /* You can have any number of hooks for `exec_file_command' command to
@@ -49,29 +49,6 @@ static hook_type *exec_file_extra_hooks;	/* Array of additional
 						   hooks.  */
 static int exec_file_hook_count = 0;		/* Size of array.  */
 
-/* Binary file diddling handle for the core file.  */
-
-bfd *core_bfd = NULL;
-
-/* corelow.c target.  It is never NULL after GDB initialization.  */
-
-struct target_ops *core_target;
-
-
-/* Backward compatability with old way of specifying core files.  */
-
-void
-core_file_command (const char *filename, int from_tty)
-{
-  dont_repeat ();		/* Either way, seems bogus.  */
-
-  gdb_assert (core_target != NULL);
-
-  if (!filename)
-    (core_target->to_detach) (core_target, filename, from_tty);
-  else
-    (core_target->to_open) (filename, from_tty);
-}
 
 
 /* If there are two or more functions that wish to hook into
@@ -237,8 +214,7 @@ read_memory_object (enum target_object object, CORE_ADDR memaddr,
       enum target_xfer_status status;
       ULONGEST xfered_len;
 
-      status = target_xfer_partial (current_target.beneath,
-				    object, NULL,
+      status = target_xfer_partial (current_top_target (), object, NULL,
 				    myaddr + xfered, NULL,
 				    memaddr + xfered, len - xfered,
 				    &xfered_len);
@@ -408,7 +384,7 @@ write_memory_with_notification (CORE_ADDR memaddr, const bfd_byte *myaddr,
 				ssize_t len)
 {
   write_memory (memaddr, myaddr, len);
-  observer_notify_memory_changed (current_inferior (), memaddr, len, myaddr);
+  gdb::observers::memory_changed.notify (current_inferior (), memaddr, len, myaddr);
 }
 
 /* Store VALUE at ADDR in the inferior as a LEN-byte unsigned
@@ -509,6 +485,7 @@ _initialize_core (void)
 
   c = add_cmd ("core-file", class_files, core_file_command, _("\
 Use FILE as core dump for examining memory and registers.\n\
+Usage: core-file FILE\n\
 No arg means have no core file.  This command has been superseded by the\n\
 `target core' and `detach' commands."), &cmdlist);
   set_cmd_completer (c, filename_completer);

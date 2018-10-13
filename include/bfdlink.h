@@ -1,5 +1,5 @@
 /* bfdlink.h -- header file for BFD link routines
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
    Written by Steve Chamberlain and Ian Lance Taylor, Cygnus Support.
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -114,6 +114,11 @@ struct bfd_link_hash_entry
 
   /* Symbol defined in a linker script.  */
   unsigned int ldscript_def : 1;
+
+  /* Symbol will be converted from absolute to section-relative.  Set for
+     symbols defined by a script from "dot" (also SEGMENT_START or ORIGIN)
+     outside of an output section statement.  */
+  unsigned int rel_from_abs : 1;
 
   /* A union of information depending upon the type.  */
   union
@@ -386,6 +391,9 @@ struct bfd_link_info
   /* TRUE if PT_GNU_RELRO segment should be created.  */
   unsigned int relro: 1;
 
+  /* TRUE if separate code segment should be created.  */
+  unsigned int separate_code: 1;
+
   /* Nonzero if .eh_frame_hdr section and PT_GNU_EH_FRAME ELF segment
      should be created.  1 for DWARF2 tables, 2 for compact tables.  */
   unsigned int eh_frame_hdr_type: 2;
@@ -436,6 +444,9 @@ struct bfd_link_info
   /* TRUE if ok to have multiple definition.  */
   unsigned int allow_multiple_definition: 1;
 
+  /* TRUE if ok to have prohibit multiple definition of absolute symbols.  */
+  unsigned int prohibit_multiple_definition_absolute: 1;
+
   /* TRUE if ok to have version with no definition.  */
   unsigned int allow_undefined_version: 1;
 
@@ -463,6 +474,9 @@ struct bfd_link_info
 
   /* TRUE if the linker script contained an explicit PHDRS command.  */
   unsigned int user_phdrs: 1;
+
+  /* TRUE if program headers ought to be loaded.  */
+  unsigned int load_phdrs: 1;
 
   /* TRUE if we should check relocations after all input files have
      been opened.  */

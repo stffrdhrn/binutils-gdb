@@ -1,7 +1,7 @@
 /* Target-dependent code for the S+core architecture, for GDB,
    the GNU Debugger.
 
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
    Contributed by Qinwei (qinwei@sunnorth.com.cn)
    Contributed by Ching-Peng Lin (cplin@sunplus.com)
@@ -442,11 +442,11 @@ score_xfer_register (struct regcache *regcache, int regnum, int length,
     }
 
   if (readbuf != NULL)
-    regcache_cooked_read_part (regcache, regnum, reg_offset, length,
-                               readbuf + buf_offset);
+    regcache->cooked_read_part (regnum, reg_offset, length,
+				readbuf + buf_offset);
   if (writebuf != NULL)
-    regcache_cooked_write_part (regcache, regnum, reg_offset, length,
-                                writebuf + buf_offset);
+    regcache->cooked_write_part (regnum, reg_offset, length,
+				 writebuf + buf_offset);
 }
 
 static enum return_value_convention
@@ -1428,9 +1428,8 @@ score7_linux_supply_gregset(const struct regset *regset,
      collect function will store the PC in that slot.  */
   if ((regnum == -1 || regnum == SCORE_EPC_REGNUM)
       && size >= SCORE7_LINUX_EPC_OFFSET + 4)
-    regcache_raw_supply (regcache, SCORE_EPC_REGNUM,
-			 (const gdb_byte *) buf
-			 + SCORE7_LINUX_EPC_OFFSET);
+    regcache->raw_supply
+      (SCORE_EPC_REGNUM, (const gdb_byte *) buf + SCORE7_LINUX_EPC_OFFSET);
 }
 
 static const struct regset score7_linux_gregset =
@@ -1448,8 +1447,8 @@ score7_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					   void *cb_data,
 					   const struct regcache *regcache)
 {
-  cb (".reg", SCORE7_LINUX_SIZEOF_GREGSET, &score7_linux_gregset,
-      NULL, cb_data);
+  cb (".reg", SCORE7_LINUX_SIZEOF_GREGSET, SCORE7_LINUX_SIZEOF_GREGSET,
+      &score7_linux_gregset, NULL, cb_data);
 }
 
 static struct gdbarch *

@@ -1,5 +1,5 @@
 /* Helper routines for C++ support in GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -133,7 +133,6 @@ inspect_type (struct demangle_parse_info *info,
 	      canonicalization_ftype *finder,
 	      void *data)
 {
-  int i;
   char *name;
   struct symbol *sym;
 
@@ -144,7 +143,7 @@ inspect_type (struct demangle_parse_info *info,
   name[ret_comp->u.s_name.len] = '\0';
 
   /* Ignore any typedefs that should not be substituted.  */
-  for (i = 0; i < ARRAY_SIZE (ignore_typedefs); ++i)
+  for (int i = 0; i < ARRAY_SIZE (ignore_typedefs); ++i)
     {
       if (strcmp (name, ignore_typedefs[i]) == 0)
 	return 0;
@@ -199,7 +198,7 @@ inspect_type (struct demangle_parse_info *info,
 	      && strcmp (TYPE_NAME (type), name) == 0)
 	    return 0;
 
-	  is_anon = (TYPE_TAG_NAME (type) == NULL
+	  is_anon = (TYPE_NAME (type) == NULL
 		     && (TYPE_CODE (type) == TYPE_CODE_ENUM
 			 || TYPE_CODE (type) == TYPE_CODE_STRUCT
 			 || TYPE_CODE (type) == TYPE_CODE_UNION));
@@ -1108,8 +1107,7 @@ cp_find_first_component_aux (const char *name, int permissive)
 static void
 demangled_name_complaint (const char *name)
 {
-  complaint (&symfile_complaints,
-	     "unexpected demangled name '%s'", name);
+  complaint ("unexpected demangled name '%s'", name);
 }
 
 /* If NAME is the fully-qualified name of a C++
@@ -1793,6 +1791,7 @@ cp_get_symbol_name_matcher (const lookup_name_info &lookup_name)
     {
     case symbol_name_match_type::FULL:
     case symbol_name_match_type::EXPRESSION:
+    case symbol_name_match_type::SEARCH_NAME:
       return cp_fq_symbol_name_matches;
     case symbol_name_match_type::WILD:
       return cp_symbol_name_matches;

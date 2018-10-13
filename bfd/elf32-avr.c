@@ -1,5 +1,5 @@
 /* AVR-specific support for 32-bit ELF
-   Copyright (C) 1999-2017 Free Software Foundation, Inc.
+   Copyright (C) 1999-2018 Free Software Foundation, Inc.
    Contributed by Denis Chertykov <denisc@overta.ru>
 
    This file is part of BFD, the Binary File Descriptor library.
@@ -708,6 +708,12 @@ static const struct avr_reloc_map avr_reloc_map[] =
   { BFD_RELOC_32_PCREL,		    R_AVR_32_PCREL}
 };
 
+static const struct bfd_elf_special_section elf_avr_special_sections[] =
+{
+  { STRING_COMMA_LEN (".noinit"), 0, SHT_NOBITS,   SHF_ALLOC + SHF_WRITE },
+  { NULL, 0,			  0, 0,		   0 }
+};
+
 /* Meant to be filled one day with the wrap around address for the
    specific device.  I.e. should get the value 0x4000 for 16k devices,
    0x8000 for 32k devices and so on.
@@ -945,8 +951,8 @@ bfd_elf32_bfd_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
 
 /* Set the howto pointer for an AVR ELF reloc.  */
 
-static void
-avr_info_to_howto_rela (bfd *abfd ATTRIBUTE_UNUSED,
+static bfd_boolean
+avr_info_to_howto_rela (bfd *abfd,
 			arelent *cache_ptr,
 			Elf_Internal_Rela *dst)
 {
@@ -956,10 +962,13 @@ avr_info_to_howto_rela (bfd *abfd ATTRIBUTE_UNUSED,
   if (r_type >= (unsigned int) R_AVR_max)
     {
       /* xgettext:c-format */
-      _bfd_error_handler (_("%B: invalid AVR reloc number: %d"), abfd, r_type);
-      r_type = 0;
+      _bfd_error_handler (_("%pB: unsupported relocation type %#x"),
+			  abfd, r_type);
+      bfd_set_error (bfd_error_bad_value);
+      return FALSE;
     }
   cache_ptr->howto = &elf_avr_howto_table[r_type];
+  return TRUE;
 }
 
 static bfd_boolean
@@ -3292,10 +3301,10 @@ avr_stub_name (const asection *symbol_section,
 
   len = 8 + 1 + 8 + 1 + 1;
   stub_name = bfd_malloc (len);
-
-  sprintf (stub_name, "%08x+%08x",
-	   symbol_section->id & 0xffffffff,
-	   (unsigned int) ((rela->r_addend & 0xffffffff) + symbol_offset));
+  if (stub_name != NULL)
+    sprintf (stub_name, "%08x+%08x",
+	     symbol_section->id & 0xffffffff,
+	     (unsigned int) ((rela->r_addend & 0xffffffff) + symbol_offset));
 
   return stub_name;
 }
@@ -4253,5 +4262,6 @@ avr_elf32_property_record_name (struct avr_property_record *rec)
 #define bfd_elf32_bfd_get_relocated_section_contents \
 					elf32_avr_get_relocated_section_contents
 #define bfd_elf32_new_section_hook	elf_avr_new_section_hook
+#define elf_backend_special_sections	elf_avr_special_sections
 
 #include "elf32-target.h"

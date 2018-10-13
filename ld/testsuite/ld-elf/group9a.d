@@ -1,14 +1,15 @@
 #source: group9.s
 #ld: -r --gc-sections --entry foo
 #readelf: -g --wide
-#notarget: d30v-*-* dlx-*-* i960-*-* pj*-*-* pru-*-*
-#notarget: alpha-*-* hppa64-*-* i370-*-* i860-*-* ia64-*-* mep-*-* mn10200-*-*
-#xfail: cr16-*-* crx-*-*
+#xfail: cr16-*-* crx-*-* d30v-*-* dlx-*-* hppa64-*-* mep-*-* mn10200-*-*
+#xfail: pj*-*-* pru-*-* xgate-*-*
 # generic linker targets don't support --gc-sections, nor do a bunch of others
 # cr16 and crx use non-standard scripts with memory regions, which don't play
 # well with unique group sections under ld -r.
 
-COMDAT group section \[[ 0-9]+\] `.group' \[foo\] contains 2 sections:
+COMDAT group section \[[ 0-9]+\] `.group' \[foo\] contains . sections:
    \[Index\]    Name
    \[[ 0-9]+\]   .text.foo
+#...
    \[[ 0-9]+\]   .data.foo
+#pass

@@ -1,6 +1,6 @@
 /* Fork a Unix child process, and set up to debug it, for GDB.
 
-   Copyright (C) 1990-2017 Free Software Foundation, Inc.
+   Copyright (C) 1990-2018 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.
 
@@ -88,7 +88,7 @@ postfork_hook (pid_t pid)
   inferior_appeared (inf, pid);
 
   /* Needed for wait_for_inferior stuff.  */
-  inferior_ptid = pid_to_ptid (pid);
+  inferior_ptid = ptid_t (pid);
 
   gdb_assert (saved_ui != NULL);
   current_ui = saved_ui;

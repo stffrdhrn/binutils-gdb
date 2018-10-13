@@ -1,6 +1,6 @@
 /* Ravenscar PowerPC target support.
 
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2011-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -125,7 +125,7 @@ supply_register_at_address (struct regcache *regcache, int regnum,
 
   buf = (gdb_byte *) alloca (buf_size);
   read_memory (register_addr, buf, buf_size);
-  regcache_raw_supply (regcache, regnum, buf);
+  regcache->raw_supply (regnum, buf);
 }
 
 /* Return true if, for a non-running thread, REGNUM has been saved on the
@@ -154,7 +154,7 @@ ppc_ravenscar_generic_fetch_registers
   CORE_ADDR thread_descriptor_address;
 
   /* The tid is the thread_id field, which is a pointer to the thread.  */
-  thread_descriptor_address = (CORE_ADDR) ptid_get_tid (inferior_ptid);
+  thread_descriptor_address = (CORE_ADDR) inferior_ptid.tid ();
 
   /* Read registers.  */
   for (current_regnum = 0; current_regnum < num_regs; current_regnum++)
@@ -193,11 +193,11 @@ ppc_ravenscar_generic_store_registers
 
   if (register_in_thread_descriptor_p (reg_info, regnum))
     register_address
-      = ptid_get_tid (inferior_ptid) + reg_info->context_offsets [regnum];
+      = inferior_ptid.tid () + reg_info->context_offsets [regnum];
   else
     return;
 
-  regcache_raw_collect (regcache, regnum, buf);
+  regcache->raw_collect (regnum, buf);
   write_memory (register_address,
                 buf,
                 buf_size);

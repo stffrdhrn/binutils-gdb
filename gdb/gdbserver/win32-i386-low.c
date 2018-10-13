@@ -1,4 +1,4 @@
-/* Copyright (C) 2007-2017 Free Software Foundation, Inc.
+/* Copyright (C) 2007-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -24,6 +24,7 @@
 #endif
 #include "arch/i386.h"
 #include "tdesc.h"
+#include "x86-tdesc.h"
 
 #ifndef CONTEXT_EXTENDED_REGISTERS
 #define CONTEXT_EXTENDED_REGISTERS 0
@@ -435,12 +436,14 @@ i386_arch_setup (void)
 
 #ifdef __x86_64__
   tdesc = amd64_create_target_description (X86_XSTATE_SSE_MASK, false,
-						 false);
+					   false, false);
+  const char **expedite_regs = amd64_expedite_regs;
 #else
   tdesc = i386_create_target_description (X86_XSTATE_SSE_MASK, false);
+  const char **expedite_regs = i386_expedite_regs;
 #endif
 
-  init_target_desc (tdesc);
+  init_target_desc (tdesc, expedite_regs);
 
   win32_tdesc = tdesc;
 }

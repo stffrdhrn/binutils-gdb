@@ -1,6 +1,6 @@
 /* Common definitions.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,11 +21,22 @@
 #define COMMON_DEFS_H
 
 #include "config.h"
+
+#undef PACKAGE_NAME
+#undef PACKAGE_VERSION
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+
 #ifdef GDBSERVER
 #include "build-gnulib-gdbserver/config.h"
 #else
 #include "build-gnulib/config.h"
 #endif
+
+#undef PACKAGE_NAME
+#undef PACKAGE_VERSION
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
 
 /* From:
     https://www.gnu.org/software/gnulib/manual/html_node/stdint_002eh.html
@@ -47,6 +58,18 @@
 #define __STDC_CONSTANT_MACROS 1
 #define __STDC_LIMIT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
+
+/* Some distros enable _FORTIFY_SOURCE by default, which on occasion
+   has caused build failures with -Wunused-result when a patch is
+   developed on a distro that does not enable _FORTIFY_SOURCE.  We
+   enable it here in order to try to catch these problems earlier;
+   plus this seems like a reasonable safety measure.  The check for
+   optimization is required because _FORTIFY_SOURCE only works when
+   optimization is enabled.  */
+
+#if defined __OPTIMIZE__ && __OPTIMIZE__ > 0
+#define _FORTIFY_SOURCE 2
+#endif
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -90,5 +113,17 @@
 
 /* Pull in gdb::unique_xmalloc_ptr.  */
 #include "common/gdb_unique_ptr.h"
+
+/* String containing the current directory (what getwd would return).  */
+extern char *current_directory;
+
+/* sbrk on macOS is not useful for our purposes, since sbrk(0) always
+   returns the same value.  brk/sbrk on macOS is just an emulation
+   that always returns a pointer to a 4MB section reserved for
+   that.  */
+
+#if defined (HAVE_SBRK) && !__APPLE__
+#define HAVE_USEFUL_SBRK 1
+#endif
 
 #endif /* COMMON_DEFS_H */

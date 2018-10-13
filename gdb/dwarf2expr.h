@@ -1,6 +1,6 @@
 /* DWARF 2 Expression Evaluator.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
 
    Contributed by Daniel Berlin <dan@dberlin.org>.
 
@@ -220,6 +220,9 @@ struct dwarf_expr_context
      STACK while it being passed to and returned from the called DWARF
      subroutine.  */
   virtual void dwarf_call (cu_offset die_cu_off) = 0;
+
+  /* Execute "variable value" operation on the DIE at SECT_OFF.  */
+  virtual struct value *dwarf_variable_value (sect_offset sect_off) = 0;
 
   /* Return the base type given by the indicated DIE at DIE_CU_OFF.
      This can throw an exception if the DIE is invalid or does not

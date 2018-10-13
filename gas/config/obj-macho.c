@@ -1,5 +1,5 @@
 /* Mach-O object file format
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GAS, the GNU Assembler.
 
@@ -250,8 +250,10 @@ obj_mach_o_make_or_get_sect (char * segname, char * sectname,
 		 bfd_section_name (stdoutput, sec),
 		 bfd_errmsg (bfd_get_error ()));
 
-      strncpy (msect->segname, segname, sizeof (msect->segname));
-      strncpy (msect->sectname, sectname, sizeof (msect->sectname));
+      strncpy (msect->segname, segname, BFD_MACH_O_SEGNAME_SIZE);
+      msect->segname[BFD_MACH_O_SEGNAME_SIZE] = 0;
+      strncpy (msect->sectname, sectname, BFD_MACH_O_SECTNAME_SIZE);
+      msect->sectname[BFD_MACH_O_SECTNAME_SIZE] = 0;
 
       msect->align = secalign;
       msect->flags = sectype | secattr;

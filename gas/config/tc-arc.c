@@ -1,5 +1,5 @@
 /* tc-arc.c -- Assembler for the ARC
-   Copyright (C) 1994-2017 Free Software Foundation, Inc.
+   Copyright (C) 1994-2018 Free Software Foundation, Inc.
 
    Contributor: Claudiu Zissulescu <claziss@synopsys.com>
 
@@ -475,6 +475,9 @@ static const struct cpu_type
 /* Information about the cpu/variant we're assembling for.  */
 static struct cpu_type selected_cpu = { 0, 0, 0, E_ARC_OSABI_CURRENT, 0 };
 
+/* TRUE if current assembly code uses RF16 only registers.  */
+static bfd_boolean rf16_only = TRUE;
+
 /* MPY option.  */
 static unsigned mpy_option = 0;
 
@@ -796,7 +799,7 @@ md_number_to_chars_midend (char *buf, unsigned long long val, int n)
       md_number_to_chars (buf, val, n);
       break;
     case 6:
-      md_number_to_chars (buf, (val & 0xffff00000000) >> 32, 2);
+      md_number_to_chars (buf, (val & 0xffff00000000ull) >> 32, 2);
       md_number_to_chars_midend (buf + 2, (val & 0xffffffff), 4);
       break;
     case 4:
@@ -804,7 +807,7 @@ md_number_to_chars_midend (char *buf, unsigned long long val, int n)
       md_number_to_chars (buf + 2, (val & 0xffff), 2);
       break;
     case 8:
-      md_number_to_chars_midend (buf, (val & 0xffffffff00000000) >> 32, 4);
+      md_number_to_chars_midend (buf, (val & 0xffffffff00000000ull) >> 32, 4);
       md_number_to_chars_midend (buf + 4, (val & 0xffffffff), 4);
       break;
     default:
@@ -1882,13 +1885,20 @@ find_opcode_match (const struct arc_opcode_hash_entry *entry,
 		case O_symbol:
 		  {
 		    const char *p;
+		    char *tmpp, *pp;
 		    const struct arc_aux_reg *auxr;
 
 		    if (opcode->insn_class != AUXREG)
 		      goto de_fault;
 		    p = S_GET_NAME (tok[tokidx].X_add_symbol);
 
-		    auxr = hash_find (arc_aux_hash, p);
+		    /* For compatibility reasons, an aux register can
+		       be spelled with upper or lower case
+		       letters.  */
+		    tmpp = strdup (p);
+		    for (pp = tmpp; *pp; ++pp) *pp = TOLOWER (*pp);
+
+		    auxr = hash_find (arc_aux_hash, tmpp);
 		    if (auxr)
 		      {
 			/* We modify the token array here, safe in the
@@ -1899,6 +1909,7 @@ find_opcode_match (const struct arc_opcode_hash_entry *entry,
 			tok[tokidx].X_add_number = auxr->address;
 			ARC_SET_FLAG (tok[tokidx].X_add_symbol, ARC_FLAG_AUX);
 		      }
+		    free (tmpp);
 
 		    if (tok[tokidx].X_op != O_constant)
 		      goto de_fault;
@@ -2371,6 +2382,17 @@ autodetect_attributes (const struct arc_opcode *opcode,
 	case O_dtpoff9:
 	case O_dtpoff:
 	  tls_option = 1;
+	  break;
+	default:
+	  break;
+	}
+
+      switch (tok[i].X_op)
+	{
+	case O_register:
+	  if ((tok[i].X_add_number >= 4 && tok[i].X_add_number <= 9)
+	      || (tok[i].X_add_number >= 16 && tok[i].X_add_number <= 25))
+	    rf16_only = FALSE;
 	  break;
 	default:
 	  break;
@@ -4369,6 +4391,10 @@ tokenize_extinsn (extInstruction_t *einsn)
   insn_name = xstrdup (p);
   restore_line_pointer (c);
 
+  /* Convert to lower case.  */
+  for (p = insn_name; *p; ++p)
+    *p = TOLOWER (*p);
+
   /* 2nd: get major opcode.  */
   if (*input_line_pointer != ',')
     {
@@ -5002,6 +5028,20 @@ arc_set_public_attributes (void)
 
   /* Tag_ARC_ABI_tls.  */
   arc_set_attribute_int (Tag_ARC_ABI_tls, tls_option);
+
+  /* Tag_ARC_ATR_version.  */
+  arc_set_attribute_int (Tag_ARC_ATR_version, 1);
+
+  /* Tag_ARC_ABI_rf16.  */
+  if (attributes_set_explicitly[Tag_ARC_ABI_rf16]
+      && bfd_elf_get_obj_attr_int (stdoutput, OBJ_ATTR_PROC,
+				   Tag_ARC_ABI_rf16)
+      && !rf16_only)
+    {
+      as_warn (_("Overwrite explicitly set Tag_ARC_ABI_rf16 to full "
+		 "register file"));
+      bfd_elf_add_proc_attr_int (stdoutput, Tag_ARC_ABI_rf16, 0);
+    }
 }
 
 /* Add the default contents for the .ARC.attributes section.  */
@@ -5046,7 +5086,8 @@ int arc_convert_symbolic_attribute (const char *name)
   T (Tag_ARC_ABI_double_size),
   T (Tag_ARC_ISA_config),
   T (Tag_ARC_ISA_apex),
-  T (Tag_ARC_ISA_mpy_option)
+  T (Tag_ARC_ISA_mpy_option),
+  T (Tag_ARC_ATR_version)
 #undef T
     };
   unsigned int i;

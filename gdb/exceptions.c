@@ -1,6 +1,6 @@
 /* Exception (throw catch) mechanism, for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -39,7 +39,11 @@ print_flush (void)
     deprecated_error_begin_hook ();
 
   gdb::optional<target_terminal::scoped_restore_terminal_state> term_state;
-  if (target_supports_terminal_ours ())
+  /* While normally there's always something pushed on the target
+     stack, the NULL check is needed here because we can get here very
+     early during startup, before the target stack is first
+     initialized.  */
+  if (current_top_target () != NULL && target_supports_terminal_ours ())
     {
       term_state.emplace ();
       target_terminal::ours_for_output ();

@@ -1,5 +1,5 @@
 /* Tracepoint code for remote server for GDB.
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -19,7 +19,6 @@
 #include "server.h"
 #include "tracepoint.h"
 #include "gdbthread.h"
-#include "agent.h"
 #include "rsp-low.h"
 
 #include <ctype.h>
@@ -29,6 +28,9 @@
 #include <inttypes.h>
 #include "ax.h"
 #include "tdesc.h"
+
+#define IPA_SYM_STRUCT_NAME ipa_sym_addresses
+#include "agent.h"
 
 #define DEFAULT_TRACE_BUFFER_SIZE 5242880 /* 5*1024*1024 */
 
@@ -972,11 +974,6 @@ struct traceframe
 /* The size of the EOB marker, in bytes.  A traceframe with zeroed
    fields (and no data) marks the end of trace data.  */
 #define TRACEFRAME_EOB_MARKER_SIZE offsetof (struct traceframe, data)
-
-/* The traceframe to be used as the source of data to send back to
-   GDB.  A value of -1 means to get data from the live program.  */
-
-int current_traceframe = -1;
 
 /* This flag is true if the trace buffer is circular, meaning that
    when it fills, the oldest trace frames are discarded in order to
@@ -2279,10 +2276,11 @@ static struct traceframe *
 find_next_traceframe_in_range (CORE_ADDR lo, CORE_ADDR hi, int inside_p,
 			       int *tfnump)
 {
+  client_state &cs = get_client_state ();
   struct traceframe *tframe;
   CORE_ADDR tfaddr;
 
-  *tfnump = current_traceframe + 1;
+  *tfnump = cs.current_traceframe + 1;
   tframe = find_traceframe (*tfnump);
   /* The search is not supposed to wrap around.  */
   if (!tframe)
@@ -2312,9 +2310,10 @@ find_next_traceframe_in_range (CORE_ADDR lo, CORE_ADDR hi, int inside_p,
 static struct traceframe *
 find_next_traceframe_by_tracepoint (int num, int *tfnump)
 {
+  client_state &cs = get_client_state ();
   struct traceframe *tframe;
 
-  *tfnump = current_traceframe + 1;
+  *tfnump = cs.current_traceframe + 1;
   tframe = find_traceframe (*tfnump);
   /* The search is not supposed to wrap around.  */
   if (!tframe)
@@ -2343,6 +2342,7 @@ find_next_traceframe_by_tracepoint (int num, int *tfnump)
 static void
 cmd_qtinit (char *packet)
 {
+  client_state &cs = get_client_state ();
   struct trace_state_variable *tsv, *prev, *next;
 
   /* Can't do this command without a pid attached.  */
@@ -2353,7 +2353,7 @@ cmd_qtinit (char *packet)
     }
 
   /* Make sure we don't try to read from a trace frame.  */
-  current_traceframe = -1;
+  cs.current_traceframe = -1;
 
   stop_tracing ();
 
@@ -2813,6 +2813,7 @@ cmd_qtenable_disable (char *own_buf, int enable)
 static void
 cmd_qtv (char *own_buf)
 {
+  client_state &cs = get_client_state ();
   ULONGEST num;
   LONGEST val = 0;
   int err;
@@ -2821,7 +2822,7 @@ cmd_qtv (char *own_buf)
   packet += strlen ("qTV:");
   unpack_varlen_hex (packet, &num);
 
-  if (current_traceframe >= 0)
+  if (cs.current_traceframe >= 0)
     {
       err = traceframe_read_tsv ((int) num, &val);
       if (err)
@@ -3552,6 +3553,7 @@ cmd_qtdisconnected (char *own_buf)
 static void
 cmd_qtframe (char *own_buf)
 {
+  client_state &cs = get_client_state ();
   ULONGEST frame, pc, lo, hi, num;
   int tfnum, tpnum;
   struct traceframe *tframe;
@@ -3602,7 +3604,7 @@ cmd_qtframe (char *own_buf)
       if (tfnum == -1)
 	{
 	  trace_debug ("Want to stop looking at traceframes");
-	  current_traceframe = -1;
+	  cs.current_traceframe = -1;
 	  write_ok (own_buf);
 	  return;
 	}
@@ -3612,7 +3614,7 @@ cmd_qtframe (char *own_buf)
 
   if (tframe)
     {
-      current_traceframe = tfnum;
+      cs.current_traceframe = tfnum;
       sprintf (own_buf, "F%xT%x", tfnum, tframe->tpnum);
     }
   else
@@ -5297,6 +5299,7 @@ traceframe_read_mem (int tfnum, CORE_ADDR addr,
 static int
 traceframe_read_tsv (int tsvnum, LONGEST *val)
 {
+  client_state &cs = get_client_state ();
   int tfnum;
   struct traceframe *tframe;
   unsigned char *database, *dataptr;
@@ -5306,7 +5309,7 @@ traceframe_read_tsv (int tsvnum, LONGEST *val)
 
   trace_debug ("traceframe_read_tsv");
 
-  tfnum = current_traceframe;
+  tfnum = cs.current_traceframe;
 
   if (tfnum < 0)
     {
@@ -6834,7 +6837,7 @@ static int
 run_inferior_command (char *cmd, int len)
 {
   int err = -1;
-  int pid = ptid_get_pid (current_ptid);
+  int pid = current_ptid.pid ();
 
   trace_debug ("run_inferior_command: running: %s", cmd);
 

@@ -1,5 +1,5 @@
 /* Low-level file-handling.
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -18,6 +18,8 @@
 
 #ifndef FILESTUFF_H
 #define FILESTUFF_H
+
+#include <dirent.h>
 
 /* Note all the file descriptors which are open when this is called.
    These file descriptors will not be closed by close_most_fds.  */
@@ -46,6 +48,16 @@ extern void close_most_fds (void);
 extern int gdb_open_cloexec (const char *filename, int flags,
 			     /* mode_t */ unsigned long mode);
 
+/* Convenience wrapper for the above, which takes the filename as an
+   std::string.  */
+
+static inline int
+gdb_open_cloexec (const std::string &filename, int flags,
+		  /* mode_t */ unsigned long mode)
+{
+  return gdb_open_cloexec (filename.c_str (), flags, mode);
+}
+
 struct gdb_file_deleter
 {
   void operator() (FILE *file) const
@@ -63,6 +75,15 @@ typedef std::unique_ptr<FILE, gdb_file_deleter> gdb_file_up;
 
 extern gdb_file_up gdb_fopen_cloexec (const char *filename,
 				      const char *opentype);
+
+/* Convenience wrapper for the above, which takes the filename as an
+   std::string.  */
+
+static inline gdb_file_up
+gdb_fopen_cloexec (const std::string &filename, const char *opentype)
+{
+  return gdb_fopen_cloexec (filename.c_str (), opentype);
+}
 
 /* Like 'socketpair', but ensures that the returned file descriptors
    have the close-on-exec flag set.  */
@@ -83,5 +104,22 @@ extern int gdb_pipe_cloexec (int filedes[2]);
 /* Return a new cleanup that closes FD.  */
 
 extern struct cleanup *make_cleanup_close (int fd);
+
+struct gdb_dir_deleter
+{
+  void operator() (DIR *dir) const
+  {
+    closedir (dir);
+  }
+};
+
+/* A unique pointer to a DIR.  */
+
+typedef std::unique_ptr<DIR, gdb_dir_deleter> gdb_dir_up;
+
+/* Return true if the file NAME exists and is a regular file.
+   If the result is false then *ERRNO_PTR is set to a useful value assuming
+   we're expecting a regular file.  */
+extern bool is_regular_file (const char *name, int *errno_ptr);
 
 #endif /* FILESTUFF_H */

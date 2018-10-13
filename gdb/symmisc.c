@@ -1,6 +1,6 @@
 /* Do various things to symbol tables (other than lookup), for GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -209,6 +209,7 @@ dump_msymbols (struct objfile *objfile, struct ui_file *outfile)
 	  ms_type = 'T';
 	  break;
 	case mst_text_gnu_ifunc:
+	case mst_data_gnu_ifunc:
 	  ms_type = 'i';
 	  break;
 	case mst_solib_trampoline:
@@ -540,7 +541,7 @@ print_symbol (struct gdbarch *gdbarch, struct symbol *symbol,
 
   if (SYMBOL_DOMAIN (symbol) == STRUCT_DOMAIN)
     {
-      if (TYPE_TAG_NAME (SYMBOL_TYPE (symbol)))
+      if (TYPE_NAME (SYMBOL_TYPE (symbol)))
 	{
 	  LA_PRINT_TYPE (SYMBOL_TYPE (symbol), "", outfile, 1, depth,
 			 &type_print_raw_options);

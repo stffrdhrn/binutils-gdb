@@ -1,4 +1,4 @@
---  Copyright 2010-2017 Free Software Foundation, Inc.
+--  Copyright 2010-2018 Free Software Foundation, Inc.
 --
 --  This program is free software; you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by
@@ -39,4 +39,19 @@ package body Pck is
    begin
       null;
    end Do_Nothing;
+
+   package body Dyn_Top is
+      procedure Assign (Obj: in out Dyn_Top_T; TV : Integer) is
+      begin
+         Do_Nothing (Obj'Address); -- BREAK_DYN_TOP
+      end Assign;
+   end Dyn_Top;
+
+   package body Dyn_Middle is
+      procedure Assign (Obj: in out Dyn_Middle_T; MV : Character) is
+      begin
+         Do_Nothing (Obj'Address); -- BREAK_DYN_MIDDLE
+      end Assign;
+   end Dyn_Middle;
+
 end Pck;

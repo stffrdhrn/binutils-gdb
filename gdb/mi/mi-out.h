@@ -1,5 +1,5 @@
 /* MI Command Set - MI output generating routines for GDB.
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
    Contributed by Cygnus Solutions (a Red Hat company).
 
    This file is part of GDB.
@@ -69,7 +69,7 @@ protected:
   virtual void do_flush () override;
   virtual void do_redirect (struct ui_file *outstream) override;
 
-  virtual bool do_is_mi_like_p () override
+  virtual bool do_is_mi_like_p () const override
   { return true; }
 
 private:

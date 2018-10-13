@@ -1,7 +1,7 @@
 /* Target-dependent code for Lattice Mico32 processor, for GDB.
    Contributed by Jon Beniston <jon@beniston.com>
 
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -35,7 +35,7 @@
 #include "regcache.h"
 #include "trad-frame.h"
 #include "reggroups.h"
-#include "opcodes/lm32-desc.h"
+#include "../opcodes/lm32-desc.h"
 #include <algorithm>
 
 /* Macros to extract fields from an instruction.  */

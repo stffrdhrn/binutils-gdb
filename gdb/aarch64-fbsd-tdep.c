@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/aarch64.
 
-   Copyright (C) 2017 Free Software Foundation, Inc.
+   Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -118,11 +118,11 @@ static const struct tramp_frame aarch64_fbsd_sigframe =
   SIGTRAMP_FRAME,
   4,
   {
-    {0x910003e0, -1},		/* mov  x0, sp  */
-    {0x91014000, -1},		/* add  x0, x0, #SF_UC  */
-    {0xd2803428, -1},		/* mov  x8, #SYS_sigreturn  */
-    {0xd4000001, -1},		/* svc  0x0  */
-    {TRAMP_SENTINEL_INSN, -1}
+    {0x910003e0, ULONGEST_MAX},		/* mov  x0, sp  */
+    {0x91014000, ULONGEST_MAX},		/* add  x0, x0, #SF_UC  */
+    {0xd2803428, ULONGEST_MAX},		/* mov  x8, #SYS_sigreturn  */
+    {0xd4000001, ULONGEST_MAX},		/* svc  0x0  */
+    {TRAMP_SENTINEL_INSN, ULONGEST_MAX}
   },
   aarch64_fbsd_sigframe_init
 };
@@ -169,10 +169,10 @@ aarch64_fbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 					   void *cb_data,
 					   const struct regcache *regcache)
 {
-  cb (".reg", AARCH64_FBSD_SIZEOF_GREGSET, &aarch64_fbsd_gregset,
-      NULL, cb_data);
-  cb (".reg2", AARCH64_FBSD_SIZEOF_FPREGSET, &aarch64_fbsd_fpregset,
-      NULL, cb_data);
+  cb (".reg", AARCH64_FBSD_SIZEOF_GREGSET, AARCH64_FBSD_SIZEOF_GREGSET,
+      &aarch64_fbsd_gregset, NULL, cb_data);
+  cb (".reg2", AARCH64_FBSD_SIZEOF_FPREGSET, AARCH64_FBSD_SIZEOF_FPREGSET,
+      &aarch64_fbsd_fpregset, NULL, cb_data);
 }
 
 /* Implement the 'init_osabi' method of struct gdb_osabi_handler.  */

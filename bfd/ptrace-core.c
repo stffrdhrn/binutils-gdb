@@ -1,5 +1,5 @@
 /* BFD backend for core files which use the ptrace_user structure
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
    The structure of this file is based on trad-core.c written by John Gilmore
    of Cygnus Support.
    Modified to work with the ptrace_user structure by Kevin A. Buettner.
@@ -191,12 +191,12 @@ const bfd_target core_ptrace_vec =
       ptrace_unix_core_file_p		/* a core file */
     },
     {				/* bfd_set_format */
-      bfd_false, bfd_false,
-      bfd_false, bfd_false
+      _bfd_bool_bfd_false_error, bfd_false,
+      _bfd_bool_bfd_false_error, bfd_false
     },
     {				/* bfd_write_contents */
-      bfd_false, bfd_false,
-      bfd_false, bfd_false
+      _bfd_bool_bfd_false_error, bfd_false,
+      _bfd_bool_bfd_false_error, bfd_false
     },
 
     BFD_JUMP_TABLE_GENERIC (_bfd_generic),

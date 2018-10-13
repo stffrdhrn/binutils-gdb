@@ -1,6 +1,6 @@
 /* Target-dependent code for the HP PA-RISC architecture.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    Contributed by the Center for Software Science at the
    University of Utah (pa-gdb-bugs@cs.utah.edu).
@@ -205,13 +205,10 @@ hppa_symbol_address(const char *sym)
 static struct hppa_objfile_private *
 hppa_init_objfile_priv_data (struct objfile *objfile)
 {
-  struct hppa_objfile_private *priv;
+  hppa_objfile_private *priv
+    = OBSTACK_ZALLOC (&objfile->objfile_obstack, hppa_objfile_private);
 
-  priv = (struct hppa_objfile_private *)
-  	 obstack_alloc (&objfile->objfile_obstack,
-	 		sizeof (struct hppa_objfile_private));
   set_objfile_data (objfile, hppa_objfile_priv_data, priv);
-  memset (priv, 0, sizeof (*priv));
 
   return priv;
 }
@@ -823,17 +820,15 @@ hppa32_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 		  int fpLreg = 72 + (param_ptr - 36) / 4 * 2;
 		  int fpreg = 74 + (param_ptr - 32) / 8 * 4;
 
-		  regcache_cooked_write (regcache, grreg, param_val);
-		  regcache_cooked_write (regcache, fpLreg, param_val);
+		  regcache->cooked_write (grreg, param_val);
+		  regcache->cooked_write (fpLreg, param_val);
 
 		  if (param_len > 4)
 		    {
-		      regcache_cooked_write (regcache, grreg + 1, 
-					     param_val + 4);
+		      regcache->cooked_write (grreg + 1, param_val + 4);
 
-		      regcache_cooked_write (regcache, fpreg, param_val);
-		      regcache_cooked_write (regcache, fpreg + 1, 
-					     param_val + 4);
+		      regcache->cooked_write (fpreg, param_val);
+		      regcache->cooked_write (fpreg + 1, param_val + 4);
 		    }
 		}
 	    }
@@ -1049,8 +1044,8 @@ hppa64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
 		     passed in floating-point registers, are passed in
 		     the right halves of the floating point registers;
 		     the left halves are unused."  */
-		  regcache_cooked_write_part (regcache, regnum, offset % 8,
-					      len, value_contents (arg));
+		  regcache->cooked_write_part (regnum, offset % 8, len,
+					       value_contents (arg));
 		}
 	    }
 	}
@@ -1091,8 +1086,8 @@ hppa64_push_dummy_call (struct gdbarch *gdbarch, struct value *function,
       regnum = HPPA_ARG0_REGNUM - offset / 8;
       while (regnum > HPPA_ARG0_REGNUM - 8 && len > 0)
 	{
-	  regcache_cooked_write_part (regcache, regnum,
-				      offset % 8, std::min (len, 8), valbuf);
+	  regcache->cooked_write_part (regnum, offset % 8, std::min (len, 8),
+				       valbuf);
 	  offset += std::min (len, 8);
 	  valbuf += std::min (len, 8);
 	  len -= std::min (len, 8);
@@ -1157,20 +1152,18 @@ hppa32_return_value (struct gdbarch *gdbarch, struct value *function,
       if (part > 0)
 	{
 	  if (readbuf != NULL)
-	    regcache_cooked_read_part (regcache, reg, 4 - part,
-				       part, readbuf);
+	    regcache->cooked_read_part (reg, 4 - part, part, readbuf);
 	  if (writebuf != NULL)
-	    regcache_cooked_write_part (regcache, reg, 4 - part,
-					part, writebuf);
+	    regcache->cooked_write_part (reg, 4 - part, part, writebuf);
 	  reg++;
 	}
       /* Now transfer the remaining register values.  */
       for (b = part; b < TYPE_LENGTH (type); b += 4)
 	{
 	  if (readbuf != NULL)
-	    regcache_cooked_read (regcache, reg, readbuf + b);
+	    regcache->cooked_read (reg, readbuf + b);
 	  if (writebuf != NULL)
-	    regcache_cooked_write (regcache, reg, writebuf + b);
+	    regcache->cooked_write (reg, writebuf + b);
 	  reg++;
 	}
       return RETURN_VALUE_REGISTER_CONVENTION;
@@ -1248,8 +1241,8 @@ hppa64_return_value (struct gdbarch *gdbarch, struct value *function,
     {
       while (len > 0)
 	{
-	  regcache_cooked_read_part (regcache, regnum, offset,
-				     std::min (len, 8), readbuf);
+	  regcache->cooked_read_part (regnum, offset, std::min (len, 8),
+				      readbuf);
 	  readbuf += std::min (len, 8);
 	  len -= std::min (len, 8);
 	  regnum++;
@@ -1260,8 +1253,8 @@ hppa64_return_value (struct gdbarch *gdbarch, struct value *function,
     {
       while (len > 0)
 	{
-	  regcache_cooked_write_part (regcache, regnum, offset,
-				      std::min (len, 8), writebuf);
+	  regcache->cooked_write_part (regnum, offset, std::min (len, 8),
+				       writebuf);
 	  writebuf += std::min (len, 8);
 	  len -= std::min (len, 8);
 	  regnum++;
@@ -1304,13 +1297,13 @@ hppa64_frame_align (struct gdbarch *gdbarch, CORE_ADDR addr)
 }
 
 CORE_ADDR
-hppa_read_pc (struct regcache *regcache)
+hppa_read_pc (readable_regcache *regcache)
 {
   ULONGEST ipsw;
   ULONGEST pc;
 
-  regcache_cooked_read_unsigned (regcache, HPPA_IPSW_REGNUM, &ipsw);
-  regcache_cooked_read_unsigned (regcache, HPPA_PCOQ_HEAD_REGNUM, &pc);
+  regcache->cooked_read (HPPA_IPSW_REGNUM, &ipsw);
+  regcache->cooked_read (HPPA_PCOQ_HEAD_REGNUM, &pc);
 
   /* If the current instruction is nullified, then we are effectively
      still executing the previous instruction.  Pretend we are still
@@ -2442,9 +2435,7 @@ static struct hppa_stub_unwind_cache *
 hppa_stub_frame_unwind_cache (struct frame_info *this_frame,
 			      void **this_cache)
 {
-  struct gdbarch *gdbarch = get_frame_arch (this_frame);
   struct hppa_stub_unwind_cache *info;
-  struct unwind_table_entry *u;
 
   if (*this_cache)
     return (struct hppa_stub_unwind_cache *) *this_cache;
@@ -2747,14 +2738,14 @@ hppa_fetch_pointer_argument (struct frame_info *frame, int argi,
 }
 
 static enum register_status
-hppa_pseudo_register_read (struct gdbarch *gdbarch, struct regcache *regcache,
+hppa_pseudo_register_read (struct gdbarch *gdbarch, readable_regcache *regcache,
 			   int regnum, gdb_byte *buf)
 {
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   ULONGEST tmp;
   enum register_status status;
 
-  status = regcache_raw_read_unsigned (regcache, regnum, &tmp);
+  status = regcache->raw_read (regnum, &tmp);
   if (status == REG_VALID)
     {
       if (regnum == HPPA_PCOQ_HEAD_REGNUM || regnum == HPPA_PCOQ_TAIL_REGNUM)

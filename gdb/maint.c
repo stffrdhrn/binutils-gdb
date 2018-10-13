@@ -1,6 +1,6 @@
 /* Support for GDB maintenance commands.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -444,7 +444,7 @@ maintenance_translate_address (const char *arg, int from_tty)
       while (*p && !isspace (*p))	/* Find end of section name.  */
 	p++;
       if (*p == '\000')		/* End of command?  */
-	error (_("Need to specify <section-name> and <address>"));
+	error (_("Need to specify section name and address"));
 
       int arg_len = p - arg;
       p = skip_spaces (p + 1);
@@ -828,7 +828,7 @@ scoped_command_stats::~scoped_command_stats ()
 
   if (m_space_enabled && per_command_space)
     {
-#ifdef HAVE_SBRK
+#ifdef HAVE_USEFUL_SBRK
       char *lim = (char *) sbrk (0);
 
       long space_now = lim - lim_at_start;
@@ -866,7 +866,7 @@ scoped_command_stats::scoped_command_stats (bool msg_type)
 {
   if (!m_msg_type || per_command_space)
     {
-#ifdef HAVE_SBRK
+#ifdef HAVE_USEFUL_SBRK
       char *lim = (char *) sbrk (0);
       m_start_space = lim - lim_at_start;
       m_space_enabled = 1;
@@ -939,16 +939,26 @@ show_per_command_cmd (const char *args, int from_tty)
 static void
 maintenance_selftest (const char *args, int from_tty)
 {
+#if GDB_SELF_TEST
   selftests::run_tests (args);
+#else
+  printf_filtered (_("\
+Selftests have been disabled for this build.\n"));
+#endif
 }
 
 static void
 maintenance_info_selftests (const char *arg, int from_tty)
 {
+#if GDB_SELF_TEST
   printf_filtered ("Registered selftests:\n");
   selftests::for_each_selftest ([] (const std::string &name) {
     printf_filtered (" - %s\n", name.c_str ());
   });
+#else
+  printf_filtered (_("\
+Selftests have been disabled for this build.\n"));
+#endif
 }
 
 
@@ -1036,12 +1046,12 @@ This command has been moved to \"demangle\"."),
 
   add_prefix_cmd ("per-command", class_maintenance, set_per_command_cmd, _("\
 Per-command statistics settings."),
-		    &per_command_setlist, "set per-command ",
+		    &per_command_setlist, "maintenance set per-command ",
 		    1/*allow-unknown*/, &maintenance_set_cmdlist);
 
   add_prefix_cmd ("per-command", class_maintenance, show_per_command_cmd, _("\
 Show per-command statistics settings."),
-		    &per_command_showlist, "show per-command ",
+		    &per_command_showlist, "maintenance show per-command ",
 		    0/*allow-unknown*/, &maintenance_show_cmdlist);
 
   add_setshow_boolean_cmd ("time", class_maintenance,

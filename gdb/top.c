@@ -1,6 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -46,7 +46,7 @@
 #include "gdbthread.h"
 #include "extension.h"
 #include "interps.h"
-#include "observer.h"
+#include "observable.h"
 #include "maint.h"
 #include "filenames.h"
 #include "frame.h"
@@ -171,7 +171,7 @@ int remote_timeout = 2;
 int remote_debug = 0;
 
 /* Sbrk location on entry to main.  Used for statistics only.  */
-#ifdef HAVE_SBRK
+#ifdef HAVE_USEFUL_SBRK
 char *lim_at_start;
 #endif
 
@@ -338,7 +338,7 @@ new_ui_command (const char *args, int from_tty)
   argc = argv.count ();
 
   if (argc < 2)
-    error (_("usage: new-ui <interpreter> <tty>"));
+    error (_("Usage: new-ui INTERPRETER TTY"));
 
   interpreter_name = argv[0];
   tty_name = argv[1];
@@ -418,7 +418,7 @@ read_command_file (FILE *stream)
       char *command;
 
       /* Get a command-line.  This calls the readline package.  */
-      command = command_line_input (NULL, 0, NULL);
+      command = command_line_input (NULL, NULL);
       if (command == NULL)
 	break;
       command_handler (command);
@@ -571,7 +571,7 @@ execute_command (const char *p, int from_tty)
       line = p;
 
       /* If trace-commands is set then this will print this command.  */
-      print_command_trace (p);
+      print_command_trace ("%s", p);
 
       c = lookup_cmd (&cmd, cmdlist, "", 0, 1);
       p = cmd;
@@ -642,7 +642,12 @@ execute_command (const char *p, int from_tty)
 	}
     }
 
-  check_frame_language_change ();
+  /* Only perform the frame-language-change check if the command
+     we just finished executing did not resume the inferior's execution.
+     If it did resume the inferior, we will do that check after
+     the inferior stopped.  */
+  if (has_stack_frames () && inferior_thread ()->state != THREAD_RUNNING)
+    check_frame_language_change ();
 
   discard_cleanups (cleanup_if_error);
 }
@@ -917,76 +922,72 @@ gdb_readline_wrapper_line (char *line)
     gdb_rl_callback_handler_remove ();
 }
 
-struct gdb_readline_wrapper_cleanup
-  {
-    void (*handler_orig) (char *);
-    int already_prompted_orig;
-
-    /* Whether the target was async.  */
-    int target_is_async_orig;
-  };
-
-static void
-gdb_readline_wrapper_cleanup (void *arg)
+class gdb_readline_wrapper_cleanup
 {
-  struct ui *ui = current_ui;
-  struct gdb_readline_wrapper_cleanup *cleanup
-    = (struct gdb_readline_wrapper_cleanup *) arg;
+public:
+  gdb_readline_wrapper_cleanup ()
+    : m_handler_orig (current_ui->input_handler),
+      m_already_prompted_orig (current_ui->command_editing
+			       ? rl_already_prompted : 0),
+      m_target_is_async_orig (target_is_async_p ()),
+      m_save_ui (&current_ui)
+  {
+    current_ui->input_handler = gdb_readline_wrapper_line;
+    current_ui->secondary_prompt_depth++;
 
-  if (ui->command_editing)
-    rl_already_prompted = cleanup->already_prompted_orig;
+    if (m_target_is_async_orig)
+      target_async (0);
+  }
 
-  gdb_assert (ui->input_handler == gdb_readline_wrapper_line);
-  ui->input_handler = cleanup->handler_orig;
+  ~gdb_readline_wrapper_cleanup ()
+  {
+    struct ui *ui = current_ui;
 
-  /* Don't restore our input handler in readline yet.  That would make
-     readline prep the terminal (putting it in raw mode), while the
-     line we just read may trigger execution of a command that expects
-     the terminal in the default cooked/canonical mode, such as e.g.,
-     running Python's interactive online help utility.  See
-     gdb_readline_wrapper_line for when we'll reinstall it.  */
+    if (ui->command_editing)
+      rl_already_prompted = m_already_prompted_orig;
 
-  gdb_readline_wrapper_result = NULL;
-  gdb_readline_wrapper_done = 0;
-  ui->secondary_prompt_depth--;
-  gdb_assert (ui->secondary_prompt_depth >= 0);
+    gdb_assert (ui->input_handler == gdb_readline_wrapper_line);
+    ui->input_handler = m_handler_orig;
 
-  after_char_processing_hook = saved_after_char_processing_hook;
-  saved_after_char_processing_hook = NULL;
+    /* Don't restore our input handler in readline yet.  That would make
+       readline prep the terminal (putting it in raw mode), while the
+       line we just read may trigger execution of a command that expects
+       the terminal in the default cooked/canonical mode, such as e.g.,
+       running Python's interactive online help utility.  See
+       gdb_readline_wrapper_line for when we'll reinstall it.  */
 
-  if (cleanup->target_is_async_orig)
-    target_async (1);
+    gdb_readline_wrapper_result = NULL;
+    gdb_readline_wrapper_done = 0;
+    ui->secondary_prompt_depth--;
+    gdb_assert (ui->secondary_prompt_depth >= 0);
 
-  xfree (cleanup);
-}
+    after_char_processing_hook = saved_after_char_processing_hook;
+    saved_after_char_processing_hook = NULL;
+
+    if (m_target_is_async_orig)
+      target_async (1);
+  }
+
+  DISABLE_COPY_AND_ASSIGN (gdb_readline_wrapper_cleanup);
+
+private:
+
+  void (*m_handler_orig) (char *);
+  int m_already_prompted_orig;
+
+  /* Whether the target was async.  */
+  int m_target_is_async_orig;
+
+  /* Processing events may change the current UI.  */
+  scoped_restore_tmpl<struct ui *> m_save_ui;
+};
 
 char *
 gdb_readline_wrapper (const char *prompt)
 {
   struct ui *ui = current_ui;
-  struct cleanup *back_to;
-  struct gdb_readline_wrapper_cleanup *cleanup;
-  char *retval;
 
-  cleanup = XNEW (struct gdb_readline_wrapper_cleanup);
-  cleanup->handler_orig = ui->input_handler;
-  ui->input_handler = gdb_readline_wrapper_line;
-
-  if (ui->command_editing)
-    cleanup->already_prompted_orig = rl_already_prompted;
-  else
-    cleanup->already_prompted_orig = 0;
-
-  cleanup->target_is_async_orig = target_is_async_p ();
-
-  ui->secondary_prompt_depth++;
-  back_to = make_cleanup (gdb_readline_wrapper_cleanup, cleanup);
-
-  /* Processing events may change the current UI.  */
-  scoped_restore save_ui = make_scoped_restore (&current_ui);
-
-  if (cleanup->target_is_async_orig)
-    target_async (0);
+  gdb_readline_wrapper_cleanup cleanup;
 
   /* Display our prompt and prevent double prompt display.  Don't pass
      down a NULL prompt, since that has special meaning for
@@ -1004,9 +1005,7 @@ gdb_readline_wrapper (const char *prompt)
     if (gdb_readline_wrapper_done)
       break;
 
-  retval = gdb_readline_wrapper_result;
-  do_cleanups (back_to);
-  return retval;
+  return gdb_readline_wrapper_result;
 }
 
 
@@ -1162,16 +1161,11 @@ gdb_safe_append_history (void)
 
    NULL is returned for end of file.
 
-   *If* input is from an interactive stream (stdin), the line read is
-   copied into the global 'saved_command_line' so that it can be
-   repeated.
-
    This routine either uses fancy command line editing or simple input
    as the user has requested.  */
 
 char *
-command_line_input (const char *prompt_arg, int repeat,
-		    const char *annotation_suffix)
+command_line_input (const char *prompt_arg, const char *annotation_suffix)
 {
   static struct buffer cmd_line_buffer;
   static int cmd_line_buffer_initialized;
@@ -1256,7 +1250,7 @@ command_line_input (const char *prompt_arg, int repeat,
 	}
 
       cmd = handle_line_of_input (&cmd_line_buffer, rl,
-				  repeat, annotation_suffix);
+				  0, annotation_suffix);
       if (cmd == (char *) EOF)
 	{
 	  cmd = NULL;
@@ -1279,9 +1273,9 @@ command_line_input (const char *prompt_arg, int repeat,
   return cmd;
 }
 
-/* Print the GDB banner.  */
+/* See top.h.  */
 void
-print_gdb_version (struct ui_file *stream)
+print_gdb_version (struct ui_file *stream, bool interactive)
 {
   /* From GNU coding standards, first line is meant to be easy for a
      program to parse, and is just canonical program name and version
@@ -1292,7 +1286,7 @@ print_gdb_version (struct ui_file *stream)
   /* Second line is a copyright notice.  */
 
   fprintf_filtered (stream,
-		    "Copyright (C) 2017 Free Software Foundation, Inc.\n");
+		    "Copyright (C) 2018 Free Software Foundation, Inc.\n");
 
   /* Following the copyright is a brief statement that the program is
      free software, that users are free to copy and change it on
@@ -1302,8 +1296,13 @@ print_gdb_version (struct ui_file *stream)
   fprintf_filtered (stream, "\
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\
 \nThis is free software: you are free to change and redistribute it.\n\
-There is NO WARRANTY, to the extent permitted by law.  Type \"show copying\"\n\
-and \"show warranty\" for details.\n");
+There is NO WARRANTY, to the extent permitted by law.");
+
+  if (!interactive)
+    return;
+
+  fprintf_filtered (stream, ("\nType \"show copying\" and "
+			     "\"show warranty\" for details.\n"));
 
   /* After the required info we print the configuration information.  */
 
@@ -1317,18 +1316,21 @@ and \"show warranty\" for details.\n");
     {
       fprintf_filtered (stream, "%s", host_name);
     }
-  fprintf_filtered (stream, "\".\n\
-Type \"show configuration\" for configuration details.");
+  fprintf_filtered (stream, "\".\n");
+
+  fprintf_filtered (stream, _("Type \"show configuration\" "
+			      "for configuration details.\n"));
 
   if (REPORT_BUGS_TO[0])
     {
       fprintf_filtered (stream,
-			_("\nFor bug reporting instructions, please see:\n"));
+			_("For bug reporting instructions, please see:\n"));
       fprintf_filtered (stream, "%s.\n", REPORT_BUGS_TO);
     }
   fprintf_filtered (stream,
 		    _("Find the GDB manual and other documentation \
-resources online at:\n<http://www.gnu.org/software/gdb/documentation/>.\n"));
+resources online at:\n    <http://www.gnu.org/software/gdb/documentation/>."));
+  fprintf_filtered (stream, "\n\n");
   fprintf_filtered (stream, _("For help, type \"help\".\n"));
   fprintf_filtered (stream, _("Type \"apropos word\" to search for \
 commands related to \"word\"."));
@@ -1386,6 +1388,42 @@ This GDB was configured as follows:\n\
              --without-lzma\n\
 "));
 #endif
+#if HAVE_LIBBABELTRACE
+    fprintf_filtered (stream, _("\
+             --with-babeltrace\n\
+"));
+#else
+    fprintf_filtered (stream, _("\
+             --without-babeltrace\n\
+"));
+#endif
+#if HAVE_LIBIPT
+    fprintf_filtered (stream, _("\
+             --with-intel-pt\n\
+"));
+#else
+    fprintf_filtered (stream, _("\
+             --without-intel-pt\n\
+"));
+#endif
+#if HAVE_LIBMCHECK
+    fprintf_filtered (stream, _("\
+             --enable-libmcheck\n\
+"));
+#else
+    fprintf_filtered (stream, _("\
+             --disable-libmcheck\n\
+"));
+#endif
+#if HAVE_LIBMPFR
+    fprintf_filtered (stream, _("\
+             --with-mpfr\n\
+"));
+#else
+    fprintf_filtered (stream, _("\
+             --without-mpfr\n\
+"));
+#endif
 #ifdef WITH_PYTHON_PATH
   fprintf_filtered (stream, _("\
              --with-python=%s%s\n\
@@ -1417,15 +1455,6 @@ This GDB was configured as follows:\n\
     fprintf_filtered (stream, _("\
              --with-system-gdbinit=%s%s\n\
 "), SYSTEM_GDBINIT, SYSTEM_GDBINIT_RELOCATABLE ? " (relocatable)" : "");
-#if HAVE_LIBBABELTRACE
-    fprintf_filtered (stream, _("\
-             --with-babeltrace\n\
-"));
-#else
-    fprintf_filtered (stream, _("\
-             --without-babeltrace\n\
-"));
-#endif
     /* We assume "relocatable" will be printed at least once, thus we always
        print this text.  It's a reasonably safe assumption for now.  */
     fprintf_filtered (stream, _("\n\
@@ -1461,7 +1490,6 @@ set_prompt (const char *s)
 
 struct qt_args
 {
-  char *args;
   int from_tty;
 };
 
@@ -1472,21 +1500,20 @@ static int
 kill_or_detach (struct inferior *inf, void *args)
 {
   struct qt_args *qt = (struct qt_args *) args;
-  struct thread_info *thread;
 
   if (inf->pid == 0)
     return 0;
 
-  thread = any_thread_of_process (inf->pid);
+  thread_info *thread = any_thread_of_inferior (inf);
   if (thread != NULL)
     {
-      switch_to_thread (thread->ptid);
+      switch_to_thread (thread);
 
       /* Leave core files alone.  */
       if (target_has_execution)
 	{
 	  if (inf->attach_flag)
-	    target_detach (qt->args, qt->from_tty);
+	    target_detach (inf, qt->from_tty);
 	  else
 	    target_kill ();
 	}
@@ -1510,11 +1537,11 @@ print_inferior_quit_action (struct inferior *inf, void *arg)
   if (inf->attach_flag)
     fprintf_filtered (stb,
 		      _("\tInferior %d [%s] will be detached.\n"), inf->num,
-		      target_pid_to_str (pid_to_ptid (inf->pid)));
+		      target_pid_to_str (ptid_t (inf->pid)));
   else
     fprintf_filtered (stb,
 		      _("\tInferior %d [%s] will be killed.\n"), inf->num,
-		      target_pid_to_str (pid_to_ptid (inf->pid)));
+		      target_pid_to_str (ptid_t (inf->pid)));
 
   return 0;
 }
@@ -1577,7 +1604,6 @@ quit_force (int *exit_arg, int from_tty)
   else if (return_child_result)
     exit_code = return_child_result_value;
 
-  qt.args = NULL;
   qt.from_tty = from_tty;
 
   /* We want to handle any quit errors and exit regardless.  */
@@ -1820,7 +1846,7 @@ set_verbose (const char *args, int from_tty, struct cmd_list_element *c)
 void
 init_history (void)
 {
-  char *tmpenv;
+  const char *tmpenv;
 
   tmpenv = getenv ("GDBHISTSIZE");
   if (tmpenv)
@@ -1934,7 +1960,7 @@ static void
 set_gdb_datadir (const char *args, int from_tty, struct cmd_list_element *c)
 {
   set_gdb_data_directory (staged_gdb_datadir);
-  observer_notify_gdb_datadir_changed ();
+  gdb::observers::gdb_datadir_changed.notify ();
 }
 
 /* "show" command for the gdb_datadir configuration variable.  */

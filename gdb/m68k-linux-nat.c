@@ -1,6 +1,6 @@
 /* Motorola m68k native support for GNU/Linux.
 
-   Copyright (C) 1996-2017 Free Software Foundation, Inc.
+   Copyright (C) 1996-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -57,6 +57,17 @@
 #define PTRACE_GET_THREAD_AREA 25
 #endif
 
+
+class m68k_linux_nat_target final : public linux_nat_target
+{
+public:
+  /* Add our register access methods.  */
+  void fetch_registers (struct regcache *, int) override;
+  void store_registers (struct regcache *, int) override;
+};
+
+static m68k_linux_nat_target the_m68k_linux_nat_target;
+
 /* This table must line up with gdbarch_register_name in "m68k-tdep.c".  */
 static const int regmap[] =
 {
@@ -108,7 +119,7 @@ fetch_register (struct regcache *regcache, int regno)
   long regaddr, val;
   int i;
   gdb_byte buf[M68K_MAX_REGISTER_SIZE];
-  pid_t tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  pid_t tid = get_ptrace_pid (regcache->ptid ());
 
   regaddr = 4 * regmap[regno];
   for (i = 0; i < register_size (gdbarch, regno); i += sizeof (long))
@@ -122,7 +133,7 @@ fetch_register (struct regcache *regcache, int regno)
 	       gdbarch_register_name (gdbarch, regno),
 	       regno, safe_strerror (errno));
     }
-  regcache_raw_supply (regcache, regno, buf);
+  regcache->raw_supply (regno, buf);
 }
 
 /* Fetch register values from the inferior.
@@ -156,12 +167,12 @@ store_register (const struct regcache *regcache, int regno)
   long regaddr, val;
   int i;
   gdb_byte buf[M68K_MAX_REGISTER_SIZE];
-  pid_t tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  pid_t tid = get_ptrace_pid (regcache->ptid ());
 
   regaddr = 4 * regmap[regno];
 
   /* Put the contents of regno into a local buffer.  */
-  regcache_raw_collect (regcache, regno, buf);
+  regcache->raw_collect (regno, buf);
 
   /* Store the local buffer into the inferior a chunk at the time.  */
   for (i = 0; i < register_size (gdbarch, regno); i += sizeof (long))
@@ -213,11 +224,9 @@ supply_gregset (struct regcache *regcache, const elf_gregset_t *gregsetp)
   for (regi = M68K_D0_REGNUM;
        regi <= gdbarch_sp_regnum (gdbarch);
        regi++)
-    regcache_raw_supply (regcache, regi, &regp[regmap[regi]]);
-  regcache_raw_supply (regcache, gdbarch_ps_regnum (gdbarch),
-		       &regp[PT_SR]);
-  regcache_raw_supply (regcache,
-		       gdbarch_pc_regnum (gdbarch), &regp[PT_PC]);
+    regcache->raw_supply (regi, &regp[regmap[regi]]);
+  regcache->raw_supply (gdbarch_ps_regnum (gdbarch), &regp[PT_SR]);
+  regcache->raw_supply (gdbarch_pc_regnum (gdbarch), &regp[PT_PC]);
 }
 
 /* Fill register REGNO (if it is a general-purpose register) in
@@ -232,7 +241,7 @@ fill_gregset (const struct regcache *regcache,
 
   for (i = 0; i < NUM_GREGS; i++)
     if (regno == -1 || regno == i)
-      regcache_raw_collect (regcache, i, regp + regmap[i]);
+      regcache->raw_collect (i, regp + regmap[i]);
 }
 
 #ifdef HAVE_PTRACE_GETREGS
@@ -307,12 +316,11 @@ supply_fpregset (struct regcache *regcache, const elf_fpregset_t *fpregsetp)
 
   for (regi = gdbarch_fp0_regnum (gdbarch);
        regi < gdbarch_fp0_regnum (gdbarch) + 8; regi++)
-    regcache_raw_supply (regcache, regi,
-			 FPREG_ADDR (fpregsetp,
-				     regi - gdbarch_fp0_regnum (gdbarch)));
-  regcache_raw_supply (regcache, M68K_FPC_REGNUM, &fpregsetp->fpcntl[0]);
-  regcache_raw_supply (regcache, M68K_FPS_REGNUM, &fpregsetp->fpcntl[1]);
-  regcache_raw_supply (regcache, M68K_FPI_REGNUM, &fpregsetp->fpcntl[2]);
+    regcache->raw_supply
+      (regi, FPREG_ADDR (fpregsetp, regi - gdbarch_fp0_regnum (gdbarch)));
+  regcache->raw_supply (M68K_FPC_REGNUM, &fpregsetp->fpcntl[0]);
+  regcache->raw_supply (M68K_FPS_REGNUM, &fpregsetp->fpcntl[1]);
+  regcache->raw_supply (M68K_FPI_REGNUM, &fpregsetp->fpcntl[2]);
 }
 
 /* Fill register REGNO (if it is a floating-point register) in
@@ -330,15 +338,13 @@ fill_fpregset (const struct regcache *regcache,
   for (i = gdbarch_fp0_regnum (gdbarch);
        i < gdbarch_fp0_regnum (gdbarch) + 8; i++)
     if (regno == -1 || regno == i)
-      regcache_raw_collect (regcache, i,
-			    FPREG_ADDR (fpregsetp,
-				        i - gdbarch_fp0_regnum (gdbarch)));
+      regcache->raw_collect
+	(i, FPREG_ADDR (fpregsetp, i - gdbarch_fp0_regnum (gdbarch)));
 
   /* Fill in the floating-point control registers.  */
   for (i = M68K_FPC_REGNUM; i <= M68K_FPI_REGNUM; i++)
     if (regno == -1 || regno == i)
-      regcache_raw_collect (regcache, i,
-			    &fpregsetp->fpcntl[i - M68K_FPC_REGNUM]);
+      regcache->raw_collect (i, &fpregsetp->fpcntl[i - M68K_FPC_REGNUM]);
 }
 
 #ifdef HAVE_PTRACE_GETREGS
@@ -392,9 +398,8 @@ static void store_fpregs (const struct regcache *regcache, int tid, int regno)
    this for all registers (including the floating point and SSE
    registers).  */
 
-static void
-m68k_linux_fetch_inferior_registers (struct target_ops *ops,
-				     struct regcache *regcache, int regno)
+void
+m68k_linux_nat_target::fetch_registers (struct regcache *regcache, int regno)
 {
   pid_t tid;
 
@@ -406,7 +411,7 @@ m68k_linux_fetch_inferior_registers (struct target_ops *ops,
       return;
     }
 
-  tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  tid = get_ptrace_pid (regcache->ptid ());
 
   /* Use the PTRACE_GETFPXREGS request whenever possible, since it
      transfers more registers in one system call, and we'll cache the
@@ -446,9 +451,8 @@ m68k_linux_fetch_inferior_registers (struct target_ops *ops,
 /* Store register REGNO back into the child process.  If REGNO is -1,
    do this for all registers (including the floating point and SSE
    registers).  */
-static void
-m68k_linux_store_inferior_registers (struct target_ops *ops,
-				     struct regcache *regcache, int regno)
+void
+m68k_linux_nat_target::store_registers (struct regcache *regcache, int regno)
 {
   pid_t tid;
 
@@ -460,7 +464,7 @@ m68k_linux_store_inferior_registers (struct target_ops *ops,
       return;
     }
 
-  tid = get_ptrace_pid (regcache_get_ptid (regcache));
+  tid = get_ptrace_pid (regcache->ptid ());
 
   /* Use the PTRACE_SETFPREGS requests whenever possible, since it
      transfers more registers in one system call.  But remember that
@@ -509,15 +513,7 @@ ps_get_thread_area (struct ps_prochandle *ph,
 void
 _initialize_m68k_linux_nat (void)
 {
-  struct target_ops *t;
-
-  /* Fill in the generic GNU/Linux methods.  */
-  t = linux_target ();
-
-  /* Add our register access methods.  */
-  t->to_fetch_registers = m68k_linux_fetch_inferior_registers;
-  t->to_store_registers = m68k_linux_store_inferior_registers;
-
   /* Register the target.  */
-  linux_nat_add_target (t);
+  linux_target = &the_m68k_linux_nat_target;
+  add_inf_child_target (&the_m68k_linux_nat_target);
 }

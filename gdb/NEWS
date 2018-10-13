@@ -1,7 +1,247 @@
 		What has changed in GDB?
 	     (Organized release by release)
 
-*** Changes since GDB 8.0
+*** Changes since GDB 8.2
+
+* GDB now has experimental support for the compilation and injection of
+  C++ source code into the inferior.  This beta release does not include
+  support for several language features, such as templates, constructors,
+  and operators.
+
+  This feature requires GCC 7.1 or higher built with libcp1.so
+  (the C++ plug-in).
+
+* GDB and GDBserver now support IPv6 connections.  IPv6 addresses
+  can be passed using the '[ADDRESS]:PORT' notation, or the regular
+  'ADDRESS:PORT' method.
+
+* DWARF index cache: GDB can now automatically save indices of DWARF
+  symbols on disk to speed up further loading of the same binaries.
+
+* GDB in batch mode now exits with status 1 if the last command to be
+  executed failed.
+
+* Changes to the "frame", "select-frame", and "info frame" CLI
+  commands.  These commands all now take a frame specification which
+  is either a frame level, or one of the keywords 'level', 'address',
+  'function', or 'view' followed by a parameter.  Selecting a frame by
+  address, or viewing a frame outside the current backtrace now
+  requires the use of a keyword.  Selecting a frame by level is
+  unchanged.  The MI comment "-stack-select-frame" is unchanged.
+
+* New commands
+
+set debug compile-cplus-types
+show debug compile-cplus-types
+  Control the display of debug output about type conversion in the
+  C++ compile feature.  Commands have no effect while compiliong
+  for other languages.
+
+set debug skip
+show debug skip
+  Control whether debug output about files/functions skipping is
+  displayed.
+
+frame apply [all | COUNT | -COUNT | level LEVEL...] [FLAG]... COMMAND
+  Apply a command to some frames.
+  FLAG arguments allow to control what output to produce and how to handle
+  errors raised when applying COMMAND to a frame.
+
+taas COMMAND
+  Apply a command to all threads (ignoring errors and empty output).
+  Shortcut for 'thread apply all -s COMMAND'.
+
+faas COMMAND
+  Apply a command to all frames (ignoring errors and empty output).
+  Shortcut for 'frame apply all -s COMMAND'.
+
+tfaas COMMAND
+  Apply a command to all frames of all threads (ignoring errors and empty
+  output).
+  Shortcut for 'thread apply all -s frame apply all -s COMMAND'.
+
+maint set dwarf unwinders (on|off)
+maint show dwarf unwinders
+  Control whether DWARF unwinders can be used.
+
+info proc files
+  Display a list of open files for a process.
+
+* Changed commands
+
+target remote FILENAME
+target extended-remote FILENAME
+  If FILENAME is a Unix domain socket, GDB will attempt to connect
+  to this socket instead of opening FILENAME as a character device.
+
+thread apply [all | COUNT | -COUNT] [FLAG]... COMMAND
+  The 'thread apply' command accepts new FLAG arguments.
+  FLAG arguments allow to control what output to produce and how to handle
+  errors raised when applying COMMAND to a thread.
+
+* MI changes
+
+  ** The '-data-disassemble' MI command now accepts an '-a' option to
+     disassemble the whole function surrounding the given program
+     counter value or function name.  Support for this feature can be
+     verified by using the "-list-features" command, which should
+     contain "data-disassemble-a-option".
+
+  ** Command responses and notifications that include a frame now include
+     the frame's architecture in a new "arch" attribute.
+
+* New native configurations
+
+GNU/Linux/RISC-V		riscv*-*-linux*
+FreeBSD/riscv			riscv*-*-freebsd*
+
+* New targets
+
+GNU/Linux/RISC-V		riscv*-*-linux*
+CSKY ELF			csky*-*-elf
+CSKY GNU/LINUX			csky*-*-linux
+FreeBSD/riscv			riscv*-*-freebsd*
+
+* Python API
+
+  ** The gdb.Inferior type has a new 'progspace' property, which is the program
+     space associated to that inferior.
+
+  ** The gdb.Progspace type has a new 'objfiles' method, which returns the list
+     of objfiles associated to that program space.
+
+  ** gdb.SYMBOL_LOC_COMMON_BLOCK, gdb.SYMBOL_MODULE_DOMAIN, and
+     gdb.SYMBOL_COMMON_BLOCK_DOMAIN were added to reflect changes to
+     the gdb core.
+
+  ** gdb.SYMBOL_VARIABLES_DOMAIN, gdb.SYMBOL_FUNCTIONS_DOMAIN, and
+     gdb.SYMBOL_TYPES_DOMAIN are now deprecated.  These were never
+     correct and did not work properly.
+
+* Configure changes
+
+--enable-ubsan
+
+  Enable or disable the undefined behavior sanitizer.  This is
+  disabled by default, but passing --enable-ubsan=yes or
+  --enable-ubsan=auto to configure will enable it.  Enabling this can
+  cause a performance penalty.  The undefined behavior sanitizer was
+  first introduced in GCC 4.9.
+
+*** Changes in GDB 8.2
+
+* The 'set disassembler-options' command now supports specifying options
+  for the MIPS target.
+
+* The 'symbol-file' command now accepts an '-o' option to add a relative
+  offset to all sections.
+
+* Similarly, the 'add-symbol-file' command also accepts an '-o' option to add
+  a relative offset to all sections, but it allows to override the load
+  address of individual sections using '-s'.
+
+* The 'add-symbol-file' command no longer requires the second argument
+  (address of the text section).
+
+* The endianness used with the 'set endian auto' mode in the absence of
+  an executable selected for debugging is now the last endianness chosen
+  either by one of the 'set endian big' and 'set endian little' commands
+  or by inferring from the last executable used, rather than the startup
+  default.
+
+* The pager now allows a "c" response, meaning to disable the pager
+  for the rest of the current command.
+
+* The commands 'info variables/functions/types' now show the source line
+  numbers of symbol definitions when available.
+
+* 'info proc' now works on running processes on FreeBSD systems and core
+  files created on FreeBSD systems.
+
+* C expressions can now use _Alignof, and C++ expressions can now use
+  alignof.
+
+* Support for SVE on AArch64 Linux.  Note that GDB does not detect changes to
+  the vector length while the process is running.
+
+* New commands
+
+set debug fbsd-nat
+show debug fbsd-nat
+  Control display of debugging info regarding the FreeBSD native target.
+
+set|show varsize-limit
+  This new setting allows the user to control the maximum size of Ada
+  objects being printed when those objects have a variable type,
+  instead of that maximum size being hardcoded to 65536 bytes.
+
+set|show record btrace cpu
+  Controls the processor to be used for enabling errata workarounds for
+  branch trace decode.
+
+maint check libthread-db
+  Run integrity checks on the current inferior's thread debugging
+  library
+
+maint set check-libthread-db (on|off)
+maint show check-libthread-db
+  Control whether to run integrity checks on inferior specific thread
+  debugging libraries as they are loaded.  The default is not to
+  perform such checks.
+
+* Python API
+
+  ** Type alignment is now exposed via the "align" attribute of a gdb.Type.
+
+  ** The commands attached to a breakpoint can be set by assigning to
+     the breakpoint's "commands" field.
+
+  ** gdb.execute can now execute multi-line gdb commands.
+
+  ** The new functions gdb.convenience_variable and
+     gdb.set_convenience_variable can be used to get and set the value
+     of convenience variables.
+
+  ** A gdb.Parameter will no longer print the "set" help text on an
+     ordinary "set"; instead by default a "set" will be silent unless
+     the get_set_string method returns a non-empty string.
+
+* New targets
+
+RiscV ELF			riscv*-*-elf
+
+* Removed targets and native configurations
+
+m88k running OpenBSD  		m88*-*-openbsd*
+SH-5/SH64 ELF			sh64-*-elf*, SH-5/SH64 support in sh*
+SH-5/SH64 running GNU/Linux	SH-5/SH64 support in sh*-*-linux*
+SH-5/SH64 running OpenBSD 	SH-5/SH64 support in sh*-*-openbsd*
+
+* Aarch64/Linux hardware watchpoints improvements
+
+  Hardware watchpoints on unaligned addresses are now properly
+  supported when running Linux kernel 4.10 or higher: read and access
+  watchpoints are no longer spuriously missed, and all watchpoints
+  lengths between 1 and 8 bytes are supported.  On older kernels,
+  watchpoints set on unaligned addresses are no longer missed, with
+  the tradeoff that there is a possibility of false hits being
+  reported.
+
+* Configure changes
+
+--enable-codesign=CERT
+  This can be used to invoke "codesign -s CERT" after building gdb.
+  This option is useful on macOS, where code signing is required for
+  gdb to work properly.
+
+--disable-gdbcli has been removed
+  This is now silently accepted, but does nothing.
+
+*** Changes in GDB 8.1
+
+* GDB now supports dynamically creating arbitrary register groups specified
+  in XML target descriptions.  This allows for finer grain grouping of
+  registers on systems with a large amount of registers.
 
 * The 'ptype' command now accepts a '/o' flag, which prints the
   offsets and sizes of fields in a struct, like the pahole(1) tool.
@@ -116,9 +356,9 @@
      gdb.new_thread are emitted.  See the manual for further
      description of these.
 
-  ** A new command, "rbreak" has been added to the Python API.  This
-     command allows the setting of a large number of breakpoints via a
-     regex pattern in Python.  See the manual for further details.
+  ** A new function, "gdb.rbreak" has been added to the Python API.
+     This function allows the setting of a large number of breakpoints
+     via a regex pattern in Python.  See the manual for further details.
 
   ** Python breakpoints can now accept explicit locations.  See the
      manual for a further description of this feature.
@@ -367,6 +607,10 @@ show disassembler-options
 -file-list-shared-libraries
   List the shared libraries in the program.  This is
   equivalent to the CLI command "info shared".
+
+-catch-handlers
+  Catchpoints stopping the program when Ada exceptions are
+  handled.  This is equivalent to the CLI command "catch handlers".
 
 *** Changes in GDB 7.12
 
@@ -664,6 +908,9 @@ show max-value-size
 
 * Support for reading/writing memory and extracting values on architectures
   whose memory is addressable in units of any integral multiple of 8 bits.
+
+catch handlers
+  Allows to break when an Ada exception is handled.
 
 * New remote packets
 

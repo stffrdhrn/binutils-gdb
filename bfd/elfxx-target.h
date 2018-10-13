@@ -1,5 +1,5 @@
 /* Target definitions for NN-bit ELF
-   Copyright (C) 1993-2017 Free Software Foundation, Inc.
+   Copyright (C) 1993-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -145,10 +145,9 @@
 #define elf_backend_strtab_flags 0
 #endif
 
-#define bfd_elfNN_bfd_debug_info_start	bfd_void
-#define bfd_elfNN_bfd_debug_info_end	bfd_void
-#define bfd_elfNN_bfd_debug_info_accumulate \
-  ((void (*) (bfd*, struct bfd_section *)) bfd_void)
+#define bfd_elfNN_bfd_debug_info_start		_bfd_void_bfd
+#define bfd_elfNN_bfd_debug_info_end		_bfd_void_bfd
+#define bfd_elfNN_bfd_debug_info_accumulate	_bfd_void_bfd_asection
 
 #ifndef bfd_elfNN_bfd_get_relocated_section_contents
 #define bfd_elfNN_bfd_get_relocated_section_contents \
@@ -206,13 +205,16 @@
 #define bfd_elfNN_bfd_define_common_symbol bfd_generic_define_common_symbol
 #endif
 
+#ifndef bfd_elfNN_bfd_link_hide_symbol
+#define bfd_elfNN_bfd_link_hide_symbol _bfd_elf_link_hide_symbol
+#endif
+
 #ifndef bfd_elfNN_bfd_lookup_section_flags
 #define bfd_elfNN_bfd_lookup_section_flags bfd_elf_lookup_section_flags
 #endif
 
 #ifndef bfd_elfNN_bfd_make_debug_symbol
-#define bfd_elfNN_bfd_make_debug_symbol \
-  ((asymbol * (*) (bfd *, void *, unsigned long)) bfd_nullvoidptr)
+#define bfd_elfNN_bfd_make_debug_symbol _bfd_nosymbols_bfd_make_debug_symbol
 #endif
 
 #ifndef bfd_elfNN_bfd_copy_private_symbol_data
@@ -237,19 +239,16 @@
   _bfd_elf_print_private_bfd_data
 #endif
 #ifndef bfd_elfNN_bfd_merge_private_bfd_data
-#define bfd_elfNN_bfd_merge_private_bfd_data \
-  ((bfd_boolean (*) (bfd *, struct bfd_link_info *)) bfd_true)
+#define bfd_elfNN_bfd_merge_private_bfd_data _bfd_bool_bfd_link_true
 #endif
 #ifndef bfd_elfNN_bfd_set_private_flags
-#define bfd_elfNN_bfd_set_private_flags \
-  ((bfd_boolean (*) (bfd *, flagword)) bfd_true)
+#define bfd_elfNN_bfd_set_private_flags _bfd_bool_bfd_uint_true
 #endif
 #ifndef bfd_elfNN_bfd_is_local_label_name
 #define bfd_elfNN_bfd_is_local_label_name _bfd_elf_is_local_label_name
 #endif
 #ifndef bfd_elfNN_bfd_is_target_special_symbol
-#define bfd_elfNN_bfd_is_target_special_symbol \
-  ((bfd_boolean (*) (bfd *, asymbol *)) bfd_false)
+#define bfd_elfNN_bfd_is_target_special_symbol _bfd_bool_bfd_asymbol_false
 #endif
 
 #ifndef bfd_elfNN_get_dynamic_reloc_upper_bound
@@ -344,11 +343,11 @@
 #endif
 
 #ifndef elf_info_to_howto
-#define elf_info_to_howto 0
+#define elf_info_to_howto NULL
 #endif
 
 #ifndef elf_info_to_howto_rel
-#define elf_info_to_howto_rel 0
+#define elf_info_to_howto_rel NULL
 #endif
 
 #ifndef elf_backend_arch_data
@@ -372,6 +371,10 @@
 #define ELF_COMMONPAGESIZE ELF_MAXPAGESIZE
 #endif
 
+#ifndef ELF_RELROPAGESIZE
+#define ELF_RELROPAGESIZE ELF_COMMONPAGESIZE
+#endif
+
 #ifndef ELF_MINPAGESIZE
 #define ELF_MINPAGESIZE ELF_COMMONPAGESIZE
 #endif
@@ -379,8 +382,14 @@
 #if ELF_COMMONPAGESIZE > ELF_MAXPAGESIZE
 # error ELF_COMMONPAGESIZE > ELF_MAXPAGESIZE
 #endif
+#if ELF_RELROPAGESIZE > ELF_MAXPAGESIZE
+# error ELF_RELROPAGESIZE > ELF_MAXPAGESIZE
+#endif
 #if ELF_MINPAGESIZE > ELF_COMMONPAGESIZE
 # error ELF_MINPAGESIZE > ELF_COMMONPAGESIZE
+#endif
+#if ELF_MINPAGESIZE > ELF_RELROPAGESIZE
+# error ELF_MINPAGESIZE > ELF_RELROPAGESIZE
 #endif
 
 #ifndef ELF_DYNAMIC_SEC_FLAGS
@@ -449,7 +458,7 @@
 #define elf_backend_create_dynamic_sections 0
 #endif
 #ifndef elf_backend_omit_section_dynsym
-#define elf_backend_omit_section_dynsym _bfd_elf_link_omit_section_dynsym
+#define elf_backend_omit_section_dynsym _bfd_elf_omit_section_dynsym_default
 #endif
 #ifndef elf_backend_relocs_compatible
 #define elf_backend_relocs_compatible _bfd_elf_default_relocs_compatible
@@ -473,8 +482,7 @@
 #define elf_backend_size_dynamic_sections 0
 #endif
 #ifndef elf_backend_init_index_section
-#define elf_backend_init_index_section \
- ((void (*) (bfd *, struct bfd_link_info *)) bfd_void)
+#define elf_backend_init_index_section _bfd_void_bfd_link
 #endif
 #ifndef elf_backend_relocate_section
 #define elf_backend_relocate_section	0
@@ -501,8 +509,7 @@
 #define elf_backend_modify_program_headers	0
 #endif
 #ifndef elf_backend_allow_non_load_phdr
-#define elf_backend_allow_non_load_phdr	\
-  ((bfd_boolean (*) (bfd *, const Elf_Internal_Phdr *, unsigned)) bfd_false)
+#define elf_backend_allow_non_load_phdr	0
 #endif
 #ifndef elf_backend_ecoff_debug_swap
 #define elf_backend_ecoff_debug_swap	0
@@ -542,6 +549,9 @@
 #endif
 #ifndef elf_backend_setup_gnu_properties
 #define elf_backend_setup_gnu_properties	_bfd_elf_link_setup_gnu_properties
+#endif
+#ifndef elf_backend_fixup_gnu_properties
+#define elf_backend_fixup_gnu_properties	NULL
 #endif
 #ifndef elf_backend_static_tls_alignment
 #define elf_backend_static_tls_alignment	1
@@ -764,6 +774,7 @@ static struct elf_backend_data elfNN_bed =
   ELF_MAXPAGESIZE,		/* maxpagesize */
   ELF_MINPAGESIZE,		/* minpagesize */
   ELF_COMMONPAGESIZE,		/* commonpagesize */
+  ELF_RELROPAGESIZE,		/* commonpagesize to use with -z relro */
   ELF_DYNAMIC_SEC_FLAGS,	/* dynamic_sec_flags */
   elf_backend_arch_data,
   elf_info_to_howto,
@@ -868,6 +879,7 @@ static struct elf_backend_data elfNN_bed =
   elf_backend_parse_gnu_properties,
   elf_backend_merge_gnu_properties,
   elf_backend_setup_gnu_properties,
+  elf_backend_fixup_gnu_properties,
   elf_backend_compact_eh_encoding,
   elf_backend_cant_unwind_opcode,
   elf_backend_static_tls_alignment,
@@ -967,14 +979,14 @@ const bfd_target TARGET_BIG_SYM =
   },
 
   /* bfd_set_format: set the format of a file being written */
-  { bfd_false,
+  { _bfd_bool_bfd_false_error,
     bfd_elfNN_mkobject,
     bfd_elfNN_mkarchive,
     bfd_elfNN_mkcorefile
   },
 
   /* bfd_write_contents: write cached information into a file being written */
-  { bfd_false,
+  { _bfd_bool_bfd_false_error,
     bfd_elfNN_write_object_contents,
     bfd_elfNN_write_archive_contents,
     bfd_elfNN_write_corefile_contents,
@@ -1068,14 +1080,14 @@ const bfd_target TARGET_LITTLE_SYM =
   },
 
   /* bfd_set_format: set the format of a file being written */
-  { bfd_false,
+  { _bfd_bool_bfd_false_error,
     bfd_elfNN_mkobject,
     bfd_elfNN_mkarchive,
     bfd_elfNN_mkcorefile
   },
 
   /* bfd_write_contents: write cached information into a file being written */
-  { bfd_false,
+  { _bfd_bool_bfd_false_error,
     bfd_elfNN_write_object_contents,
     bfd_elfNN_write_archive_contents,
     bfd_elfNN_write_corefile_contents,

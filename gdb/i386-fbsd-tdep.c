@@ -1,6 +1,6 @@
 /* Target-dependent code for FreeBSD/i386.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -309,12 +309,15 @@ i386fbsd_iterate_over_regset_sections (struct gdbarch *gdbarch,
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  cb (".reg", tdep->sizeof_gregset, &i386_gregset, NULL, cb_data);
-  cb (".reg2", tdep->sizeof_fpregset, &i386_fpregset, NULL, cb_data);
+  cb (".reg", tdep->sizeof_gregset, tdep->sizeof_gregset, &i386_gregset, NULL,
+      cb_data);
+  cb (".reg2", tdep->sizeof_fpregset, tdep->sizeof_fpregset, &i386_fpregset,
+      NULL, cb_data);
 
   if (tdep->xcr0 & X86_XSTATE_AVX)
-    cb (".reg-xstate", X86_XSTATE_SIZE(tdep->xcr0),
-	&i386fbsd_xstateregset, "XSAVE extended state", cb_data);
+    cb (".reg-xstate", X86_XSTATE_SIZE (tdep->xcr0),
+	X86_XSTATE_SIZE (tdep->xcr0), &i386fbsd_xstateregset,
+	"XSAVE extended state", cb_data);
 }
 
 static void

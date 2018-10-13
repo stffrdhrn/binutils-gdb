@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux i386.
 
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -547,7 +547,7 @@ i386_linux_get_syscall_number_from_regcache (struct regcache *regcache)
   /* Getting the system call number from the register.
      When dealing with x86 architecture, this information
      is stored at %eax register.  */
-  regcache_cooked_read (regcache, I386_LINUX_ORIG_EAX_REGNUM, buf);
+  regcache->cooked_read (I386_LINUX_ORIG_EAX_REGNUM, buf);
 
   ret = extract_signed_integer (buf, 4, byte_order);
 
@@ -559,9 +559,9 @@ i386_linux_get_syscall_number_from_regcache (struct regcache *regcache)
 
 static LONGEST
 i386_linux_get_syscall_number (struct gdbarch *gdbarch,
-                               ptid_t ptid)
+			       thread_info *thread)
 {
-  struct regcache *regcache = get_thread_regcache (ptid);
+  struct regcache *regcache = get_thread_regcache (thread);
 
   return i386_linux_get_syscall_number_from_regcache (regcache);
 }
@@ -764,16 +764,17 @@ i386_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  cb (".reg", 68, &i386_gregset, NULL, cb_data);
+  cb (".reg", 68, 68, &i386_gregset, NULL, cb_data);
 
   if (tdep->xcr0 & X86_XSTATE_AVX)
     cb (".reg-xstate", X86_XSTATE_SIZE (tdep->xcr0),
-	&i386_linux_xstateregset, "XSAVE extended state", cb_data);
+	X86_XSTATE_SIZE (tdep->xcr0), &i386_linux_xstateregset,
+	"XSAVE extended state", cb_data);
   else if (tdep->xcr0 & X86_XSTATE_SSE)
-    cb (".reg-xfp", 512, &i386_fpregset, "extended floating-point",
+    cb (".reg-xfp", 512, 512, &i386_fpregset, "extended floating-point",
 	cb_data);
   else
-    cb (".reg2", 108, &i386_fpregset, NULL, cb_data);
+    cb (".reg2", 108, 108, &i386_fpregset, NULL, cb_data);
 }
 
 /* Linux kernel shows PC value after the 'int $0x80' instruction even if

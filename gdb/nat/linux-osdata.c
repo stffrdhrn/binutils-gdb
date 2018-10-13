@@ -1,6 +1,6 @@
 /* Linux-specific functions to retrieve OS data.
    
-   Copyright (C) 2009-2017 Free Software Foundation, Inc.
+   Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -70,7 +70,7 @@ linux_common_core_of_thread (ptid_t ptid)
   int core;
 
   sprintf (filename, "/proc/%lld/task/%lld/stat",
-	   (PID_T) ptid_get_pid (ptid), (PID_T) ptid_get_lwp (ptid));
+	   (PID_T) ptid.pid (), (PID_T) ptid.lwp ());
   gdb_file_up f = gdb_fopen_cloexec (filename, "r");
   if (!f)
     return -1;
@@ -115,7 +115,7 @@ linux_common_core_of_thread (ptid_t ptid)
 static void
 command_from_pid (char *command, int maxlen, PID_T pid)
 {
-  char *stat_path = xstrprintf ("/proc/%lld/stat", pid); 
+  std::string stat_path = string_printf ("/proc/%lld/stat", pid);
   gdb_file_up fp = gdb_fopen_cloexec (stat_path, "r");
   
   command[0] = '\0';
@@ -142,8 +142,6 @@ command_from_pid (char *command, int maxlen, PID_T pid)
     }
 
   command[maxlen - 1] = '\0'; /* Ensure string is null-terminated.  */
-	
-  xfree (stat_path);
 }
 
 /* Returns the command-line of the process with the given PID. The
@@ -152,7 +150,7 @@ command_from_pid (char *command, int maxlen, PID_T pid)
 static char *
 commandline_from_pid (PID_T pid)
 {
-  char *pathname = xstrprintf ("/proc/%lld/cmdline", pid);
+  std::string pathname = string_printf ("/proc/%lld/cmdline", pid);
   char *commandline = NULL;
   gdb_file_up f = gdb_fopen_cloexec (pathname, "r");
 
@@ -197,8 +195,6 @@ commandline_from_pid (PID_T pid)
 	    strcat (commandline, "]");
 	}
     }
-
-  xfree (pathname);
 
   return commandline;
 }
@@ -266,8 +262,8 @@ get_cores_used_by_process (PID_T pid, int *cores, const int num_cores)
 	    continue;
 
 	  sscanf (dp->d_name, "%lld", &tid);
-	  core = linux_common_core_of_thread (ptid_build ((pid_t) pid,
-							  (pid_t) tid, 0));
+	  core = linux_common_core_of_thread (ptid_t ((pid_t) pid,
+						      (pid_t) tid, 0));
 
 	  if (core >= 0 && core < num_cores)
 	    {
@@ -415,9 +411,11 @@ struct pid_pgid_entry
 
     /* Process group leaders always come first...  */
     if (this->is_leader ())
-      return true;
-
-    if (other.is_leader ())
+      {
+	if (!other.is_leader ())
+	  return true;
+      }
+    else if (other.is_leader ())
       return false;
 
     /* ...else sort by PID.  */
@@ -570,16 +568,16 @@ linux_xfer_osdata_threads (gdb_byte *readbuf,
 		  && S_ISDIR (statbuf.st_mode))
 		{
 		  DIR *dirp2;
-		  char *pathname;
 		  PID_T pid;
 		  char command[32];
 
-		  pathname = xstrprintf ("/proc/%s/task", dp->d_name);
+		  std::string pathname
+		    = string_printf ("/proc/%s/task", dp->d_name);
 		  
 		  pid = atoi (dp->d_name);
 		  command_from_pid (command, sizeof (command), pid);
 
-		  dirp2 = opendir (pathname);
+		  dirp2 = opendir (pathname.c_str ());
 
 		  if (dirp2)
 		    {
@@ -595,7 +593,7 @@ linux_xfer_osdata_threads (gdb_byte *readbuf,
 			    continue;
 
 			  tid = atoi (dp2->d_name);
-			  core = linux_common_core_of_thread (ptid_build (pid, tid, 0));
+			  core = linux_common_core_of_thread (ptid_t (pid, tid, 0));
 
 			  buffer_xml_printf (
 			    &buffer,
@@ -613,8 +611,6 @@ linux_xfer_osdata_threads (gdb_byte *readbuf,
 
 		      closedir (dirp2);
 		    }
-
-		  xfree (pathname);
 		}
 	    }
 
@@ -648,7 +644,7 @@ static LONGEST
 linux_xfer_osdata_cpus (gdb_byte *readbuf,
 			   ULONGEST offset, ULONGEST len)
 {
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -659,7 +655,7 @@ linux_xfer_osdata_cpus (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"cpus\">\n");
 
@@ -717,22 +713,22 @@ linux_xfer_osdata_cpus (gdb_byte *readbuf,
 	}
 
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }
@@ -745,7 +741,7 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 		       ULONGEST offset, ULONGEST len)
 {
   /* We make the process list snapshot when the object starts to be read.  */
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -756,7 +752,7 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"files\">\n");
 
@@ -779,7 +775,6 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 	      if (stat (procentry, &statbuf) == 0
 		  && S_ISDIR (statbuf.st_mode))
 		{
-		  char *pathname;
 		  DIR *dirp2;
 		  PID_T pid;
 		  char command[32];
@@ -787,8 +782,9 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 		  pid = atoi (dp->d_name);
 		  command_from_pid (command, sizeof (command), pid);
 
-		  pathname = xstrprintf ("/proc/%s/fd", dp->d_name);
-		  dirp2 = opendir (pathname);
+		  std::string pathname
+		    = string_printf ("/proc/%s/fd", dp->d_name);
+		  dirp2 = opendir (pathname.c_str ());
 
 		  if (dirp2)
 		    {
@@ -796,15 +792,17 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 
 		      while ((dp2 = readdir (dirp2)) != NULL)
 			{
-			  char *fdname;
 			  char buf[1000];
 			  ssize_t rslt;
 
 			  if (!isdigit (dp2->d_name[0]))
 			    continue;
 
-			  fdname = xstrprintf ("%s/%s", pathname, dp2->d_name);
-			  rslt = readlink (fdname, buf, sizeof (buf) - 1);
+			  std::string fdname
+			    = string_printf ("%s/%s", pathname.c_str (),
+					     dp2->d_name);
+			  rslt = readlink (fdname.c_str (), buf,
+					   sizeof (buf) - 1);
 			  if (rslt >= 0)
 			    buf[rslt] = '\0';
 
@@ -824,8 +822,6 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 
 		      closedir (dirp2);
 		    }
-
-		  xfree (pathname);
 		}
 	    }
 
@@ -833,22 +829,22 @@ linux_xfer_osdata_fds (gdb_byte *readbuf,
 	}
 
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }
@@ -1130,7 +1126,7 @@ static LONGEST
 linux_xfer_osdata_shm (gdb_byte *readbuf,
 		       ULONGEST offset, ULONGEST len)
 {
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -1139,7 +1135,7 @@ linux_xfer_osdata_shm (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"shared memory\">\n");
 
@@ -1227,22 +1223,22 @@ linux_xfer_osdata_shm (gdb_byte *readbuf,
 	}
       
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }
@@ -1254,7 +1250,7 @@ static LONGEST
 linux_xfer_osdata_sem (gdb_byte *readbuf,
 		       ULONGEST offset, ULONGEST len)
 {
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -1263,7 +1259,7 @@ linux_xfer_osdata_sem (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"semaphores\">\n");
 
@@ -1335,22 +1331,22 @@ linux_xfer_osdata_sem (gdb_byte *readbuf,
 	}
 
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }
@@ -1362,7 +1358,7 @@ static LONGEST
 linux_xfer_osdata_msg (gdb_byte *readbuf,
 		       ULONGEST offset, ULONGEST len)
 {
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -1371,7 +1367,7 @@ linux_xfer_osdata_msg (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"message queues\">\n");
       
@@ -1457,22 +1453,22 @@ linux_xfer_osdata_msg (gdb_byte *readbuf,
 	}
 
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }
@@ -1484,7 +1480,7 @@ static LONGEST
 linux_xfer_osdata_modules (gdb_byte *readbuf,
 			   ULONGEST offset, ULONGEST len)
 {
-  static const char *buf;
+  static const char *saved_buf;
   static LONGEST len_avail = -1;
   static struct buffer buffer;
 
@@ -1493,7 +1489,7 @@ linux_xfer_osdata_modules (gdb_byte *readbuf,
       if (len_avail != -1 && len_avail != 0)
 	buffer_free (&buffer);
       len_avail = 0;
-      buf = NULL;
+      saved_buf = NULL;
       buffer_init (&buffer);
       buffer_grow_str (&buffer, "<osdata type=\"modules\">\n");
 
@@ -1563,22 +1559,22 @@ linux_xfer_osdata_modules (gdb_byte *readbuf,
 	}
 
       buffer_grow_str0 (&buffer, "</osdata>\n");
-      buf = buffer_finish (&buffer);
-      len_avail = strlen (buf);
+      saved_buf = buffer_finish (&buffer);
+      len_avail = strlen (saved_buf);
     }
 
   if (offset >= len_avail)
     {
       /* Done.  Get rid of the buffer.  */
       buffer_free (&buffer);
-      buf = NULL;
+      saved_buf = NULL;
       len_avail = 0;
       return 0;
     }
 
   if (len > len_avail - offset)
     len = len_avail - offset;
-  memcpy (readbuf, buf + offset, len);
+  memcpy (readbuf, saved_buf + offset, len);
 
   return len;
 }

@@ -1,6 +1,6 @@
 /* Target dependent code for GDB on TI C6x systems.
 
-   Copyright (C) 2010-2017 Free Software Foundation, Inc.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
    Contributed by Andrew Jenner <andrew@codesourcery.com>
    Contributed by Yao Qi <yao@codesourcery.com>
 
@@ -199,10 +199,8 @@ tic6x_read_description (enum c6x_feature feature)
   if (*tdesc == NULL)
     {
       *tdesc = tic6x_create_target_description (feature);
-      init_target_desc (*tdesc);
-
       static const char *expedite_regs[] = { "A15", "PC", NULL };
-      (*tdesc)->expedite_regs = expedite_regs;
+      init_target_desc (*tdesc, expedite_regs);
     }
 
   return *tdesc;

@@ -1,5 +1,5 @@
 /* Helper routines for C++ support in GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
    Namespace support contributed by David Carlton.
@@ -33,6 +33,7 @@
 
 struct symbol;
 struct block;
+struct buildsym_compunit;
 struct objfile;
 struct type;
 struct demangle_component;
@@ -132,7 +133,8 @@ extern symbol_name_matcher_ftype *cp_get_symbol_name_matcher
 
 extern int cp_is_in_anonymous (const char *symbol_name);
 
-extern void cp_scan_for_anonymous_namespaces (const struct symbol *symbol,
+extern void cp_scan_for_anonymous_namespaces (struct buildsym_compunit *,
+					      const struct symbol *symbol,
 					      struct objfile *objfile);
 
 extern struct block_symbol cp_lookup_symbol_nonlocal
@@ -169,7 +171,7 @@ struct type *cp_find_type_baseclass_by_name (struct type *parent_type,
 /* Functions from cp-name-parser.y.  */
 
 extern std::unique_ptr<demangle_parse_info> cp_demangled_name_to_comp
-     (const char *demangled_name, const char **errmsg);
+     (const char *demangled_name, std::string *errmsg);
 
 extern gdb::unique_xmalloc_ptr<char> cp_comp_to_string
   (struct demangle_component *result, int estimated_len);

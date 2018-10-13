@@ -1,5 +1,5 @@
 /* OpenCL language support for GDB, the GNU debugger.
-   Copyright (C) 2010-2017 Free Software Foundation, Inc.
+   Copyright (C) 2010-2018 Free Software Foundation, Inc.
 
    Contributed by Ken Werner <ken.werner@de.ibm.com>.
 
@@ -292,7 +292,7 @@ lval_func_free_closure (struct value *v)
 
   if (c->refc == 0)
     {
-      value_free (c->val); /* Decrement the reference counter of the value.  */
+      value_decref (c->val); /* Decrement the reference counter of the value.  */
       xfree (c->indices);
       xfree (c);
     }
@@ -1053,7 +1053,6 @@ extern const struct language_defn opencl_language_defn =
   NULL,
   &exp_descriptor_opencl,
   c_parse,
-  c_yyerror,
   null_post_parser,
   c_printchar,			/* Print a character constant */
   c_printstr,			/* Function to print string constant */
@@ -1065,6 +1064,7 @@ extern const struct language_defn opencl_language_defn =
   default_read_var_value,	/* la_read_var_value */
   NULL,				/* Language specific skip_trampoline */
   NULL,                         /* name_of_this */
+  false,			/* la_store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   NULL,				/* Language specific symbol demangler */

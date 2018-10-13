@@ -1,6 +1,6 @@
 /* Fork a Unix child process, and set up to debug it, for GDB and GDBserver.
 
-   Copyright (C) 1990-2017 Free Software Foundation, Inc.
+   Copyright (C) 1990-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -272,9 +272,7 @@ execv_argv::init_for_shell (const char *exec_file,
 static const char *
 get_startup_shell ()
 {
-  static const char *ret;
-
-  ret = getenv ("SHELL");
+  const char *ret = getenv ("SHELL");
   if (ret == NULL)
     ret = SHELL_FILE;
 
@@ -484,7 +482,7 @@ startup_inferior (pid_t pid, int ntraps,
     }
 
   if (target_supports_multi_process ())
-    resume_ptid = pid_to_ptid (pid);
+    resume_ptid = ptid_t (pid);
   else
     resume_ptid = minus_one_ptid;
 

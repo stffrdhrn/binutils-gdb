@@ -1,6 +1,6 @@
 /* Multiple source language support for GDB.
 
-   Copyright (C) 1991-2017 Free Software Foundation, Inc.
+   Copyright (C) 1991-2018 Free Software Foundation, Inc.
 
    Contributed by the Department of Computer Science at the State University
    of New York at Buffalo.
@@ -45,8 +45,6 @@
 #include "frame.h"
 #include "c-lang.h"
 #include <algorithm>
-
-static void unk_lang_error (const char *);
 
 static int unk_lang_parser (struct parser_state *);
 
@@ -693,8 +691,9 @@ default_print_array_index (struct value *index_value, struct ui_file *stream,
 }
 
 void
-default_get_string (struct value *value, gdb_byte **buffer, int *length,
-		    struct type **char_type, const char **charset)
+default_get_string (struct value *value,
+		    gdb::unique_xmalloc_ptr<gdb_byte> *buffer,
+		    int *length, struct type **char_type, const char **charset)
 {
   error (_("Getting a string is unsupported in this language."));
 }
@@ -727,9 +726,16 @@ default_symbol_name_matcher (const char *symbol_search_name,
 /* See language.h.  */
 
 symbol_name_matcher_ftype *
-language_get_symbol_name_matcher (const language_defn *lang,
-				  const lookup_name_info &lookup_name)
+get_symbol_name_matcher (const language_defn *lang,
+			 const lookup_name_info &lookup_name)
 {
+  /* If currently in Ada mode, and the lookup name is wrapped in
+     '<...>', hijack all symbol name comparisons using the Ada
+     matcher, which handles the verbatim matching.  */
+  if (current_language->la_language == language_ada
+      && lookup_name.ada ().verbatim_p ())
+    return current_language->la_get_symbol_name_matcher (lookup_name);
+
   if (lang->la_get_symbol_name_matcher != nullptr)
     return lang->la_get_symbol_name_matcher (lookup_name);
   return default_symbol_name_matcher;
@@ -741,12 +747,6 @@ static int
 unk_lang_parser (struct parser_state *ps)
 {
   return 1;
-}
-
-static void
-unk_lang_error (const char *msg)
-{
-  error (_("Attempted to parse an expression with unknown language"));
 }
 
 static void
@@ -845,7 +845,6 @@ const struct language_defn unknown_language_defn =
   NULL,
   &exp_descriptor_standard,
   unk_lang_parser,
-  unk_lang_error,
   null_post_parser,
   unk_lang_printchar,		/* Print character constant */
   unk_lang_printstr,
@@ -857,6 +856,7 @@ const struct language_defn unknown_language_defn =
   default_read_var_value,	/* la_read_var_value */
   unk_lang_trampoline,		/* Language specific skip_trampoline */
   "this",        	    	/* name_of_this */
+  true,				/* store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal, /* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   unk_lang_demangle,		/* Language specific symbol demangler */
@@ -896,7 +896,6 @@ const struct language_defn auto_language_defn =
   NULL,
   &exp_descriptor_standard,
   unk_lang_parser,
-  unk_lang_error,
   null_post_parser,
   unk_lang_printchar,		/* Print character constant */
   unk_lang_printstr,
@@ -908,6 +907,7 @@ const struct language_defn auto_language_defn =
   default_read_var_value,	/* la_read_var_value */
   unk_lang_trampoline,		/* Language specific skip_trampoline */
   "this",		        /* name_of_this */
+  false,			/* store_sym_names_in_linkage_form_p */
   basic_lookup_symbol_nonlocal,	/* lookup_symbol_nonlocal */
   basic_lookup_transparent_type,/* lookup_transparent_type */
   unk_lang_demangle,		/* Language specific symbol demangler */

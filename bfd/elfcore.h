@@ -1,5 +1,5 @@
 /* ELF core file support for BFD.
-   Copyright (C) 1995-2017 Free Software Foundation, Inc.
+   Copyright (C) 1995-2018 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -297,9 +297,9 @@ elf_core_file_p (bfd *abfd)
 	  {
 	    _bfd_error_handler
 	      /* xgettext:c-format */
-	      (_("warning: %B is truncated: expected core file "
-		 "size >= %Lu, found: %llu"),
-	       abfd, high, (unsigned long long) statbuf.st_size);
+	      (_("warning: %pB is truncated: expected core file "
+		 "size >= %" PRIu64 ", found: %" PRIu64),
+	       abfd, (uint64_t) high, (uint64_t) statbuf.st_size);
 	  }
       }
   }

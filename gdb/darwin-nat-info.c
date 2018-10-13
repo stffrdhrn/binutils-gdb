@@ -1,5 +1,5 @@
 /* Darwin support for GDB, the GNU debugger.
-   Copyright (C) 1997-2017 Free Software Foundation, Inc.
+   Copyright (C) 1997-2018 Free Software Foundation, Inc.
 
    Contributed by Apple Computer, Inc.
 
@@ -116,7 +116,7 @@ get_task_from_args (const char *args)
 
   if (args == NULL || *args == 0)
     {
-      if (ptid_equal (inferior_ptid, null_ptid))
+      if (inferior_ptid == null_ptid)
 	printf_unfiltered (_("No inferior running\n"));
 
       darwin_inferior *priv = get_darwin_inferior (current_inferior ());
@@ -257,7 +257,7 @@ info_mach_ports_command (const char *args, int from_tty)
 	    printf_unfiltered (_(" gdb-exception"));
 	  else if (port == darwin_port_set)
 	    printf_unfiltered (_(" gdb-port_set"));
-	  else if (!ptid_equal (inferior_ptid, null_ptid))
+	  else if (inferior_ptid != null_ptid)
 	    {
 	      struct inferior *inf = current_inferior ();
 	      darwin_inferior *priv = get_darwin_inferior (inf);
@@ -607,14 +607,12 @@ darwin_debug_regions (task_t task, mach_vm_address_t address, int max)
 static void
 darwin_debug_regions_recurse (task_t task)
 {
-  mach_vm_address_t r_addr;
   mach_vm_address_t r_start;
   mach_vm_size_t r_size;
   natural_t r_depth;
   mach_msg_type_number_t r_info_size;
   vm_region_submap_short_info_data_64_t r_info;
   kern_return_t kret;
-  int ret;
   struct ui_out *uiout = current_uiout;
 
   ui_out_emit_table table_emitter (uiout, 9, -1, "regions");
@@ -676,8 +674,7 @@ darwin_debug_regions_recurse (task_t task)
 	  uiout->field_int ("tag", r_info.user_tag);
       }
 
-      if (!uiout->is_mi_like_p ())
-	uiout->text ("\n");
+      uiout->text ("\n");
 
       if (r_info.is_submap)
 	r_depth++;
@@ -732,7 +729,7 @@ info_mach_region_command (const char *exp, int from_tty)
     }
   address = value_as_address (val);
 
-  if (ptid_equal (inferior_ptid, null_ptid))
+  if (inferior_ptid == null_ptid)
     error (_("Inferior not available"));
 
   inf = current_inferior ();
@@ -793,8 +790,6 @@ disp_exception (const darwin_exception_info *info)
 static void
 info_mach_exceptions_command (const char *args, int from_tty)
 {
-  int i;
-  task_t task;
   kern_return_t kret;
   darwin_exception_info info;
 
@@ -804,7 +799,7 @@ info_mach_exceptions_command (const char *args, int from_tty)
     {
       if (strcmp (args, "saved") == 0)
 	{
-	  if (ptid_equal (inferior_ptid, null_ptid))
+	  if (inferior_ptid == null_ptid)
 	    printf_unfiltered (_("No inferior running\n"));
 
 	  darwin_inferior *priv = get_darwin_inferior (current_inferior ());
@@ -828,7 +823,7 @@ info_mach_exceptions_command (const char *args, int from_tty)
     {
       struct inferior *inf;
 
-      if (ptid_equal (inferior_ptid, null_ptid))
+      if (inferior_ptid == null_ptid)
 	printf_unfiltered (_("No inferior running\n"));
       inf = current_inferior ();
       

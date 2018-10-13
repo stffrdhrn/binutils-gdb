@@ -1,6 +1,6 @@
 # This testcase is part of GDB, the GNU debugger.
 
-# Copyright 1992-2017 Free Software Foundation, Inc.
+# Copyright 1992-2018 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -776,6 +776,13 @@ proc test_printf {} {
 	"" \
 	"create hibob command"
     gdb_test "hibob" "hi bob zzz.*y" "run hibob command"
+
+    # PR cli/19918.
+    gdb_test "printf \"%-16dq\\n\", 0" "0               q"
+    gdb_test "printf \"%-16pq\\n\", 0" "\\(nil\\)           q"
+
+    # PR cli/14977.
+    gdb_test "printf \"%s\\n\", 0" "\\(null\\)"
 }
 
 #Test printing DFP values with printf

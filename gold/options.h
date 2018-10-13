@@ -1,6 +1,6 @@
 // options.h -- handle command line options for gold  -*- C++ -*-
 
-// Copyright (C) 2006-2017 Free Software Foundation, Inc.
+// Copyright (C) 2006-2018 Free Software Foundation, Inc.
 // Written by Ian Lance Taylor <iant@google.com>.
 
 // This file is part of gold.
@@ -471,7 +471,11 @@ struct Struct_special : public Struct_var
 									  \
   options::String_set::const_iterator					  \
   varname__##_end() const						  \
-  { return this->varname__##_.value.end(); }
+  { return this->varname__##_.value.end(); }                              \
+                                                                          \
+  options::String_set::size_type                                          \
+  varname__##_size() const                                                \
+  { return this->varname__##_.value.size(); }                             \
 
 // When you have a list of possible values (expressed as string)
 // After helparg__ should come an initializer list, like
@@ -894,7 +898,7 @@ class General_options
 
   DEFINE_string(fuse_ld, options::ONE_DASH, '\0', "",
 		N_("Ignored for GCC linker option compatibility"),
-		NULL);
+		N_("[gold,bfd]"));
 
   // g
 
@@ -1101,7 +1105,7 @@ class General_options
 	      NULL, N_("(ARM only) Ignore for backward compatibility"));
 
   DEFINE_var(plt_align, options::TWO_DASHES, '\0', 0, "5",
-	     N_("(PowerPC64 only) Align PLT call stubs to fit cache lines"),
+	     N_("(PowerPC only) Align PLT call stubs to fit cache lines"),
 	     N_("[=P2ALIGN]"), true, int, int, options::parse_uint, false);
 
   DEFINE_bool(plt_localentry, options::TWO_DASHES, '\0', false,
@@ -1121,6 +1125,12 @@ class General_options
 		 N_("Load a plugin library"), N_("PLUGIN"));
   DEFINE_special(plugin_opt, options::TWO_DASHES, '\0',
 		 N_("Pass an option to the plugin"), N_("OPTION"));
+#else
+  DEFINE_special(plugin, options::TWO_DASHES, '\0',
+		 N_("Load a plugin library (not supported)"), N_("PLUGIN"));
+  DEFINE_special(plugin_opt, options::TWO_DASHES, '\0',
+		 N_("Pass an option to the plugin (not supported)"),
+		 N_("OPTION"));
 #endif
 
   DEFINE_bool(posix_fallocate, options::TWO_DASHES, '\0', true,
@@ -1351,6 +1361,10 @@ class General_options
   DEFINE_bool_ignore(warn_constructors, options::TWO_DASHES, '\0',
 		     N_("Ignored"), N_("Ignored"));
 
+  DEFINE_bool(warn_drop_version, options::TWO_DASHES, '\0', false,
+	      N_("Warn when discarding version information"),
+	      N_("Do not warn when discarding version information"));
+
   DEFINE_bool(warn_execstack, options::TWO_DASHES, '\0', false,
 	      N_("Warn if the stack is executable"),
 	      N_("Do not warn if the stack is executable"));
@@ -1496,6 +1510,10 @@ class General_options
 	      N_("Move .text.unlikely sections to a separate segment."),
 	      N_("Do not move .text.unlikely sections to a separate "
 		 "segment."));
+  DEFINE_bool(keep_text_section_prefix, options::DASH_Z, '\0', false,
+	      N_("Keep .text.hot, .text.startup, .text.exit and .text.unlikely "
+		 "as separate sections in the final binary."),
+	      N_("Merge all .text.* prefix sections."));
 
 
  public:

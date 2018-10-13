@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 Free Software Foundation, Inc.
+/* Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -29,7 +29,7 @@ namespace tdesc {
 static void
 aarch64_tdesc_test ()
 {
-  const target_desc *tdesc = aarch64_linux_read_description ();
+  const target_desc *tdesc = aarch64_linux_read_description (0);
   SELF_CHECK (*tdesc == *tdesc_aarch64);
 }
 }

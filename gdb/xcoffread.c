@@ -1,5 +1,5 @@
 /* Read AIX xcoff symbol tables and convert to internal format, for GDB.
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
    Derived from coffread.c, dbxread.c, and a lot of hacking.
    Contributed by IBM Corporation.
 
@@ -41,7 +41,7 @@
 /* FIXME: ezannoni/2004-02-13 Verify if the include below is really needed.  */
 #include "symfile.h"
 #include "objfiles.h"
-#include "buildsym.h"
+#include "buildsym-legacy.h"
 #include "stabsread.h"
 #include "expression.h"
 #include "complaints.h"
@@ -182,22 +182,19 @@ static const struct dwarf2_debug_sections dwarf2_xcoff_names = {
 static void
 bf_notfound_complaint (void)
 {
-  complaint (&symfile_complaints,
-	     _("line numbers off, `.bf' symbol not found"));
+  complaint (_("line numbers off, `.bf' symbol not found"));
 }
 
 static void
 ef_complaint (int arg1)
 {
-  complaint (&symfile_complaints,
-	     _("Mismatched .ef symbol ignored starting at symnum %d"), arg1);
+  complaint (_("Mismatched .ef symbol ignored starting at symnum %d"), arg1);
 }
 
 static void
 eb_complaint (int arg1)
 {
-  complaint (&symfile_complaints,
-	     _("Mismatched .eb symbol ignored starting at symnum %d"), arg1);
+  complaint (_("Mismatched .eb symbol ignored starting at symnum %d"), arg1);
 }
 
 static void xcoff_initial_scan (struct objfile *, symfile_add_flags);
@@ -558,7 +555,7 @@ record_include_begin (struct coff_symbol *cs)
       /* This can happen with old versions of GCC.
          GCC 2.3.3-930426 does not exhibit this on a test case which
          a user said produced the message for him.  */
-      complaint (&symfile_complaints, _("Nested C_BINCL symbols"));
+      complaint (_("Nested C_BINCL symbols"));
     }
   ++inclDepth;
 
@@ -575,7 +572,7 @@ record_include_end (struct coff_symbol *cs)
 
   if (inclDepth == 0)
     {
-      complaint (&symfile_complaints, _("Mismatched C_BINCL/C_EINCL pair"));
+      complaint (_("Mismatched C_BINCL/C_EINCL pair"));
     }
 
   allocate_include_entry ();
@@ -716,6 +713,7 @@ process_linenos (CORE_ADDR start, CORE_ADDR end)
       /* Line numbers are not necessarily ordered.  xlc compilation will
          put static function to the end.  */
 
+      struct subfile *current_subfile = get_current_subfile ();
       lineTb = arrange_linetable (lv);
       if (lv == lineTb)
 	{
@@ -778,8 +776,9 @@ process_linenos (CORE_ADDR start, CORE_ADDR end)
 	    if (fakename == NULL)
 	      fakename = " ?";
 	    start_subfile (fakename);
-	    xfree (current_subfile->name);
+	    xfree (get_current_subfile ()->name);
 	  }
+	  struct subfile *current_subfile = get_current_subfile ();
 	  current_subfile->name = xstrdup (inclTable[ii].name);
 #endif
 
@@ -817,7 +816,7 @@ aix_process_linenos (struct objfile *objfile)
     return;
 
   /* Process line numbers and enter them into line vector.  */
-  process_linenos (last_source_start_addr, cur_src_end_addr);
+  process_linenos (get_last_source_start_addr (), cur_src_end_addr);
 }
 
 
@@ -856,8 +855,7 @@ enter_line_range (struct subfile *subfile, unsigned beginoffset,
     {
       if (endoffset >= limit_offset)
 	{
-	  complaint (&symfile_complaints,
-		     _("Bad line table offset in C_EINCL directive"));
+	  complaint (_("Bad line table offset in C_EINCL directive"));
 	  return;
 	}
       limit_offset = endoffset;
@@ -904,7 +902,7 @@ enter_line_range (struct subfile *subfile, unsigned beginoffset,
 
 #define complete_symtab(name, start_addr) {	\
   set_last_source_file (name);			\
-  last_source_start_addr = start_addr;		\
+  set_last_source_start_addr (start_addr);	\
 }
 
 
@@ -978,7 +976,7 @@ xcoff_next_symbol_text (struct objfile *objfile)
   bfd_coff_swap_sym_in (objfile->obfd, raw_symbol, &symbol);
   if (symbol.n_zeroes)
     {
-      complaint (&symfile_complaints, _("Unexpected symbol continuation"));
+      complaint (_("Unexpected symbol continuation"));
 
       /* Return something which points to '\0' and hope the symbol reading
          code does something reasonable.  */
@@ -992,7 +990,7 @@ xcoff_next_symbol_text (struct objfile *objfile)
     }
   else
     {
-      complaint (&symfile_complaints, _("Unexpected symbol continuation"));
+      complaint (_("Unexpected symbol continuation"));
 
       /* Return something which points to '\0' and hope the symbol reading
          code does something reasonable.  */
@@ -1395,23 +1393,23 @@ read_xcoff_symtab (struct objfile *objfile, struct partial_symtab *pst)
 	      /* { main_aux.x_sym.x_misc.x_lnsz.x_lnno
 	         contains number of lines to '}' */
 
-	      if (context_stack_depth <= 0)
+	      if (outermost_context_p ())
 		{	/* We attempted to pop an empty context stack.  */
 		  ef_complaint (cs->c_symnum);
 		  within_function = 0;
 		  break;
 		}
-	      newobj = pop_context ();
+	      struct context_stack cstk = pop_context ();
 	      /* Stack must be empty now.  */
-	      if (context_stack_depth > 0 || newobj == NULL)
+	      if (!outermost_context_p ())
 		{
 		  ef_complaint (cs->c_symnum);
 		  within_function = 0;
 		  break;
 		}
 
-	      finish_block (newobj->name, &local_symbols, newobj->old_blocks,
-			    NULL, newobj->start_addr,
+	      finish_block (cstk.name, cstk.old_blocks,
+			    NULL, cstk.start_addr,
 			    (fcn_cs_saved.c_value
 			     + fcn_aux_saved.x_sym.x_misc.x_fsize
 			     + ANOFFSET (objfile->section_offsets,
@@ -1423,12 +1421,12 @@ read_xcoff_symtab (struct objfile *objfile, struct partial_symtab *pst)
 	case C_BSTAT:
 	  /* Begin static block.  */
 	  {
-	    struct internal_syment symbol;
+	    struct internal_syment static_symbol;
 
-	    read_symbol (&symbol, cs->c_value);
-	    static_block_base = symbol.n_value;
+	    read_symbol (&static_symbol, cs->c_value);
+	    static_block_base = static_symbol.n_value;
 	    static_block_section =
-	      secnum_to_section (symbol.n_scnum, objfile);
+	      secnum_to_section (static_symbol.n_scnum, objfile);
 	  }
 	  break;
 
@@ -1446,8 +1444,7 @@ read_xcoff_symtab (struct objfile *objfile, struct partial_symtab *pst)
 	case C_UNTAG:
 	case C_ENTAG:
 	  {
-	    complaint (&symfile_complaints,
-		       _("Unrecognized storage class %d."),
+	    complaint (_("Unrecognized storage class %d."),
 		       cs->c_sclass);
 	  }
 	  break;
@@ -1488,28 +1485,28 @@ read_xcoff_symtab (struct objfile *objfile, struct partial_symtab *pst)
 	    }
 	  else if (strcmp (cs->c_name, ".eb") == 0)
 	    {
-	      if (context_stack_depth <= 0)
+	      if (outermost_context_p ())
 		{	/* We attempted to pop an empty context stack.  */
 		  eb_complaint (cs->c_symnum);
 		  break;
 		}
-	      newobj = pop_context ();
-	      if (depth-- != newobj->depth)
+	      struct context_stack cstk = pop_context ();
+	      if (depth-- != cstk.depth)
 		{
 		  eb_complaint (cs->c_symnum);
 		  break;
 		}
-	      if (local_symbols && context_stack_depth > 0)
+	      if (*get_local_symbols () && !outermost_context_p ())
 		{
 		  /* Make a block for the local symbols within.  */
-		  finish_block (newobj->name, &local_symbols,
-				newobj->old_blocks, NULL,
-				newobj->start_addr,
+		  finish_block (cstk.name,
+				cstk.old_blocks, NULL,
+				cstk.start_addr,
 				(cs->c_value
 				 + ANOFFSET (objfile->section_offsets,
 					     SECT_OFF_TEXT (objfile))));
 		}
-	      local_symbols = newobj->locals;
+	      *get_local_symbols () = cstk.locals;
 	    }
 	  break;
 
@@ -1597,9 +1594,9 @@ process_xcoff_symbol (struct coff_symbol *cs, struct objfile *objfile)
       SYMBOL_DUP (sym, sym2);
 
       if (cs->c_sclass == C_EXT || C_WEAKEXT)
-	add_symbol_to_list (sym2, &global_symbols);
+	add_symbol_to_list (sym2, get_global_symbols ());
       else if (cs->c_sclass == C_HIDEXT || cs->c_sclass == C_STAT)
-	add_symbol_to_list (sym2, &file_symbols);
+	add_symbol_to_list (sym2, get_file_symbols ());
     }
   else
     {
@@ -1632,7 +1629,7 @@ process_xcoff_symbol (struct coff_symbol *cs, struct objfile *objfile)
 	  break;
 
 	default:
-	  complaint (&symfile_complaints, _("Unexpected storage class: %d"),
+	  complaint (_("Unexpected storage class: %d"),
 		     cs->c_sclass);
 	  /* FALLTHROUGH */
 
@@ -1717,7 +1714,7 @@ read_symbol (struct internal_syment *symbol, int symno)
 
   if (symno < 0 || symno >= nsyms)
     {
-      complaint (&symfile_complaints, _("Invalid symbol offset"));
+      complaint (_("Invalid symbol offset"));
       symbol->n_value = 0;
       symbol->n_scnum = -1;
       return;
@@ -1873,7 +1870,6 @@ xcoff_psymtab_to_symtab_1 (struct objfile *objfile, struct partial_symtab *pst)
     {
       /* Init stuff necessary for reading in symbols.  */
       stabsread_init ();
-      buildsym_init ();
 
       scoped_free_pendings free_pending;
       read_xcoff_symtab (objfile, pst);
@@ -1925,7 +1921,6 @@ static void
 xcoff_new_init (struct objfile *objfile)
 {
   stabsread_new_init ();
-  buildsym_new_init ();
 }
 
 /* Do initialization in preparation for reading symbols from OBJFILE.
@@ -1964,8 +1959,6 @@ xcoff_symfile_finish (struct objfile *objfile)
       inclTable = NULL;
     }
   inclIndx = inclLength = inclDepth = 0;
-
-  dwarf2_free_objfile (objfile);
 }
 
 
@@ -2097,12 +2090,9 @@ xcoff_end_psymtab (struct objfile *objfile, struct partial_symtab *pst,
       struct partial_symtab *subpst =
 	allocate_psymtab (include_list[i], objfile);
 
-      subpst->read_symtab_private = obstack_alloc (&objfile->objfile_obstack,
-						   sizeof (struct symloc));
+      subpst->read_symtab_private = XOBNEW (&objfile->objfile_obstack, symloc);
       ((struct symloc *) subpst->read_symtab_private)->first_symnum = 0;
       ((struct symloc *) subpst->read_symtab_private)->numsyms = 0;
-      subpst->textlow = 0;
-      subpst->texthigh = 0;
 
       /* We could save slight bits of space by only making one of these,
          shared by the entire set of include files.  FIXME-someday.  */
@@ -2193,8 +2183,7 @@ swap_sym (struct internal_syment *symbol, union internal_auxent *aux,
 static void
 function_outside_compilation_unit_complaint (const char *arg1)
 {
-  complaint (&symfile_complaints,
-	     _("function `%s' appears to be defined "
+  complaint (_("function `%s' appears to be defined "
 	       "outside of all compilation units"),
 	     arg1);
 }
@@ -2353,10 +2342,11 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 			CORE_ADDR highval =
 			  symbol.n_value + csect_aux.x_csect.x_scnlen.l;
 
-			if (highval > pst->texthigh)
-			  pst->texthigh = highval;
-			if (pst->textlow == 0 || symbol.n_value < pst->textlow)
-			  pst->textlow = symbol.n_value;
+			if (highval > pst->raw_text_high ())
+			  pst->set_text_high (highval);
+			if (!pst->text_low_valid
+			    || symbol.n_value < pst->raw_text_low ())
+			  pst->set_text_low (symbol.n_value);
 		      }
 		    misc_func_recorded = 0;
 		    break;
@@ -2525,15 +2515,14 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 
 	default:
 	  {
-	    complaint (&symfile_complaints,
-		       _("Storage class %d not recognized during scan"),
+	    complaint (_("Storage class %d not recognized during scan"),
 		       sclass);
 	  }
 	  /* FALLTHROUGH */
 
+	case C_FCN:
 	  /* C_FCN is .bf and .ef symbols.  I think it is sufficient
 	     to handle only the C_FUN and C_EXT.  */
-	case C_FCN:
 
 	case C_BSTAT:
 	case C_ESTAT:
@@ -2670,27 +2659,24 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 	    switch (p[1])
 	      {
 	      case 'S':
-		symbol.n_value += ANOFFSET (objfile->section_offsets,
-					    SECT_OFF_DATA (objfile));
-
 		if (gdbarch_static_transform_name_p (gdbarch))
 		  namestring = gdbarch_static_transform_name
 				 (gdbarch, namestring);
 
 		add_psymbol_to_list (namestring, p - namestring, 1,
 				     VAR_DOMAIN, LOC_STATIC,
+				     SECT_OFF_DATA (objfile),
 				     &objfile->static_psymbols,
 				     symbol.n_value,
 				     psymtab_language, objfile);
 		continue;
 
 	      case 'G':
-		symbol.n_value += ANOFFSET (objfile->section_offsets,
-					    SECT_OFF_DATA (objfile));
 		/* The addresses in these entries are reported to be
 		   wrong.  See the code that reads 'G's for symtabs.  */
 		add_psymbol_to_list (namestring, p - namestring, 1,
 				     VAR_DOMAIN, LOC_STATIC,
+				     SECT_OFF_DATA (objfile),
 				     &objfile->global_psymbols,
 				     symbol.n_value,
 				     psymtab_language, objfile);
@@ -2708,14 +2694,14 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 			&& namestring[0] != ' '))
 		  {
 		    add_psymbol_to_list (namestring, p - namestring, 1,
-					 STRUCT_DOMAIN, LOC_TYPEDEF,
+					 STRUCT_DOMAIN, LOC_TYPEDEF, -1,
 					 &objfile->static_psymbols,
 					 0, psymtab_language, objfile);
 		    if (p[2] == 't')
 		      {
 			/* Also a typedef with the same name.  */
 			add_psymbol_to_list (namestring, p - namestring, 1,
-					     VAR_DOMAIN, LOC_TYPEDEF,
+					     VAR_DOMAIN, LOC_TYPEDEF, -1,
 					     &objfile->static_psymbols,
 					     0, psymtab_language, objfile);
 			p += 1;
@@ -2727,7 +2713,7 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 		if (p != namestring)	/* a name is there, not just :T...  */
 		  {
 		    add_psymbol_to_list (namestring, p - namestring, 1,
-					 VAR_DOMAIN, LOC_TYPEDEF,
+					 VAR_DOMAIN, LOC_TYPEDEF, -1,
 					 &objfile->static_psymbols,
 					 0, psymtab_language, objfile);
 		  }
@@ -2789,7 +2775,7 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 			/* Note that the value doesn't matter for
 			   enum constants in psymtabs, just in symtabs.  */
 			add_psymbol_to_list (p, q - p, 1,
-					     VAR_DOMAIN, LOC_CONST,
+					     VAR_DOMAIN, LOC_CONST, -1,
 					     &objfile->static_psymbols,
 					     0, psymtab_language, objfile);
 			/* Point past the name.  */
@@ -2807,7 +2793,7 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 	      case 'c':
 		/* Constant, e.g. from "const" in Pascal.  */
 		add_psymbol_to_list (namestring, p - namestring, 1,
-				     VAR_DOMAIN, LOC_CONST,
+				     VAR_DOMAIN, LOC_CONST, -1,
 				     &objfile->static_psymbols,
 				     0, psymtab_language, objfile);
 		continue;
@@ -2823,10 +2809,9 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 		    function_outside_compilation_unit_complaint (name);
 		    xfree (name);
 		  }
-		symbol.n_value += ANOFFSET (objfile->section_offsets,
-					    SECT_OFF_TEXT (objfile));
 		add_psymbol_to_list (namestring, p - namestring, 1,
 				     VAR_DOMAIN, LOC_BLOCK,
+				     SECT_OFF_TEXT (objfile),
 				     &objfile->static_psymbols,
 				     symbol.n_value,
 				     psymtab_language, objfile);
@@ -2854,10 +2839,9 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 		if (startswith (namestring, "@FIX"))
 		  continue;
 
-		symbol.n_value += ANOFFSET (objfile->section_offsets,
-					    SECT_OFF_TEXT (objfile));
 		add_psymbol_to_list (namestring, p - namestring, 1,
 				     VAR_DOMAIN, LOC_BLOCK,
+				     SECT_OFF_TEXT (objfile),
 				     &objfile->global_psymbols,
 				     symbol.n_value,
 				     psymtab_language, objfile);
@@ -2902,8 +2886,7 @@ scan_xcoff_symtab (minimal_symbol_reader &reader,
 		   the end of every string looking for a
 		   backslash.  */
 
-		complaint (&symfile_complaints,
-			   _("unknown symbol descriptor `%c'"), p[1]);
+		complaint (_("unknown symbol descriptor `%c'"), p[1]);
 
 		/* Ignore it; perhaps it is an extension that we don't
 		   know about.  */
@@ -3029,8 +3012,6 @@ xcoff_initial_scan (struct objfile *objfile, symfile_add_flags symfile_flags)
        include N_SLINE.  */
     init_psymbol_list (objfile, num_symbols);
 
-  free_pending_blocks ();
-
   scoped_free_pendings free_pending;
   minimal_symbol_reader reader (objfile);
 
@@ -3054,7 +3035,7 @@ xcoff_initial_scan (struct objfile *objfile, symfile_add_flags symfile_flags)
 
 static void
 xcoff_symfile_offsets (struct objfile *objfile,
-		       const struct section_addr_info *addrs)
+		       const section_addr_info &addrs)
 {
   const char *first_section_name;
 

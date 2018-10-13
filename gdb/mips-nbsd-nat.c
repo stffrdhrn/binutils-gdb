@@ -1,6 +1,6 @@
 /* Native-dependent code for MIPS systems running NetBSD.
 
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,6 +30,14 @@
 #include "mips-nbsd-tdep.h"
 #include "inf-ptrace.h"
 
+class mips_nbsd_nat_target final : public inf_ptrace_target
+{
+  void fetch_registers (struct regcache *, int) override;
+  void store_registers (struct regcache *, int) override;
+};
+
+static mips_nbsd_nat_target the_mips_nbsd_nat_target;
+
 /* Determine if PT_GETREGS fetches this register.  */
 static int
 getregs_supplies (struct gdbarch *gdbarch, int regno)
@@ -38,11 +46,10 @@ getregs_supplies (struct gdbarch *gdbarch, int regno)
 	  && (regno) <= gdbarch_pc_regnum (gdbarch));
 }
 
-static void
-mipsnbsd_fetch_inferior_registers (struct target_ops *ops,
-				   struct regcache *regcache, int regno)
+void
+mips_nbsd_nat_target::fetch_registers (struct regcache *regcache, int regno)
 {
-  pid_t pid = ptid_get_pid (regcache_get_ptid (regcache));
+  pid_t pid = regcache->ptid ().pid ();
 
   struct gdbarch *gdbarch = regcache->arch ();
   if (regno == -1 || getregs_supplies (gdbarch, regno))
@@ -69,11 +76,10 @@ mipsnbsd_fetch_inferior_registers (struct target_ops *ops,
     }
 }
 
-static void
-mipsnbsd_store_inferior_registers (struct target_ops *ops,
-				   struct regcache *regcache, int regno)
+void
+mips_nbsd_nat_target::store_registers (struct regcache *regcache, int regno)
 {
-  pid_t pid = ptid_get_pid (regcache_get_ptid (regcache));
+  pid_t pid = regcache->ptid ().pid ();
 
   struct gdbarch *gdbarch = regcache->arch ();
   if (regno == -1 || getregs_supplies (gdbarch, regno))
@@ -110,10 +116,5 @@ mipsnbsd_store_inferior_registers (struct target_ops *ops,
 void
 _initialize_mipsnbsd_nat (void)
 {
-  struct target_ops *t;
-
-  t = inf_ptrace_target ();
-  t->to_fetch_registers = mipsnbsd_fetch_inferior_registers;
-  t->to_store_registers = mipsnbsd_store_inferior_registers;
-  add_target (t);
+  add_inf_child_target (&the_mips_nbsd_nat_target);
 }

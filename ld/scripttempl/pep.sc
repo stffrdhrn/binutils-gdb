@@ -1,6 +1,6 @@
 # Linker script for PE.
 #
-# Copyright (C) 2014-2017 Free Software Foundation, Inc.
+# Copyright (C) 2014-2018 Free Software Foundation, Inc.
 #
 # Copying and distribution of this file, with or without modification,
 # are permitted in any medium without royalty provided the copyright
@@ -70,7 +70,7 @@ else
 fi
 
 cat <<EOF
-/* Copyright (C) 2014-2017 Free Software Foundation, Inc.
+/* Copyright (C) 2014-2018 Free Software Foundation, Inc.
 
    Copying and distribution of this script, with or without modification,
    are permitted in any medium without royalty provided the copyright
@@ -99,8 +99,24 @@ SECTIONS
     ${RELOCATING+*(.glue_7)}
     ${CONSTRUCTING+. = ALIGN(8);}
     ${CONSTRUCTING+
-       PROVIDE(___CTOR_LIST__ = .);
-       PROVIDE(__CTOR_LIST__ = .);
+       /* Note: we always define __CTOR_LIST__ and ___CTOR_LIST__ here,
+          we do not PROVIDE them.  This is because the ctors.o startup
+	  code in libgcc defines them as common symbols, with the 
+          expectation that they will be overridden by the definitions
+	  here.  If we PROVIDE the symbols then they will not be
+	  overridden and global constructors will not be run.
+	  
+	  This does mean that it is not possible for a user to define
+	  their own __CTOR_LIST__ and __DTOR_LIST__ symbols; if they do,
+	  the content from those variables are included but the symbols
+	  defined here silently take precedence.  If they truly need to
+	  be redefined, a custom linker script will have to be used.
+	  (The custom script can just be a copy of this script with the
+	  PROVIDE() qualifiers added).
+
+	  See PR 22762 for more details.  */
+       ___CTOR_LIST__ = .;
+       __CTOR_LIST__ = .;
        LONG (-1); LONG (-1);
        KEEP (*(.ctors));
        KEEP (*(.ctor));
@@ -108,8 +124,10 @@ SECTIONS
        LONG (0); LONG (0);
      }
     ${CONSTRUCTING+
-       PROVIDE(___DTOR_LIST__ = .);
-       PROVIDE(__DTOR_LIST__ = .);
+       /* See comment about __CTOR_LIST__ above.  The same reasoning
+    	  applies here too.  */
+       ___DTOR_LIST__ = .;
+       __DTOR_LIST__ = .;
        LONG (-1); LONG (-1);
        KEEP (*(.dtors));
        KEEP (*(.dtor));

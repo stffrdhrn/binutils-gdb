@@ -1,6 +1,6 @@
 // inremental.cc -- incremental linking support for gold
 
-// Copyright (C) 2009-2017 Free Software Foundation, Inc.
+// Copyright (C) 2009-2018 Free Software Foundation, Inc.
 // Written by Mikolaj Zalewski <mikolajz@google.com>.
 
 // This file is part of gold.
@@ -173,8 +173,8 @@ Incremental_binary::error(const char* format, ...) const
 
 // Return TRUE if a section of type SH_TYPE can be updated in place
 // during an incremental update.  We can update sections of type PROGBITS,
-// NOBITS, INIT_ARRAY, FINI_ARRAY, PREINIT_ARRAY, and NOTE.  All others
-// will be regenerated.
+// NOBITS, INIT_ARRAY, FINI_ARRAY, PREINIT_ARRAY, NOTE, and
+// (processor-specific) unwind sections.  All others will be regenerated.
 
 bool
 can_incremental_update(unsigned int sh_type)
@@ -184,7 +184,8 @@ can_incremental_update(unsigned int sh_type)
 	  || sh_type == elfcpp::SHT_INIT_ARRAY
 	  || sh_type == elfcpp::SHT_FINI_ARRAY
 	  || sh_type == elfcpp::SHT_PREINIT_ARRAY
-	  || sh_type == elfcpp::SHT_NOTE);
+	  || sh_type == elfcpp::SHT_NOTE
+	  || sh_type == parameters->target().unwind_section_type());
 }
 
 // Find the .gnu_incremental_inputs section and related sections.
@@ -310,7 +311,11 @@ Sized_incremental_binary<size, big_endian>::setup_readers()
   for (unsigned int i = 0; i < count; i++)
     {
       Input_entry_reader input_file = inputs.input_file(i);
+#if __cplusplus >= 2001103L
+      this->input_entry_readers_.emplace_back(input_file);
+#else
       this->input_entry_readers_.push_back(Sized_input_reader(input_file));
+#endif
       switch (input_file.type())
 	{
 	case INCREMENTAL_INPUT_OBJECT:

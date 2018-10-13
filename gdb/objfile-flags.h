@@ -1,6 +1,6 @@
 /* Definition of objfile flags.
 
-   Copyright (C) 1992-2017 Free Software Foundation, Inc.
+   Copyright (C) 1992-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,7 +25,7 @@
 /* Defines for the objfile flags field.  Defined in a separate file to
    break circular header dependencies.  */
 
-enum objfile_flag
+enum objfile_flag : unsigned
   {
     /* When an object file has its functions reordered (currently
        Irix-5.2 shared libraries exhibit this behaviour), we will need

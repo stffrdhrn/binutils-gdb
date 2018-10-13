@@ -1,6 +1,6 @@
 /* Definitions for values of C expressions, for GDB.
 
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -21,6 +21,8 @@
 #define VALUE_H 1
 
 #include "frame.h"		/* For struct frame_id.  */
+#include "extension.h"
+#include "common/gdb_ref_ptr.h"
 
 struct block;
 struct expression;
@@ -30,7 +32,6 @@ struct type;
 struct ui_file;
 struct language_defn;
 struct value_print_options;
-struct xmethod_worker;
 
 /* Values can be partially 'optimized out' and/or 'unavailable'.
    These are distinct states and have different string representations
@@ -86,6 +87,34 @@ struct xmethod_worker;
    variable).  */
 
 struct value;
+
+/* Increase VAL's reference count.  */
+
+extern void value_incref (struct value *val);
+
+/* Decrease VAL's reference count.  When the reference count drops to
+   0, VAL will be freed.  */
+
+extern void value_decref (struct value *val);
+
+/* A policy class to interface gdb::ref_ptr with struct value.  */
+
+struct value_ref_policy
+{
+  static void incref (struct value *ptr)
+  {
+    value_incref (ptr);
+  }
+
+  static void decref (struct value *ptr)
+  {
+    value_decref (ptr);
+  }
+};
+
+/* A gdb:;ref_ptr pointer to a struct value.  */
+
+typedef gdb::ref_ptr<struct value, value_ref_policy> value_ref_ptr;
 
 /* Values are stored in a chain, so that they can be deleted easily
    over calls to the inferior.  Values assigned to internal variables,
@@ -886,10 +915,10 @@ extern value *eval_skip_value (expression *exp);
 
 extern void fetch_subexp_value (struct expression *exp, int *pc,
 				struct value **valp, struct value **resultp,
-				struct value **val_chain,
+				std::vector<value_ref_ptr> *val_chain,
 				int preserve_errors);
 
-extern char *extract_field_op (struct expression *exp, int *subexp);
+extern const char *extract_field_op (struct expression *exp, int *subexp);
 
 extern struct value *evaluate_subexp_with_coercion (struct expression *,
 						    int *, enum noside);
@@ -1024,32 +1053,7 @@ extern int unop_user_defined_p (enum exp_opcode op, struct value *arg1);
 
 extern int destructor_name_p (const char *name, struct type *type);
 
-extern void value_incref (struct value *val);
-
-extern void value_free (struct value *val);
-
-/* A free policy class to interface std::unique_ptr with
-   value_free.  */
-
-struct value_deleter
-{
-  void operator() (struct value *value) const
-  {
-    value_free (value);
-  }
-};
-
-/* A unique pointer to a struct value.  */
-
-typedef std::unique_ptr<struct value, value_deleter> gdb_value_up;
-
-extern void free_all_values (void);
-
-extern void free_value_chain (struct value *v);
-
-extern void release_value (struct value *val);
-
-extern void release_value_or_incref (struct value *val);
+extern value_ref_ptr release_value (struct value *val);
 
 extern int record_latest_value (struct value *val);
 
@@ -1078,7 +1082,14 @@ extern void value_print_array_elements (struct value *val,
 					struct ui_file *stream, int format,
 					enum val_prettyformat pretty);
 
-extern struct value *value_release_to_mark (const struct value *mark);
+/* Release values from the value chain and return them.  Values
+   created after MARK are released.  If MARK is nullptr, or if MARK is
+   not found on the value chain, then all values are released.  Values
+   are returned in reverse order of creation; that is, newest
+   first.  */
+
+extern std::vector<value_ref_ptr> value_release_to_mark
+    (const struct value *mark);
 
 extern void val_print (struct type *type,
 		       LONGEST embedded_offset, CORE_ADDR address,
@@ -1158,12 +1169,23 @@ struct value *call_internal_function (struct gdbarch *gdbarch,
 
 char *value_internal_function_name (struct value *);
 
-extern struct value *value_of_xmethod (struct xmethod_worker *);
+/* Build a value wrapping and representing WORKER.  The value takes ownership
+   of the xmethod_worker object.  */
+
+extern struct value *value_from_xmethod (xmethod_worker_up &&worker);
 
 extern struct type *result_type_of_xmethod (struct value *method,
 					    int argc, struct value **argv);
 
 extern struct value *call_xmethod (struct value *method,
 				   int argc, struct value **argv);
+
+/* Given a discriminated union type and some corresponding value
+   contents, this will return the field index of the currently active
+   variant.  This will throw an exception if no active variant can be
+   found.  */
+
+extern int value_union_variant (struct type *union_type,
+				const gdb_byte *contents);
 
 #endif /* !defined (VALUE_H) */

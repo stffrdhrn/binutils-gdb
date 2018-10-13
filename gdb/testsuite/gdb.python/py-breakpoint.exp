@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2017 Free Software Foundation, Inc.
+# Copyright (C) 2010-2018 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -197,8 +197,16 @@ proc_with_prefix test_bkpt_cond_and_cmds { } {
 
     gdb_py_test_silent_cmd "python blist = gdb.breakpoints()" \
 	"Get Breakpoint List" 0
-    gdb_test "python print (blist\[len(blist)-1\].commands)" \
+    gdb_py_test_silent_cmd "python last_bp = blist\[len(blist)-1\]" \
+	"Find last breakpoint" 0
+    gdb_test "python print (last_bp.commands)" \
 	"print \"Command for breakpoint has been executed.\".*print result"
+
+    gdb_test_no_output "python last_bp.commands = 'echo hi\\necho there'" \
+	"set commands"
+    # Note the length is 3 because the string ends in a \n.
+    gdb_test "python print (len(last_bp.commands.split('\\n')))" "3" \
+	"check number of lines in commands"
 }
 
 proc_with_prefix test_bkpt_invisible { } {
@@ -608,6 +616,11 @@ proc_with_prefix test_bkpt_explicit_loc {} {
     gdb_test "python bp1 = gdb.Breakpoint (function=\"blah\")" \
 	"Function \"blah\" not defined.*" \
 	"set invalid explicit breakpoint by missing function"
+
+    delete_breakpoints
+    gdb_test "catch throw" "Catchpoint .* \\(throw\\)"
+    gdb_test "python print (gdb.breakpoints()\[0\].location)" None \
+	"Examine location of catchpoint"
 }
 
 proc_with_prefix test_bkpt_qualified {} {

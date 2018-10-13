@@ -1,5 +1,5 @@
 /* Line completion stuff for GDB, the GNU debugger.
-   Copyright (C) 2000-2017 Free Software Foundation, Inc.
+   Copyright (C) 2000-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -962,7 +962,7 @@ location_completer_handle_brkchars (struct cmd_list_element *ignore,
 
 static void
 add_struct_fields (struct type *type, completion_list &output,
-		   char *fieldname, int namelen)
+		   const char *fieldname, int namelen)
 {
   int i;
   int computed_type_name = 0;
@@ -999,7 +999,7 @@ add_struct_fields (struct type *type, completion_list &output,
 	{
 	  if (!computed_type_name)
 	    {
-	      type_name = type_name_no_tag (type);
+	      type_name = TYPE_NAME (type);
 	      computed_type_name = 1;
 	    }
 	  /* Omit constructors from the completion list.  */
@@ -1016,12 +1016,11 @@ complete_expression (completion_tracker &tracker,
 		     const char *text, const char *word)
 {
   struct type *type = NULL;
-  char *fieldname;
+  gdb::unique_xmalloc_ptr<char> fieldname;
   enum type_code code = TYPE_CODE_UNDEF;
 
   /* Perform a tentative parse of the expression, to see whether a
      field completion is required.  */
-  fieldname = NULL;
   TRY
     {
       type = parse_expression_for_completion (text, &fieldname, &code);
@@ -1032,7 +1031,7 @@ complete_expression (completion_tracker &tracker,
     }
   END_CATCH
 
-  if (fieldname && type)
+  if (fieldname != nullptr && type)
     {
       for (;;)
 	{
@@ -1045,25 +1044,20 @@ complete_expression (completion_tracker &tracker,
       if (TYPE_CODE (type) == TYPE_CODE_UNION
 	  || TYPE_CODE (type) == TYPE_CODE_STRUCT)
 	{
-	  int flen = strlen (fieldname);
 	  completion_list result;
 
-	  add_struct_fields (type, result, fieldname, flen);
-	  xfree (fieldname);
+	  add_struct_fields (type, result, fieldname.get (),
+			     strlen (fieldname.get ()));
 	  tracker.add_completions (std::move (result));
 	  return;
 	}
     }
-  else if (fieldname && code != TYPE_CODE_UNDEF)
+  else if (fieldname != nullptr && code != TYPE_CODE_UNDEF)
     {
-      struct cleanup *cleanup = make_cleanup (xfree, fieldname);
-
-      collect_symbol_completion_matches_type (tracker, fieldname, fieldname,
-					      code);
-      do_cleanups (cleanup);
+      collect_symbol_completion_matches_type (tracker, fieldname.get (),
+					      fieldname.get (), code);
       return;
     }
-  xfree (fieldname);
 
   complete_files_symbols (tracker, text, word);
 }
@@ -1475,7 +1469,7 @@ int max_completions = 200;
 completion_tracker::completion_tracker ()
 {
   m_entries_hash = htab_create_alloc (INITIAL_COMPLETION_HTAB_SIZE,
-				      htab_hash_string, (htab_eq) streq,
+				      htab_hash_string, streq_hash,
 				      NULL, xcalloc, xfree);
 }
 
@@ -1493,7 +1487,7 @@ completion_tracker::discard_completions ()
 
   htab_delete (m_entries_hash);
   m_entries_hash = htab_create_alloc (INITIAL_COMPLETION_HTAB_SIZE,
-				      htab_hash_string, (htab_eq) streq,
+				      htab_hash_string, streq_hash,
 				      NULL, xcalloc, xfree);
 }
 
@@ -2038,7 +2032,7 @@ completion_tracker::build_completion_result (const char *text,
       /* We don't rely on readline appending the quote char as
 	 delimiter as then readline wouldn't append the ' ' after the
 	 completion.  */
-      char buf[2] = { quote_char () };
+      char buf[2] = { (char) quote_char () };
 
       match_list[0] = reconcat (match_list[0], match_list[0],
 				buf, (char *) NULL);

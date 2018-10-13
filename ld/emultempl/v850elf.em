@@ -1,5 +1,5 @@
 # This shell script emits a C file. -*- C -*-
-#   Copyright (C) 2013-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2013-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -62,8 +62,8 @@ v850_create_output_section_statements (void)
 	 These will only be created if the output format is an arm format,
 	 hence we do not support linking and changing output formats at the
 	 same time.  Use a link followed by objcopy to change output formats.  */
-      einfo (_("%F%X%P: error: Cannot change output format (to %s) whilst linking V850 binaries.\n"),
-	     bfd_get_target (link_info.output_bfd));
+      einfo (_("%F%P: error: cannot change output format"
+	       " whilst linking %s binaries\n"), "V850");
       return;
     }
 }

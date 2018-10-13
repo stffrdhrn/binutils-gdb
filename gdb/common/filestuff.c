@@ -1,5 +1,5 @@
 /* Low-level file-handling.
-   Copyright (C) 2012-2017 Free Software Foundation, Inc.
+   Copyright (C) 2012-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -80,7 +80,6 @@ fdwalk (int (*func) (void *, int), void *arg)
 	{
 	  long fd;
 	  char *tail;
-	  int result;
 
 	  errno = 0;
 	  fd = strtol (entry->d_name, &tail, 10);
@@ -416,4 +415,35 @@ make_cleanup_close (int fd)
 
   *saved_fd = fd;
   return make_cleanup_dtor (do_close_cleanup, saved_fd, xfree);
+}
+
+/* See common/filestuff.h.  */
+
+bool
+is_regular_file (const char *name, int *errno_ptr)
+{
+  struct stat st;
+  const int status = stat (name, &st);
+
+  /* Stat should never fail except when the file does not exist.
+     If stat fails, analyze the source of error and return true
+     unless the file does not exist, to avoid returning false results
+     on obscure systems where stat does not work as expected.  */
+
+  if (status != 0)
+    {
+      if (errno != ENOENT)
+	return true;
+      *errno_ptr = ENOENT;
+      return false;
+    }
+
+  if (S_ISREG (st.st_mode))
+    return true;
+
+  if (S_ISDIR (st.st_mode))
+    *errno_ptr = EISDIR;
+  else
+    *errno_ptr = EINVAL;
+  return false;
 }

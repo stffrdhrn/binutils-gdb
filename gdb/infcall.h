@@ -1,6 +1,6 @@
 /* Perform an inferior function call, for GDB, the GNU debugger.
 
-   Copyright (C) 2003-2017 Free Software Foundation, Inc.
+   Copyright (C) 2003-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,8 +25,15 @@
 struct value;
 struct type;
 
+/* Determine a function's address and its return type from its value.
+   If the function is a GNU ifunc, then return the address of the
+   target function, and set *FUNCTION_TYPE to the target function's
+   type, and *RETVAL_TYPE to the target function's return type.
+   Calls error() if the function is not valid for calling.  */
+
 extern CORE_ADDR find_function_addr (struct value *function, 
-				     struct type **retval_type);
+				     struct type **retval_type,
+				     struct type **function_type = NULL);
 
 /* Perform a function call in the inferior.
 

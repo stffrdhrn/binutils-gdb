@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux x86-64.
 
-   Copyright (C) 2001-2017 Free Software Foundation, Inc.
+   Copyright (C) 2001-2018 Free Software Foundation, Inc.
    Contributed by Jiri Smid, SuSE Labs.
 
    This file is part of GDB.
@@ -222,9 +222,9 @@ amd64_linux_sigcontext_addr (struct frame_info *this_frame)
 
 static LONGEST
 amd64_linux_get_syscall_number (struct gdbarch *gdbarch,
-                                ptid_t ptid)
+				thread_info *thread)
 {
-  struct regcache *regcache = get_thread_regcache (ptid);
+  struct regcache *regcache = get_thread_regcache (thread);
   enum bfd_endian byte_order = gdbarch_byte_order (gdbarch);
   /* The content of a register.  */
   gdb_byte buf[8];
@@ -234,7 +234,7 @@ amd64_linux_get_syscall_number (struct gdbarch *gdbarch,
   /* Getting the system call number from the register.
      When dealing with x86_64 architecture, this information
      is stored at %rax register.  */
-  regcache_cooked_read (regcache, AMD64_LINUX_ORIG_RAX_REGNUM, buf);
+  regcache->cooked_read (AMD64_LINUX_ORIG_RAX_REGNUM, buf);
 
   ret = extract_signed_integer (buf, 8, byte_order);
 
@@ -363,6 +363,9 @@ amd64_all_but_ip_registers_record (struct regcache *regcache)
 static enum gdb_syscall
 amd64_canonicalize_syscall (enum amd64_syscall syscall_number)
 {
+  DIAGNOSTIC_PUSH
+  DIAGNOSTIC_IGNORE_SWITCH_DIFFERENT_ENUM_TYPES
+
   switch (syscall_number) {
   case amd64_sys_read:
   case amd64_x32_sys_read:
@@ -1430,6 +1433,8 @@ amd64_canonicalize_syscall (enum amd64_syscall syscall_number)
   default:
     return gdb_sys_no_syscall;
   }
+
+  DIAGNOSTIC_POP
 }
 
 /* Parse the arguments of current system call instruction and record
@@ -1589,7 +1594,8 @@ amd64_linux_read_description (uint64_t xcr0_features_bit, bool is_x32)
     }
 
   if (*tdesc == NULL)
-    *tdesc = amd64_create_target_description (xcr0_features_bit, is_x32, true);
+    *tdesc = amd64_create_target_description (xcr0_features_bit, is_x32,
+					      true, true);
 
   return *tdesc;
 }
@@ -1645,9 +1651,9 @@ amd64_linux_iterate_over_regset_sections (struct gdbarch *gdbarch,
 {
   struct gdbarch_tdep *tdep = gdbarch_tdep (gdbarch);
 
-  cb (".reg", 27 * 8, &i386_gregset, NULL, cb_data);
-  cb (".reg2", 512, &amd64_fpregset, NULL, cb_data);
-  cb (".reg-xstate",  X86_XSTATE_SIZE (tdep->xcr0),
+  cb (".reg", 27 * 8, 27 * 8, &i386_gregset, NULL, cb_data);
+  cb (".reg2", 512, 512, &amd64_fpregset, NULL, cb_data);
+  cb (".reg-xstate", X86_XSTATE_SIZE (tdep->xcr0), X86_XSTATE_SIZE (tdep->xcr0),
       &amd64_linux_xstateregset, "XSAVE extended state", cb_data);
 }
 

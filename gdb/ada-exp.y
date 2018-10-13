@@ -1,5 +1,5 @@
 /* YACC parser for Ada expressions, for GDB.
-   Copyright (C) 1986-2017 Free Software Foundation, Inc.
+   Copyright (C) 1986-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -77,7 +77,7 @@ int yyparse (void);
 
 static int yylex (void);
 
-void yyerror (const char *);
+static void yyerror (const char *);
 
 static void write_int (struct parser_state *, LONGEST, struct type *);
 
@@ -742,7 +742,7 @@ ada_parse (struct parser_state *par_state)
   return yyparse ();
 }
 
-void
+static void
 yyerror (const char *msg)
 {
   error (_("Error in expression, near `%s'."), lexptr);
@@ -757,11 +757,7 @@ write_var_from_sym (struct parser_state *par_state,
 		    struct symbol *sym)
 {
   if (symbol_read_needs_frame (sym))
-    {
-      if (innermost_block == 0
-	  || contained_in (block, innermost_block))
-	innermost_block = block;
-    }
+    innermost_block.update (block, INNERMOST_BLOCK_FOR_SYMBOLS);
 
   write_exp_elt_opcode (par_state, OP_VAR_VALUE);
   write_exp_elt_block (par_state, block);
@@ -891,8 +887,8 @@ write_object_renaming (struct parser_state *par_state,
 					end - renaming_expr);
 	    renaming_expr = end;
 
-	    ada_lookup_encoded_symbol (index_name, NULL, VAR_DOMAIN,
-				       &index_sym_info);
+	    ada_lookup_encoded_symbol (index_name, orig_left_context,
+				       VAR_DOMAIN, &index_sym_info);
 	    if (index_sym_info.symbol == NULL)
 	      error (_("Could not find %s"), index_name);
 	    else if (SYMBOL_CLASS (index_sym_info.symbol) == LOC_TYPEDEF)
@@ -954,10 +950,9 @@ static const struct block*
 block_lookup (const struct block *context, const char *raw_name)
 {
   const char *name;
-  struct block_symbol *syms;
+  std::vector<struct block_symbol> syms;
   int nsyms;
   struct symtab *symtab;
-  struct cleanup *old_chain;
   const struct block *result = NULL;
 
   if (raw_name[0] == '\'')
@@ -969,7 +964,6 @@ block_lookup (const struct block *context, const char *raw_name)
     name = ada_encode (raw_name);
 
   nsyms = ada_lookup_symbol_list (name, context, VAR_DOMAIN, &syms);
-  old_chain = make_cleanup (xfree, syms);
 
   if (context == NULL
       && (nsyms == 0 || SYMBOL_CLASS (syms[0].symbol) != LOC_BLOCK))
@@ -993,19 +987,18 @@ block_lookup (const struct block *context, const char *raw_name)
       result = SYMBOL_BLOCK_VALUE (syms[0].symbol);
     }
 
-  do_cleanups (old_chain);
   return result;
 }
 
 static struct symbol*
-select_possible_type_sym (struct block_symbol *syms, int nsyms)
+select_possible_type_sym (const std::vector<struct block_symbol> &syms)
 {
   int i;
   int preferred_index;
   struct type *preferred_type;
 	  
   preferred_index = -1; preferred_type = NULL;
-  for (i = 0; i < nsyms; i += 1)
+  for (i = 0; i < syms.size (); i += 1)
     switch (SYMBOL_CLASS (syms[i].symbol))
       {
       case LOC_TYPEDEF:
@@ -1208,7 +1201,6 @@ write_var_or_type (struct parser_state *par_state,
   int depth;
   char *encoded_name;
   int name_len;
-  struct cleanup *old_chain = make_cleanup (null_cleanup, NULL);
 
   if (block == NULL)
     block = expression_context_block;
@@ -1225,7 +1217,7 @@ write_var_or_type (struct parser_state *par_state,
       while (tail_index > 0)
 	{
 	  int nsyms;
-	  struct block_symbol *syms;
+	  std::vector<struct block_symbol> syms;
 	  struct symbol *type_sym;
 	  struct symbol *renaming_sym;
 	  const char* renaming;
@@ -1236,7 +1228,6 @@ write_var_or_type (struct parser_state *par_state,
 	  encoded_name[tail_index] = '\0';
 	  nsyms = ada_lookup_symbol_list (encoded_name, block,
 					  VAR_DOMAIN, &syms);
-          make_cleanup (xfree, syms);
 	  encoded_name[tail_index] = terminator;
 
 	  /* A single symbol may rename a package or object. */
@@ -1252,7 +1243,7 @@ write_var_or_type (struct parser_state *par_state,
 		syms[0].symbol = ren_sym;
 	    }
 
-	  type_sym = select_possible_type_sym (syms, nsyms);
+	  type_sym = select_possible_type_sym (syms);
 
 	  if (type_sym != NULL)
 	    renaming_sym = type_sym;
@@ -1283,7 +1274,6 @@ write_var_or_type (struct parser_state *par_state,
 	      write_object_renaming (par_state, block, renaming, renaming_len,
 				     renaming_expr, MAX_RENAMING_CHAIN_LENGTH);
 	      write_selectors (par_state, encoded_name + tail_index);
-              do_cleanups (old_chain);
 	      return NULL;
 	    default:
 	      internal_error (__FILE__, __LINE__,
@@ -1295,10 +1285,7 @@ write_var_or_type (struct parser_state *par_state,
               struct type *field_type;
               
               if (tail_index == name_len)
-                {
-                  do_cleanups (old_chain);
-		  return SYMBOL_TYPE (type_sym);
-                }
+		return SYMBOL_TYPE (type_sym);
 
               /* We have some extraneous characters after the type name.
                  If this is an expression "TYPE_NAME.FIELD0.[...].FIELDN",
@@ -1306,10 +1293,7 @@ write_var_or_type (struct parser_state *par_state,
               field_type
                 = get_symbol_field_type (type_sym, encoded_name + tail_index);
               if (field_type != NULL)
-		{
-		  do_cleanups (old_chain);
-		  return field_type;
-		}
+		return field_type;
 	      else 
 		error (_("Invalid attempt to select from type: \"%s\"."),
                        name0.ptr);
@@ -1320,17 +1304,13 @@ write_var_or_type (struct parser_state *par_state,
 						       encoded_name);
 
 	      if (type != NULL)
-		{
-		  do_cleanups (old_chain);
-		  return type;
-		}
+		return type;
 	    }
 
 	  if (nsyms == 1)
 	    {
 	      write_var_from_sym (par_state, syms[0].block, syms[0].symbol);
 	      write_selectors (par_state, encoded_name + tail_index);
-	      do_cleanups (old_chain);
 	      return NULL;
 	    }
 	  else if (nsyms == 0) 
@@ -1342,7 +1322,6 @@ write_var_or_type (struct parser_state *par_state,
 		  write_exp_msymbol (par_state, msym);
 		  /* Maybe cause error here rather than later? FIXME? */
 		  write_selectors (par_state, encoded_name + tail_index);
-		  do_cleanups (old_chain);
 		  return NULL;
 		}
 
@@ -1358,7 +1337,6 @@ write_var_or_type (struct parser_state *par_state,
 	      write_ambiguous_var (par_state, block, encoded_name,
 				   tail_index);
 	      write_selectors (par_state, encoded_name + tail_index);
-	      do_cleanups (old_chain);
 	      return NULL;
 	    }
 	}
@@ -1397,17 +1375,14 @@ write_name_assoc (struct parser_state *par_state, struct stoken name)
 {
   if (strchr (name.ptr, '.') == NULL)
     {
-      struct block_symbol *syms;
+      std::vector<struct block_symbol> syms;
       int nsyms = ada_lookup_symbol_list (name.ptr, expression_context_block,
 					  VAR_DOMAIN, &syms);
-      struct cleanup *old_chain = make_cleanup (xfree, syms);
 
       if (nsyms != 1 || SYMBOL_CLASS (syms[0].symbol) == LOC_TYPEDEF)
 	write_exp_op_with_string (par_state, OP_NAME, name);
       else
 	write_var_from_sym (par_state, syms[0].block, syms[0].symbol);
-
-      do_cleanups (old_chain);
     }
   else
     if (write_var_or_type (par_state, NULL, name) != NULL)

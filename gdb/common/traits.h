@@ -1,4 +1,4 @@
-/* Copyright (C) 2017 Free Software Foundation, Inc.
+/* Copyright (C) 2017-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -31,6 +31,14 @@
 #if (__has_feature(is_trivially_copyable) \
      || (defined __GNUC__ && __GNUC__ >= 5))
 # define HAVE_IS_TRIVIALLY_COPYABLE 1
+#endif
+
+/* HAVE_IS_TRIVIALLY_CONSTRUCTIBLE is defined as 1 iff
+   std::is_trivially_constructible is available.  GCC only implemented it
+   in GCC 5.  */
+#if (__has_feature(is_trivially_constructible) \
+     || (defined __GNUC__ && __GNUC__ >= 5))
+# define HAVE_IS_TRIVIALLY_CONSTRUCTIBLE 1
 #endif
 
 namespace gdb {

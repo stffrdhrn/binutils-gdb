@@ -1,5 +1,5 @@
 /* libthread_db helper functions for the remote server for GDB.
-   Copyright (C) 2002-2017 Free Software Foundation, Inc.
+   Copyright (C) 2002-2018 Free Software Foundation, Inc.
 
    Contributed by MontaVista Software.
 
@@ -108,7 +108,7 @@ ps_lgetregs (gdb_ps_prochandle_t ph, lwpid_t lwpid, prgregset_t gregset)
   struct thread_info *reg_thread, *saved_thread;
   struct regcache *regcache;
 
-  lwp = find_lwp_pid (pid_to_ptid (lwpid));
+  lwp = find_lwp_pid (ptid_t (lwpid));
   if (lwp == NULL)
     return PS_ERR;
 

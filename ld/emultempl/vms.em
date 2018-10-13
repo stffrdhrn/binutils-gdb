@@ -1,5 +1,5 @@
 # This shell script emits a C file. -*- C -*-
-#   Copyright (C) 2010-2017 Free Software Foundation, Inc.
+#   Copyright (C) 2010-2018 Free Software Foundation, Inc.
 #
 # This file is part of the GNU Binutils.
 #
@@ -199,7 +199,7 @@ gld${EMULATION_NAME}_before_allocation (void)
       && bed->elf_backend_size_dynamic_sections
       && ! (*bed->elf_backend_size_dynamic_sections) (link_info.output_bfd,
 						      &link_info))
-    einfo (_("%P%F: failed to set dynamic section sizes: %E\n"));
+    einfo (_("%F%P: failed to set dynamic section sizes: %E\n"));
 
   before_allocation_default ();
 }

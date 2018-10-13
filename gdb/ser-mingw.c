@@ -1,6 +1,6 @@
 /* Serial interface for local (hardwired) serial ports on Windows systems
 
-   Copyright (C) 2006-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -321,9 +321,8 @@ ser_windows_read_prim (struct serial *scb, size_t count)
 {
   struct ser_windows_state *state;
   OVERLAPPED ov;
-  DWORD bytes_read, bytes_read_tmp;
+  DWORD bytes_read;
   HANDLE h;
-  gdb_byte *p;
 
   state = (struct ser_windows_state *) scb->state;
   if (state->in_progress)
@@ -351,7 +350,6 @@ ser_windows_read_prim (struct serial *scb, size_t count)
 static int
 ser_windows_write_prim (struct serial *scb, const void *buf, size_t len)
 {
-  struct ser_windows_state *state;
   OVERLAPPED ov;
   DWORD bytes_written;
   HANDLE h;
@@ -634,7 +632,6 @@ pipe_select_thread (void *arg)
 {
   struct serial *scb = (struct serial *) arg;
   struct ser_console_state *state;
-  int event_index;
   HANDLE h;
 
   state = (struct ser_console_state *) scb->state;
@@ -677,7 +674,6 @@ file_select_thread (void *arg)
 {
   struct serial *scb = (struct serial *) arg;
   struct ser_console_state *state;
-  int event_index;
   HANDLE h;
 
   state = (struct ser_console_state *) scb->state;
@@ -848,20 +844,20 @@ free_pipe_state (struct pipe_state *ps)
   errno = saved_errno;
 }
 
-static void
-cleanup_pipe_state (void *untyped)
+struct pipe_state_destroyer
 {
-  struct pipe_state *ps = (struct pipe_state *) untyped;
+  void operator() (pipe_state *ps) const
+  {
+    free_pipe_state (ps);
+  }
+};
 
-  free_pipe_state (ps);
-}
+typedef std::unique_ptr<pipe_state, pipe_state_destroyer> pipe_state_up;
 
 static int
 pipe_windows_open (struct serial *scb, const char *name)
 {
-  struct pipe_state *ps;
   FILE *pex_stderr;
-  struct cleanup *back_to;
 
   if (name == NULL)
     error_no_arg (_("child command"));
@@ -871,15 +867,14 @@ pipe_windows_open (struct serial *scb, const char *name)
   if (! argv[0] || argv[0][0] == '\0')
     error (_("missing child command"));
 
-  ps = make_pipe_state ();
-  back_to = make_cleanup (cleanup_pipe_state, ps);
+  pipe_state_up ps (make_pipe_state ());
 
   ps->pex = pex_init (PEX_USE_PIPES, "target remote pipe", NULL);
   if (! ps->pex)
-    goto fail;
+    return -1;
   ps->input = pex_input_pipe (ps->pex, 1);
   if (! ps->input)
-    goto fail;
+    return -1;
 
   {
     int err;
@@ -906,23 +901,17 @@ pipe_windows_open (struct serial *scb, const char *name)
 
   ps->output = pex_read_output (ps->pex, 1);
   if (! ps->output)
-    goto fail;
+    return -1;
   scb->fd = fileno (ps->output);
 
   pex_stderr = pex_read_err (ps->pex, 1);
   if (! pex_stderr)
-    goto fail;
+    return -1;
   scb->error_fd = fileno (pex_stderr);
 
-  scb->state = (void *) ps;
+  scb->state = ps.release ();
 
-  argv.release ();
-  discard_cleanups (back_to);
   return 0;
-
- fail:
-  do_cleanups (back_to);
-  return -1;
 }
 
 static int
@@ -1195,7 +1184,6 @@ net_windows_open (struct serial *scb, const char *name)
 {
   struct net_windows_state *state;
   int ret;
-  DWORD threadId;
 
   ret = net_open (scb, name);
   if (ret != 0)
@@ -1354,7 +1342,6 @@ void
 _initialize_ser_windows (void)
 {
   WSADATA wsa_data;
-  struct serial_ops *ops;
 
   HMODULE hm = NULL;
 

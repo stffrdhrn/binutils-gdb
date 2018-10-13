@@ -1,6 +1,6 @@
 /* Python interface to new object file loading events.
 
-   Copyright (C) 2011-2017 Free Software Foundation, Inc.
+   Copyright (C) 2011-2018 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,25 +20,21 @@
 #include "defs.h"
 #include "py-event.h"
 
-static PyObject *
+static gdbpy_ref<>
 create_new_objfile_event_object (struct objfile *objfile)
 {
-  PyObject *py_objfile;
-
   gdbpy_ref<> objfile_event
-    (create_event_object (&new_objfile_event_object_type));
+    = create_event_object (&new_objfile_event_object_type);
   if (objfile_event == NULL)
     return NULL;
 
-  /* Note that objfile_to_objfile_object returns a borrowed reference,
-     so we don't need a decref here.  */
-  py_objfile = objfile_to_objfile_object (objfile);
-  if (!py_objfile || evpy_add_attribute (objfile_event.get (),
-                                         "new_objfile",
-                                         py_objfile) < 0)
+  gdbpy_ref<> py_objfile = objfile_to_objfile_object (objfile);
+  if (py_objfile == NULL || evpy_add_attribute (objfile_event.get (),
+						"new_objfile",
+						py_objfile.get ()) < 0)
     return NULL;
 
-  return objfile_event.release ();
+  return objfile_event;
 }
 
 /* Callback function which notifies observers when a new objfile event occurs.
@@ -51,7 +47,7 @@ emit_new_objfile_event (struct objfile *objfile)
   if (evregpy_no_listeners_p (gdb_py_events.new_objfile))
     return 0;
 
-  gdbpy_ref<> event (create_new_objfile_event_object (objfile));
+  gdbpy_ref<> event = create_new_objfile_event_object (objfile);
   if (event != NULL)
     return evpy_emit_event (event.get (), gdb_py_events.new_objfile);
   return -1;
@@ -60,25 +56,21 @@ emit_new_objfile_event (struct objfile *objfile)
 
 /* Subroutine of emit_clear_objfiles_event to simplify it.  */
 
-static PyObject *
+static gdbpy_ref<>
 create_clear_objfiles_event_object (void)
 {
-  PyObject *py_progspace;
-
   gdbpy_ref<> objfile_event
-    (create_event_object (&clear_objfiles_event_object_type));
+    = create_event_object (&clear_objfiles_event_object_type);
   if (objfile_event == NULL)
     return NULL;
 
-  /* Note that pspace_to_pspace_object returns a borrowed reference,
-     so we don't need a decref here.  */
-  py_progspace = pspace_to_pspace_object (current_program_space);
-  if (!py_progspace || evpy_add_attribute (objfile_event.get (),
-					   "progspace",
-					   py_progspace) < 0)
+  gdbpy_ref<> py_progspace = pspace_to_pspace_object (current_program_space);
+  if (py_progspace == NULL || evpy_add_attribute (objfile_event.get (),
+						  "progspace",
+						  py_progspace.get ()) < 0)
     return NULL;
 
-  return objfile_event.release ();
+  return objfile_event;
 }
 
 /* Callback function which notifies observers when the "clear objfiles"
@@ -92,7 +84,7 @@ emit_clear_objfiles_event (void)
   if (evregpy_no_listeners_p (gdb_py_events.clear_objfiles))
     return 0;
 
-  gdbpy_ref<> event (create_clear_objfiles_event_object ());
+  gdbpy_ref<> event = create_clear_objfiles_event_object ();
   if (event != NULL)
     return evpy_emit_event (event.get (), gdb_py_events.clear_objfiles);
   return -1;
