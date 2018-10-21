@@ -171,7 +171,7 @@ tui_set_disassem_content (struct gdbarch *gdbarch, CORE_ADDR pc)
   int max_lines, line_width;
   CORE_ADDR cur_pc;
   struct tui_gen_win_info *locator = tui_locator_win_info_ptr ();
-  int tab_len = tui_default_tab_len ();
+  int tab_len = tui_tab_width;
   struct tui_asm_line *asm_lines;
   int insn_pos;
   int addr_size, insn_size;
@@ -384,7 +384,7 @@ tui_vertical_disassem_scroll (enum tui_scroll_direction scroll_direction,
       struct tui_line_or_address val;
       int dir;
 
-      content = (tui_win_content) TUI_DISASM_WIN->generic.content;
+      content = TUI_DISASM_WIN->generic.content;
 
       pc = content[0]->which_element.source.line_or_addr.u.addr;
       num_to_scroll++;

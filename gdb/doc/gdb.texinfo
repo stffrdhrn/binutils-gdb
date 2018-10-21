@@ -26779,12 +26779,6 @@ lines.  Positive counts increase the height, while negative counts
 decrease it.  The @var{name} parameter can be one of @code{src} (the
 source window), @code{cmd} (the command window), @code{asm} (the
 disassembly window), or @code{regs} (the register display window).
-
-@item tabset @var{nchars}
-@kindex tabset
-Set the width of tab stops to be @var{nchars} characters.  This
-setting affects the display of TAB characters in the source and
-assembly windows.
 @end table
 
 @node TUI Configuration
@@ -26838,6 +26832,13 @@ Use extra bright or bold mode.
 @item bold-standout
 Use extra bright or bold and standout mode.
 @end table
+
+@item set tui tab-width @var{nchars}
+@kindex set tui tab-width
+@kindex tabset
+Set the width of tab stops to be @var{nchars} characters.  This
+setting affects the display of TAB characters in the source and
+assembly windows.
 @end table
 
 @node Emacs
@@ -43957,7 +43958,7 @@ Usage (host side):
 @end ifset
 
 You need an unstripped copy of the target program on your host system, since
-@value{GDBN} needs to examine it's symbol tables and such.  Start up @value{GDBN} as you normally
+@value{GDBN} needs to examine its symbol tables and such.  Start up @value{GDBN} as you normally
 would, with the target program as the first argument.  (You may need to use the
 @option{--baud} option if the serial line is running at anything except 9600 baud.)
 That is @code{gdb TARGET-PROG}, or @code{gdb --baud BAUD TARGET-PROG}.  After that, the only

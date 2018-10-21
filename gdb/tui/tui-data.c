@@ -40,7 +40,6 @@ static struct tui_gen_win_info _locator;
 static struct tui_gen_win_info exec_info[2];
 static struct tui_win_info *src_win_list[2];
 static struct tui_list source_windows = {src_win_list, 0};
-static int default_tab_len = DEFAULT_TAB_LEN;
 static struct tui_win_info *win_with_focus = NULL;
 static struct tui_layout_def layout_def = {
   SRC_WIN,			/* DISPLAY_MODE */
@@ -133,22 +132,6 @@ void
 tui_set_win_with_focus (struct tui_win_info *win_info)
 {
   win_with_focus = win_info;
-}
-
-
-/* Answer the length in chars, of tabs.  */
-int
-tui_default_tab_len (void)
-{
-  return default_tab_len;
-}
-
-
-/* Set the length in chars, of tabs.  */
-void
-tui_set_default_tab_len (int len)
-{
-  default_tab_len = len;
 }
 
 
@@ -375,7 +358,7 @@ tui_partial_win_by_name (const char *name)
 {
   struct tui_win_info *win_info = NULL;
 
-  if (name != (char *) NULL)
+  if (name != NULL)
     {
       int i = 0;
 
@@ -766,7 +749,7 @@ tui_free_win_content (struct tui_gen_win_info *win_info)
 {
   if (win_info->content != NULL)
     {
-      free_content ((tui_win_content) win_info->content,
+      free_content (win_info->content,
 		   win_info->content_size,
 		   win_info->type);
       win_info->content = NULL;

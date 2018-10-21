@@ -131,9 +131,9 @@ tui_set_source_content (struct symtab *s,
 		      /* Init the line with the line number.  */
 		      sprintf (src_line, "%-6d", cur_line_no);
 		      cur_len = strlen (src_line);
-		      i = cur_len - ((cur_len / tui_default_tab_len ())
-				     * tui_default_tab_len ());
-		      while (i < tui_default_tab_len ())
+		      i = cur_len - ((cur_len / tui_tab_width)
+				     * tui_tab_width);
+		      while (i < tui_tab_width)
 			{
 			  src_line[cur_len] = ' ';
 			  i++;
@@ -181,7 +181,7 @@ tui_set_source_content (struct symtab *s,
 				      if (c == '\t')
 					{
 					  int j, max_tab_len
-					    = tui_default_tab_len ();
+					    = tui_tab_width;
 
 					  for (j = i - ((i / max_tab_len)
 							* max_tab_len);
@@ -351,7 +351,7 @@ tui_vertical_source_scroll (enum tui_scroll_direction scroll_direction,
     {
       struct tui_line_or_address l;
       struct symtab *s;
-      tui_win_content content = (tui_win_content) TUI_SRC_WIN->generic.content;
+      tui_win_content content = TUI_SRC_WIN->generic.content;
       struct symtab_and_line cursal = get_current_source_symtab_and_line ();
 
       if (cursal.symtab == (struct symtab *) NULL)
