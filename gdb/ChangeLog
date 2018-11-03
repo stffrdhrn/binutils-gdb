@@ -1,3 +1,245 @@
+2018-12-02  Joel Brobecker  <brobecker@adacore.com>
+
+	* aarch64-ravenscar-thread.h, aarch64-ravenscar-thread.c: New files.
+	* aarch64-tdep.c: #include "aarch64-ravenscar-thread.h".
+	(aarch64_gdbarch_init): Add call to register_aarch64_ravenscar_ops.
+	* Makefile.in (ALL_64_TARGET_OBS): Add aarch64-ravenscar-thread.o.
+	(HFILES_NO_SRCDIR): Add aarch64-ravenscar-thread.h.
+	(ALLDEPFILES): Add aarch64-ravenscar-thread.c.
+	* configure.tgt (cpu_obs) [aarch64*-*-*]: Add ravenscar-thread.o
+	and aarch64-ravenscar-thread.o.
+	* NEWS: Add entry documenting Ravenscar tasking support
+	on AArch64 ELF.
+
+2018-11-02  Matthew Malcomson  <matthew.malcomson@arm.com>
+
+	* symtab.c (info_functions_command): Initialize quiet flag.
+	* stack.c (info_args_command): Likewise.
+
+2018-11-01  Jim Wilson  <jimw@sifive.com>
+
+	* riscv-tdep.c (riscv_breakpoint_kind_from_pc): New local unaligned_p.
+	Set if pcptr if unaligned.  Return 2 if unaligned_p true.  Update
+	debugging messages.
+
+2018-11-01  Joel Brobecker  <brobecker@adacore.com>
+
+	* ada-lang.c (ada_watch_location_expression): New function.
+	(ada_language_defn): Set la_watch_location_expression to
+	ada_watch_location_expression.
+
+2018-11-01  Joel Brobecker  <brobecker@adacore.com>
+
+	* print-utils.c (int_string): Remove unnecessary trailing spaces.
+
+2018-11-01  Joel Brobecker  <brobecker@adacore.com>
+
+	* rs6000-tdep.c (skip_prologue): Fix potential negative left
+	shifting.
+
+2018-11-01  Jerome Guitton  <guitton@adacore.com>
+	    Joel Brobecker  <brobecker@adacore.com>
+
+	* defs.h (enum gdb_osabi): Add GDB_OSABI_PIKEOS.
+	* osabi.c (gdb_osabi_names): Add name for GDB_OSABI_PIKEOS.
+	* arm-pikeos-tdep.c: New file.
+	* configure.tgt: Add arm-pikeos-tdep.o to the case of ARM
+	embedded system.
+	* Makefile.in (ALL_TARGET_OBS): Add arm-pikeos-tdep.o.
+
+2018-11-01  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* common/pathstuff.c (get_standard_temp_dir): New.
+	* common/pathstuff.h (get_standard_temp_dir): New.
+	* config.in: Re-generate.
+	* configure: Re-generate.
+	* configure.ac: Don't check for mkdtemp.
+	* gnulib/aclocal-m4-deps.mk: Re-generate.
+	* gnulib/aclocal.m4: Re-generate.
+	* gnulib/config.in: Re-generate.
+	* gnulib/configure: Re-generate.
+	* gnulib/import/Makefile.am: Re-generate.
+	* gnulib/import/Makefile.in: Re-generate.
+	* gnulib/import/m4/gnulib-cache.m4: Re-generate.
+	* gnulib/import/m4/gnulib-comp.m4: Re-generate.
+	* gnulib/import/m4/mkdtemp.m4: New file.
+	* gnulib/import/mkdtemp.c: New file.
+	* gnulib/update-gnulib.sh (IMPORTED_GNULIB_MODULES):
+	Add mkdtemp module.
+	* unittests/mkdir-recursive-selftests.c (test): Use
+	get_standard_temp_dir.
+	(_initialize_mkdir_recursive_selftests): Remove HAVE_MKDTEMP
+	ifdef.
+	* compile/compile.c (get_compile_file_tempdir): Likewise.
+
+2018-11-01  Sangamesh Mallayya <sangamesh.swamy@in.ibm.com>
+
+	* rs6000-aix-tdep.c: Include "trad-frame.h" and "frame-unwind.h".
+	(SIG_FRAME_LR_OFFSET64): New define.
+	(SIG_FRAME_FP_OFFSET64): New define.
+	(aix_sighandle_frame_cache): New Function.
+	(aix_sighandle_frame_this_id): New Function.
+	(aix_sighandle_frame_prev_register): New Function.
+	(aix_sighandle_frame_sniffer): New Function.
+	(aix_sighandle_frame_unwind): New global variable.
+	(rs6000_aix_init_osabi): Install new frame unwinder.
+
+2018-10-31  Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	PR gdb/23835
+	* common/common-defs.h: Don't redefine _FORTIFY_SOURCE if it's
+	already defined.
+
+2018-10-31  Pedro Franco de Carvalho  <pedromfc@linux.ibm.com>
+
+	* ppc-linux-nat.c: Include nat/linux-ptrace.h.
+
+2018-10-31  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* dwarf2read.c (struct dwarf2_cu): Add producer_is_icc field.
+	(producer_is_icc): New function.
+	(check_producer): Set producer_is_icc field on dwarf2_cu.
+	(dwarf2_init_integer_type): New function.
+	(read_base_type): Call dwarf2_init_integer_type instead of
+	init_integer_type in all cases.
+	(dwarf2_cu::dwarf2_cu): Initialise producer_is_icc field.
+	* valprint.c (maybe_negate_by_bytes): Add an assertion that the
+	LEN is greater than 0.
+
+2018-10-30  Tom Tromey  <tom@tromey.com>
+
+	* main.c (captured_main_1): Check return value of bfd_init.
+
+2018-10-29  Sergio Durigan Junior  <sergiodj@redhat.com>
+
+	* common/offset-type.h (DEFINE_OFFSET_REL_OP): Delete.
+	Adjust comments.
+
+2018-10-29  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	* procfs.c: Include common/pathstuff.h.
+
+2018-10-28  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-linux-nat.c (riscv_linux_nat_target::fetch_registers):
+	Add missing braces.  No functional change.
+
+2018-10-27  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* macrocmd.c (info_macro_command): Use report_unrecognized_option_error
+	to report a bad option and fix indentation.
+	* demangle.c (demangle_command): Use report_unrecognized_option_error
+	to report a bad option and correctly report the bad option.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	PR cli/23364:
+	* darwin-nat.c (copied_shell): New global.
+	(may_have_sip): Rename from should_disable_startup_with_shell.
+	(copy_shell_to_cache, maybe_cache_shell): New functions.
+	(darwin_nat_target::create_inferior): Update.  Use
+	copied_shell.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	* unittests/scoped_fd-selftests.c (test_to_file): New function.
+	(run_tests): Call test_to_file.
+	* dwarf-index-write.c (write_psymtabs_to_index): Do not reopen
+	temporary files.
+	* common/scoped_fd.h (scoped_fd::to_file): New method.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	* unittests/scoped_mmap-selftests.c (test_normal): Use
+	gdb_mkostemp_cloexec.
+	* unittests/scoped_fd-selftests.c (test_destroy, test_release):
+	Use gdb_mkostemp_cloexec.
+	* gnulib/aclocal-m4-deps.mk, gnulib/aclocal.m4,
+	gnulib/config.in, gnulib/configure,
+	gnulib/import/Makefile.am, gnulib/import/Makefile.in,
+	gnulib/import/m4/gnulib-cache.m4,
+	gnulib/import/m4/gnulib-comp.m4: Update.
+	* gnulib/import/m4/mkostemp.m4: New file.
+	* gnulib/import/m4/mkstemp.m4: Remove.
+	* gnulib/import/mkostemp.c: New file.
+	* gnulib/import/mkstemp.m4: Remove.
+	* gnulib/update-gnulib.sh (IMPORTED_GNULIB_MODULES): Remove
+	mkstemp, add mkostemp.  Apply new patch.
+	* gnulib/import/stdlib.in.h: Apply patch.
+	* gnulib/patches/0002-mkostemp-mkostemps-Fix-compilation-error-in-C-mode-o.patch:
+	New file.
+	* dwarf-index-write.c (write_psymtabs_to_index): Use
+	gdb_mkostemp_cloexec.
+	* common/filestuff.h (gdb_mkostemp_cloexec): New function.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	* unittests/mkdir-recursive-selftests.c: New file.
+	* Makefile.in (SUBDIR_UNITTESTS_SRCS): Add
+	unittests/mkdir-recursive-selftests.c.
+	* dwarf-index-cache.c (mkdir_recursive): Move to
+	common/filestuff.c.
+	(index_cache::store): Check return value of mkdir_recursive.
+	(create_dir_and_check, test_mkdir_recursive): Move to new file.
+	(_initialize_index_cache): Don't register test.
+	* common/filestuff.h (mkdir_recursive): Declare.
+	* common/filestuff.c (mkdir_recursive): Move from
+	dwarf-index-cache.c.  Return bool.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	* dwarf-index-write.c (write_psymtabs_to_index): Move
+	make_temp_filename to common/pathstuff.c.
+	* common/pathstuff.h (make_temp_filename): Declare.
+	* common/pathstuff.c (make_temp_filename): New function, moved
+	from dwarf-index-write.c.
+
+2018-10-27  Tom Tromey  <tom@tromey.com>
+
+	* procfs.c (procfs_target::create_inferior): Use get_shell.
+	* cli/cli-cmds.c (shell_escape): Use get_shell.
+	* windows-nat.c (windows_nat_target::create_inferior): Use
+	get_shell.
+	* common/pathstuff.c (get_shell): New function.
+	* nat/fork-inferior.c (SHELL_FILE, get_startup_shell): Remove.
+	(fork_inferior): Use get_shell.
+	* common/pathstuff.h (get_shell): Declare.
+
+2018-10-27  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* NEWS: Mention changes to 'info [args|functions|locals|variables]'
+
+2018-10-27  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* stack.c (print_variable_and_value_data): Add preg and treg.
+	(print_frame_local_vars): Add quiet, regexp and t_regexp arguments,
+	and update callers.
+	(print_frame_arg_vars): Likewise.
+	(prepare_reg): New function.
+	(info_locals_command): Extract info print args and use them.
+	(info_args_command): Likewise.
+	(_initialize_stack): Modify on-line help.
+	* symtab.c (treg_matches_sym_type_name): New function.
+	(search_symbols): New arg t_regexp.
+	(symtab_symbol_info): New args quiet, regexp, t_regexp.
+	(info_variables_command): Extract info print args and use them.
+	(info_functions_command): Likewise.
+	(info_types_command): Update call to symtab_symbol_info.
+	(_initialize_symtab): Modify on-line help.
+	* symtab.h (treg_matches_sym_type_name): New function.
+	(search_symbols): New t_regexp arg.
+
+2018-10-27  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* cli-utils.c (extract_arg_maybe_quoted): New function.
+	(extract_info_print_args): New function.
+	(info_print_args_help): New function.
+	(report_unrecognized_option_error): New function.
+	* cli-utils.h (extract_arg_maybe_quoted): New function.
+	(extract_info_print_args): New function.
+	(info_print_args_help): New function.
+	(report_unrecognized_option_error): New function.
+
 2018-10-26  Tom Tromey  <tom@tromey.com>
 
 	* dwarf2read.c (recursively_compute_inclusions): Use std::vector.

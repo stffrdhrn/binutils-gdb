@@ -190,3 +190,51 @@ get_standard_cache_dir ()
 
   return {};
 }
+
+/* See common/pathstuff.h.  */
+
+std::string
+get_standard_temp_dir ()
+{
+#ifdef WIN32
+  const char *tmp = getenv ("TMP");
+  if (tmp != nullptr)
+    return tmp;
+
+  tmp = getenv ("TEMP");
+  if (tmp != nullptr)
+    return tmp;
+
+  error (_("Couldn't find temp dir path, both TMP and TEMP are unset."));
+
+#else
+  const char *tmp = getenv ("TMPDIR");
+  if (tmp != nullptr)
+    return tmp;
+
+  return "/tmp";
+#endif
+}
+
+/* See common/pathstuff.h.  */
+
+const char *
+get_shell ()
+{
+  const char *ret = getenv ("SHELL");
+  if (ret == NULL)
+    ret = "/bin/sh";
+
+  return ret;
+}
+
+/* See common/pathstuff.h.  */
+
+gdb::char_vector
+make_temp_filename (const std::string &f)
+{
+  gdb::char_vector filename_temp (f.length () + 8);
+  strcpy (filename_temp.data (), f.c_str ());
+  strcat (filename_temp.data () + f.size (), "-XXXXXX");
+  return filename_temp;
+}
