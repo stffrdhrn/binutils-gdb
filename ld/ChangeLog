@@ -1,3 +1,41 @@
+2018-11-09  Nick Clifton  <nickc@redhat.com>
+
+	* po/fr.po: Updated French translation.
+
+2018-11-09  Claudiu Zissulescu  <claziss@synopsys.com>
+
+	* testsuite/ld-arc/tls_gd-01.d: Update test.
+	* testsuite/ld-arc/arclinux-nps.d: Add cpu option.
+
+2018-11-09  Marc  <marc@groundctl.com>
+
+	PR 23872
+	* scripttempl/pep.sc (pe.sc): Ensure rdata_runtime_pseudo_relocs
+	are aligned.
+	* scripttempl/pep.sc (pep.sc): Likewise.
+
+2018-11-06  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* testsuite/config/default.exp (ELFEDIT): New.
+	* testsuite/ld-elf/linux-x86.exp (elfedit_test): New proc.
+	Run elfedit tests.
+	* testsuite/ld-elf/x86-feature-1a.rd: New file.
+	* testsuite/ld-elf/x86-feature-1b.rd: Likewise.
+	* testsuite/ld-elf/x86-feature-1c.rd: Likewise.
+	* testsuite/ld-elf/x86-feature-1d.rd: Likewise.
+	* testsuite/ld-elf/x86-feature-1e.rd: Likewise.
+
+2018-11-05  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR gas/23854
+	* testsuite/ld-i386/i386.exp: Run pr23854.
+	* testsuite/ld-x86-64/x86-64.exp: Likewwise.
+	* testsuite/ld-i386/pr23854.d: New file.
+	* testsuite/ld-i386/pr23854.s: Likewwise.
+	* testsuite/ld-i386/pr23854.d: Likewwise.
+	* testsuite/ld-x86-64/pr23854.d: Likewwise.
+	* testsuite/ld-x86-64/pr23854.s: Likewwise.
+
 2018-11-01  Thomas Preud'homme  <thomas.preudhomme@linaro.org>
 
 	* testsuite/lib/ld-lib.exp (check_shared_lib_support): Moved to
