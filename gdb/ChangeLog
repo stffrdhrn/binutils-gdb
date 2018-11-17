@@ -1,3 +1,131 @@
+2018-11-16  Alan Hayward  <alan.hayward@arm.com>
+
+	PR gdb/22736:
+	* aarch64-tdep.c (aarch64_push_dummy_call): Remove
+	lang_struct_return code.
+
+2018-11-16  Alan Hayward  <alan.hayward@arm.com>
+
+	* aarch64-tdep.c (aarch64_push_dummy_call): Replace arg with
+	return_method.
+	* alpha-tdep.c (alpha_push_dummy_call): Likewise.
+	* amd64-tdep.c (amd64_push_arguments): Likewise.
+	(amd64_push_dummy_call): Likewise.
+	* amd64-windows-tdep.c (amd64_windows_push_arguments): Likewise.
+	* arc-tdep.c (arc_push_dummy_call): Likewise.
+	* arm-tdep.c (arm_push_dummy_call): Likewise.
+	* avr-tdep.c (avr_push_dummy_call): Likewise.
+	* bfin-tdep.c (bfin_push_dummy_call): Likewise.
+	* cris-tdep.c (cris_push_dummy_call): Likewise.
+	* csky-tdep.c (csky_push_dummy_call): Likewise.
+	* frv-tdep.c (frv_push_dummy_call): Likewise.
+	* gdbarch.c: Regenerate.
+	* gdbarch.h: Regenerate.
+	* gdbarch.sh (gdbarch_push_dummy_call): Replace arg with
+	return_method.
+	* h8300-tdep.c (h8300_push_dummy_call): Likewise.
+	* hppa-tdep.c (hppa32_push_dummy_call): Likewise.
+	(hppa64_push_dummy_call): Likewise.
+	* i386-darwin-tdep.c (i386_darwin_push_dummy_call): Likewise.
+	* i386-tdep.c (i386_push_dummy_call): Likewise.
+	* ia64-tdep.c (ia64_push_dummy_call): Likewise.
+	* infcall.c (call_function_by_hand_dummy): Likewise.
+	* iq2000-tdep.c (iq2000_push_dummy_call): Likewise.
+	* lm32-tdep.c (lm32_push_dummy_call): Likewise.
+	* m32c-tdep.c (m32c_push_dummy_call): Likewise.
+	* m32r-tdep.c (m32r_push_dummy_call): Likewise.
+	* m68hc11-tdep.c (m68hc11_push_dummy_call): Likewise.
+	* m68k-tdep.c (m68k_push_dummy_call): Likewise.
+	* mep-tdep.c (mep_push_dummy_call): Likewise.
+	* mips-tdep.c (mips_eabi_push_dummy_call): Likewise.
+	(mips_n32n64_push_dummy_call): Likewise.
+	(mips_o32_push_dummy_call): Likewise.
+	(mips_o64_push_dummy_call): Likewise.
+	* mn10300-tdep.c (mn10300_push_dummy_call): Likewise.
+	* msp430-tdep.c (msp430_push_dummy_call): Likewise.
+	* nds32-tdep.c (nds32_push_dummy_call): Likewise.
+	* nios2-tdep.c (nios2_push_dummy_call): Likewise.
+	* or1k-tdep.c (or1k_push_dummy_call): Likewise.
+	* ppc-sysv-tdep.c (ppc_sysv_abi_push_dummy_call): Likewise.
+	(ppc64_sysv_abi_push_dummy_call): Likewise.
+	* ppc-tdep.h (ppc_sysv_abi_push_dummy_call): Likewise.
+	(ppc64_sysv_abi_push_dummy_call): Likewise.
+	* riscv-tdep.c (riscv_push_dummy_call): Likewise.
+	* rl78-tdep.c (rl78_push_dummy_call): Likewise.
+	* rs6000-aix-tdep.c (rs6000_push_dummy_call): Likewise.
+	* rs6000-lynx178-tdep.c (rs6000_lynx178_push_dummy_call): Likewise.
+	* rx-tdep.c (rx_push_dummy_call): Likewise.
+	* s390-tdep.c (s390_push_dummy_call): Likewise.
+	* score-tdep.c (score_push_dummy_call): Likewise.
+	* sh-tdep.c (sh_push_dummy_call_fpu): Likewise.
+	(sh_push_dummy_call_nofpu): Likewise.
+	* sparc-tdep.c (sparc32_store_arguments): Likewise.
+	(sparc32_push_dummy_call): Likewise.
+	* sparc64-tdep.c (sparc64_store_arguments): Likewise.
+	(sparc64_push_dummy_call): Likewise.
+	* spu-tdep.c (spu_push_dummy_call): Likewise.
+	* tic6x-tdep.c (tic6x_push_dummy_call): Likewise.
+	* tilegx-tdep.c (tilegx_push_dummy_call): Likewise.
+	* v850-tdep.c (v850_push_dummy_call): Likewise.
+	* vax-tdep.c (vax_push_dummy_call): Likewise.
+	* xstormy16-tdep.c (xstormy16_push_dummy_call): Likewise.
+	* xtensa-tdep.c (xtensa_push_dummy_call): Likewise.
+
+2018-11-16  Alan Hayward  <alan.hayward@arm.com>
+
+	* gdbarch.sh (enum function_call_return_method): Add enum.
+	* gdbarch.h: Regenerate.
+	* infcall.c (call_function_by_hand_dummy): Replace vars with enum.
+
+2018-11-15  Joel Brobecker  <brobecker@adacore.com>
+
+	* unittests/copy_bitwise-selftests.c: New file.
+	* utils.c (selftests::bits_to_str, selftests::check_copy_bitwise)
+	(selftests::copy_bitwise_tests): Delete, moving this code to
+	unittests/copy_bitwise-selftests.c instead.
+	(_initialize_utils): Do not register copy_bitwise tests.
+	* Makefile.in (SUBDIR_UNITTESTS_SRCS): Add
+	unittests/copy_bitwise-selftests.c.
+
+2018-11-14  Joel Brobecker  <brobecker@adacore.com>
+
+	* ada-lang.c (move_bits): Delete. Update all callers to use
+	copy_bitwise instead.
+	* dwarf2loc.c (copy_bitwise, bits_to_str::bits_to_str)
+	(selftests::check_copy_bitwise, selftests::copy_bitwise_tests):
+	Move from here to utils.c.
+	(_initialize_dwarf2loc): Remove call to register copy_bitwise
+	selftests.
+	* utils.h (copy_bitwise): Add declaration.
+	* utils.c (copy_bitwise, bits_to_str::bits_to_str)
+	(selftests::check_copy_bitwise, selftests::copy_bitwise_tests):
+	Moved here from dwarf2loc.c.
+	(_initialize_utils): Register copy_bitwise selftests.
+
+2018-11-14  Jim Wilson  <jimw@sifive.com>
+
+	* riscv-tdep.c (struct riscv_arg_info): New field is_unnamed.
+	(riscv_call_arg_scalar_int): If unnamed arg with twice xlen alignment,
+	then increment next_regnum if odd.
+	(riscv_arg_location): New arg is_unnamed.  Set ainfo->is_unnamed.
+	(riscv_push_dummy_call): New local ftype.  Call check_typedef to set
+	function type.  Pass new arg to riscv_arg_location based on function
+	type.
+	(riscv_return_value): Pass new arg to riscv_arg_location.
+
+	* riscv-tdep.c (BIGGEST_ALIGNMENT): New.
+	(riscv_type_alignment) <TYPE_CODE_ARRAY>: If TYPE_VECTOR, return min
+	of TYPE_LENGTH and BIGGEST_ALIGNMENT.
+
+	* riscv-tdep.c (riscv_call_arg_scalar_int): Use std::min when
+	setting len.  New local align, set to max of arg align and xlen,
+	and pass to first riscv_assign_stack_location call.
+
+2018-11-12  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	* skip.c (complete_skip_number): New function.
+	(_initialize_step_skip): Add completers to some skip commands.
+
 2018-11-09  Tom Tromey  <tom@tromey.com>
 
 	* remote.c (remote_g_packet_guess_s): Remove typedef and DEF_VEC.

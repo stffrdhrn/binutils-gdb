@@ -1,3 +1,26 @@
+2018-11-16  Nick Clifton  <nickc@redhat.com>
+
+	* po/es.po: Updated Spanish translation.
+
+2018-11-15  Nick Clifton  <nickc@redhat.com>
+
+	* po/es.po: Updated Spanish translation.
+
+2018-11-12  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* testsuite/ld-i386/plt-main-ibt.dd: Accept both .plt.got and
+	.plt.sec sections.
+
+2018-11-12  Nick Clifton  <nickc@redhat.com>
+
+	PR 10865
+	* ld.texi (Entry Point): Make it clear that the text refers to
+	PE-based systems rather than just a PE system.
+
+2018-11-12  Nick Clifton  <nickc@redhat.com>
+
+	* po/es.po: Updated Spanish translation.
+
 2018-11-09  Nick Clifton  <nickc@redhat.com>
 
 	* po/fr.po: Updated French translation.
