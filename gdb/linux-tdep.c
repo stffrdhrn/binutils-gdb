@@ -1913,7 +1913,7 @@ linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
   struct linux_corefile_thread_data thread_args;
   struct elf_internal_linux_prpsinfo prpsinfo;
   char *note_data = NULL;
-  struct thread_info *curr_thr, *signalled_thr, *thr;
+  struct thread_info *curr_thr, *signalled_thr;
 
   if (! gdbarch_iterate_over_regset_sections_p (gdbarch))
     return NULL;
@@ -1962,11 +1962,9 @@ linux_make_corefile_notes (struct gdbarch *gdbarch, bfd *obfd, int *note_size)
   thread_args.stop_signal = signalled_thr->suspend.stop_signal;
 
   linux_corefile_thread (signalled_thr, &thread_args);
-  ALL_NON_EXITED_THREADS (thr)
+  for (thread_info *thr : current_inferior ()->non_exited_threads ())
     {
       if (thr == signalled_thr)
-	continue;
-      if (thr->ptid.pid () != inferior_ptid.pid ())
 	continue;
 
       linux_corefile_thread (thr, &thread_args);
@@ -2400,7 +2398,7 @@ linux_infcall_mmap (CORE_ADDR size, unsigned prot)
   arg[ARG_FD] = value_from_longest (builtin_type (gdbarch)->builtin_int, -1);
   arg[ARG_OFFSET] = value_from_longest (builtin_type (gdbarch)->builtin_int64,
 					0);
-  addr_val = call_function_by_hand (mmap_val, NULL, ARG_LAST, arg);
+  addr_val = call_function_by_hand (mmap_val, NULL, arg);
   retval = value_as_address (addr_val);
   if (retval == (CORE_ADDR) -1)
     error (_("Failed inferior mmap call for %s bytes, errno is changed."),
@@ -2429,7 +2427,7 @@ linux_infcall_munmap (CORE_ADDR addr, CORE_ADDR size)
   /* Assuming sizeof (unsigned long) == sizeof (size_t).  */
   arg[ARG_LENGTH] = value_from_ulongest
 		    (builtin_type (gdbarch)->builtin_unsigned_long, size);
-  retval_val = call_function_by_hand (munmap_val, NULL, ARG_LAST, arg);
+  retval_val = call_function_by_hand (munmap_val, NULL, arg);
   retval = value_as_long (retval_val);
   if (retval != 0)
     warning (_("Failed inferior munmap call at %s for %s bytes, "

@@ -400,8 +400,6 @@ breakpoints_should_be_inserted_now (void)
     }
   else if (target_has_execution)
     {
-      struct thread_info *tp;
-
       if (always_inserted_mode)
 	{
 	  /* The user wants breakpoints inserted even if all threads
@@ -414,7 +412,7 @@ breakpoints_should_be_inserted_now (void)
 
       /* Don't remove breakpoints yet if, even though all threads are
 	 stopped, we still have events to process.  */
-      ALL_NON_EXITED_THREADS (tp)
+      for (thread_info *tp : all_non_exited_threads ())
 	if (tp->resumed
 	    && tp->suspend.waitstatus_pending_p)
 	  return 1;
@@ -6058,16 +6056,13 @@ print_one_breakpoint_location (struct breakpoint *b,
   else
     uiout->field_string ("disp", bpdisp_text (b->disposition));
 
-
   /* 4 */
   annotate_field (3);
   if (part_of_multiple)
     uiout->field_string ("enabled", loc->enabled ? "y" : "n");
   else
     uiout->field_fmt ("enabled", "%c", bpenables[(int) b->enable_state]);
-  uiout->spaces (2);
 
-  
   /* 5 and 6 */
   if (b->ops != NULL && b->ops->print_one != NULL)
     {
@@ -6152,11 +6147,10 @@ print_one_breakpoint_location (struct breakpoint *b,
 
   if (loc != NULL && !header_of_multiple)
     {
-      struct inferior *inf;
       std::vector<int> inf_nums;
       int mi_only = 1;
 
-      ALL_INFERIORS (inf)
+      for (inferior *inf : all_inferiors ())
 	{
 	  if (inf->pspace == loc->pspace)
 	    inf_nums.push_back (inf->num);

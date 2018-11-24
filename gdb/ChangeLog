@@ -1,3 +1,493 @@
+2018-11-23  Pedro Alves  <palves@redhat.com>
+
+	* gdbthread.h (enum thread_state): Move comments here.
+	(is_running, is_stopped, is_exited): Remove declarations.
+
+2018-11-22  Pedro Alves  <palves@redhat.com>
+
+	* Makefile.in (COMMON_SFILES): Add thread-iter.c.
+	* breakpoint.c (breakpoints_should_be_inserted_now): Replace
+	ALL_NON_EXITED_THREADS with all_non_exited_threads.
+	(print_one_breakpoint_location): Replace ALL_INFERIORS with
+	all_inferiors.
+	* bsd-kvm.c: Include inferior.h.
+	* btrace.c (btrace_free_objfile): Replace ALL_NON_EXITED_THREADS
+	with all_non_exited_threads.
+	* common/filtered-iterator.h: New.
+	* common/safe-iterator.h: New.
+	* corelow.c (core_target_open): Don't call init_thread_list here.
+	* darwin-nat.c (thread_info_from_private_thread_info): Replace
+	ALL_THREADS with all_threads.
+	* fbsd-nat.c (fbsd_nat_target::resume): Replace
+	ALL_NON_EXITED_THREADS with inf->non_exited_threads.
+	* fbsd-tdep.c (fbsd_make_corefile_notes): Replace
+	ALL_NON_EXITED_THREADS with inf->non_exited_threads.
+	* fork-child.c (postfork_hook): Don't call init_thread_list here.
+	* gdbarch-selftests.c (register_to_value_test): Adjust.
+	* gdbthread.h: Don't include "inferior.h" here.
+	(struct inferior): Forward declare.
+	(enum step_over_calls_kind): Moved here from inferior.h.
+	(thread_info::deletable): Definition moved to thread.c.
+	(find_thread_ptid (inferior *, ptid_t)): Declare.
+	(ALL_THREADS, ALL_THREADS_BY_INFERIOR, ALL_THREADS_SAFE): Delete.
+	Include "thread-iter.h".
+	(all_threads, all_non_exited_threads, all_threads_safe): New.
+	(any_thread_p): Declare.
+	(thread_list): Delete.
+	* infcmd.c (signal_command): Replace ALL_NON_EXITED_THREADS with
+	all_non_exited_threads.
+	(proceed_after_attach_callback): Delete.
+	(proceed_after_attach): Take an inferior pointer instead of an
+	integer PID.  Adjust to use range-for.
+	(attach_post_wait): Pass down inferior pointer instead of pid.
+	Use range-for instead of ALL_NON_EXITED_THREADS.
+	(detach_command): Remove init_thread_list call.
+	* inferior-iter.h: New.
+	* inferior.c (struct delete_thread_of_inferior_arg): Delete.
+	(delete_thread_of_inferior): Delete.
+	(delete_inferior, exit_inferior_1): Use range-for with
+	inf->threads_safe() instead of iterate_over_threads.
+	(inferior_appeared): Call init_thread_list here.
+	(discard_all_inferiors): Use all_non_exited_inferiors.
+	(find_inferior_id, find_inferior_pid): Use all_inferiors.
+	(iterate_over_inferiors): Use all_inferiors_safe.
+	(have_inferiors, number_of_live_inferiors): Use
+	all_non_exited_inferiors.
+	(number_of_inferiors): Use all_inferiors and std::distance.
+	(print_inferior): Use all_inferiors.
+	* inferior.h: Include gdbthread.h.
+	(enum step_over_calls_kind): Moved to gdbthread.h.
+	(struct inferior) <thread_list>: New field.
+	<threads, non_exited_threads, threads_safe>: New methods.
+	(ALL_INFERIORS): Delete.
+	Include "inferior-iter.h".
+	(ALL_NON_EXITED_INFERIORS): Delete.
+	(all_inferiors_safe, all_inferiors, all_non_exited_inferiors): New
+	functions.
+	* inflow.c (child_interrupt, child_pass_ctrlc): Replace
+	ALL_NON_EXITED_THREADS with all_non_exited_threads.
+	* infrun.c (follow_exec): Use all_threads_safe.
+	(clear_proceed_status, proceed): Use all_non_exited_threads.
+	(init_wait_for_inferior): Don't clear inline frame state here.
+	(infrun_thread_stop_requested, for_each_just_stopped_thread): Use
+	all_threads instead of ALL_NON_EXITED_THREADS.
+	(random_pending_event_thread): Use all_non_exited_threads instead
+	of ALL_NON_EXITED_THREADS.  Use a lambda for repeated code.
+	(clean_up_just_stopped_threads_fsms): Use all_non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	(handle_no_resumed): Use all_non_exited_threads instead of
+	ALL_NON_EXITED_THREADS.  Use all_inferiors instead of
+	ALL_INFERIORS.
+	(restart_threads, switch_back_to_stepped_thread): Use
+	all_non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	* linux-nat.c (check_zombie_leaders): Replace ALL_INFERIORS with
+	all_inferiors.
+	(kill_unfollowed_fork_children): Use inf->non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	* linux-tdep.c (linux_make_corefile_notes): Use
+	inf->non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	* linux-thread-db.c (thread_db_target::update_thread_list):
+	Replace ALL_INFERIORS with all_inferiors.
+	(thread_db_target::thread_handle_to_thread_info): Use
+	inf->non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	* mi/mi-interp.c (multiple_inferiors_p): New.
+	(mi_on_resume_1): Simplify using all_non_exited_threads and
+	multiple_inferiors_p.
+	* mi/mi-main.c (mi_cmd_thread_list_ids): Use all_non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	* nto-procfs.c (nto_procfs_target::open): Don't call
+	init_thread_list here.
+	* record-btrace.c (record_btrace_target_open)
+	(record_btrace_target::stop_recording)
+	(record_btrace_target::close)
+	(record_btrace_target::record_is_replaying)
+	(record_btrace_target::resume, record_btrace_target::wait)
+	(record_btrace_target::record_stop_replaying): Use
+	all_non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	* record-full.c (record_full_wait_1): Use all_non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	* regcache.c (cooked_read_test): Remove reference to global
+	thread_list.
+	* remote-sim.c (gdbsim_target::create_inferior): Don't call
+	init_thread_list here.
+	* remote.c (remote_target::update_thread_list): Use
+	all_threads_safe instead of ALL_NON_EXITED_THREADS.
+	(remote_target::process_initial_stop_replies): Replace
+	ALL_INFERIORS with all_non_exited_inferiors and use
+	all_non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	(remote_target::open_1): Don't call init_thread_list here.
+	(remote_target::append_pending_thread_resumptions)
+	(remote_target::remote_resume_with_hc): Use all_non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	(remote_target::commit_resume)
+	(remote_target::remove_new_fork_children): Replace ALL_INFERIORS
+	with all_non_exited_inferiors and use all_non_exited_threads
+	instead of ALL_NON_EXITED_THREADS.
+	(remote_target::kill_new_fork_children): Use
+	all_non_exited_threads instead of ALL_NON_EXITED_THREADS.  Remove
+	init_thread_list and init_wait_for_inferior calls.
+	(remote_target::remote_btrace_maybe_reopen)
+	(remote_target::thread_handle_to_thread_info): Use
+	all_non_exited_threads instead of ALL_NON_EXITED_THREADS.
+	* target.c (target_terminal::restore_inferior)
+	(target_terminal_is_ours_kind): Replace ALL_INFERIORS with
+	all_non_exited_inferiors.
+	* thread-iter.c: New file.
+	* thread-iter.h: New file.
+	* thread.c: Include "inline-frame.h".
+	(thread_list): Delete.
+	(clear_thread_inferior_resources): Call clear_inline_frame_state.
+	(init_thread_list): Use all_threads_safe instead of
+	ALL_THREADS_SAFE.  Adjust to per-inferior thread lists.
+	(new_thread): Adjust to per-inferior thread lists.
+	(add_thread_silent): Pass inferior to find_thread_ptid.
+	(thread_info::deletable): New, moved from the header.
+	(delete_thread_1): Adjust to per-inferior thread lists.
+	(find_thread_global_id): Use inf->threads().
+	(find_thread_ptid): Use find_inferior_ptid and pass inferior to
+	find_thread_ptid.
+	(find_thread_ptid(inferior*, ptid_t)): New overload.
+	(iterate_over_threads): Use all_threads_safe.
+	(any_thread_p): New.
+	(thread_count): Use all_threads and std::distance.
+	(live_threads_count): Use all_non_exited_threads and
+	std::distance.
+	(valid_global_thread_id): Use all_threads.
+	(in_thread_list): Use find_thread_ptid.
+	(first_thread_of_inferior): Adjust to per-inferior thread lists.
+	(any_thread_of_inferior, any_live_thread_of_inferior): Use
+	inf->non_exited_threads().
+	(prune_threads, delete_exited_threads): Use all_threads_safe.
+	(thread_change_ptid): Pass inferior pointer to find_thread_ptid.
+	(set_resumed, set_running): Use all_non_exited_threads.
+	(is_thread_state, is_stopped, is_exited, is_running)
+	(is_executing): Delete.
+	(set_executing, set_stop_requested, finish_thread_state): Use
+	all_non_exited_threads.
+	(print_thread_info_1): Use all_inferiors and all_threads.
+	(thread_apply_all_command): Use all_non_exited_threads.
+	(thread_find_command): Use all_threads.
+	(update_threads_executing): Use all_non_exited_threads.
+	* tid-parse.c (parse_thread_id): Use inf->threads.
+	* x86-bsd-nat.c (x86bsd_dr_set): Use inf->non_exited_threads ().
+
+2018-11-22  Pedro Alves  <palves@redhat.com>
+
+	* infrun.c (follow_exec) <set follow-exec new>: Add thread and
+	switch to it before calling into try_open_exec_file.
+
+2018-11-22  Pedro Alves  <palves@redhat.com>
+
+	* cli/cli-interp.c (cli_on_user_selected_context_changed): Use
+	inferior_thread instead of find_thread_ptid, and only when
+	inferior_ptid is not null_ptid.
+	* inferior.c (add_inferior): Don't include target_pid_to_str
+	output when the inferior is not started.
+	* python/py-inferior.c (python_on_normal_stop): Don't use
+	find_thread_ptid.
+	(tui_on_user_selected_context_changed): Use inferior_thread
+	instead of find_thread_ptid, and only when inferior_ptid is not
+	null_ptid.
+
+2018-11-21  Benno Fünfstück  <benno.fuenfstueck@gmail.com>
+
+	PR python/23714
+	* gdb/python/python.c (execute_gdb_command): Call
+	prevent_dont_repeat earlier to avoid affecting dont_repeat.
+
+2018-11-21  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* Makefile.in (ALL_TARGET_OBS): Add arch/riscv.o.
+	(HFILES_NO_SRCDIR): Add arch/riscv.h.
+	* arch/riscv.c: New file.
+	* arch/riscv.h: New file.
+	* configure.tgt: Add cpu_obs list of riscv, move riscv-tdep.o into
+	this list, and add arch/riscv.o.
+	* features/Makefile: Add riscv features.
+	* features/riscv/32bit-cpu.c: New file.
+	* features/riscv/32bit-cpu.xml: New file.
+	* features/riscv/32bit-csr.c: New file.
+	* features/riscv/32bit-csr.xml: New file.
+	* features/riscv/32bit-fpu.c: New file.
+	* features/riscv/32bit-fpu.xml: New file.
+	* features/riscv/64bit-cpu.c: New file.
+	* features/riscv/64bit-cpu.xml: New file.
+	* features/riscv/64bit-csr.c: New file.
+	* features/riscv/64bit-csr.xml: New file.
+	* features/riscv/64bit-fpu.c: New file.
+	* features/riscv/64bit-fpu.xml: New file.
+	* features/riscv/rebuild-csr-xml.sh: New file.
+	* riscv-tdep.c: Add 'arch/riscv.h' include.
+	(riscv_gdb_reg_names): Delete.
+	(csr_reggroup): New global.
+	(struct riscv_register_alias): Delete.
+	(struct riscv_register_feature): New structure.
+	(riscv_register_aliases): Delete.
+	(riscv_xreg_feature): New global.
+	(riscv_freg_feature): New global.
+	(riscv_virtual_feature): New global.
+	(riscv_csr_feature): New global.
+	(riscv_create_csr_aliases): New function.
+	(riscv_read_misa_reg): Delete.
+	(riscv_has_feature): Delete.
+	(riscv_isa_xlen): Simplify, just return cached xlen.
+	(riscv_isa_flen): Simplify, just return cached flen.
+	(riscv_has_fp_abi): Update for changes in struct gdbarch_tdep.
+	(riscv_register_name): Update to make use of tdesc_register_name.
+	Look up xreg and freg names in the new globals riscv_xreg_feature
+	and riscv_freg_feature.  Don't supply csr aliases here.
+	(riscv_fpreg_q_type): Delete.
+	(riscv_register_type): Use tdesc_register_type in almost all
+	cases, override the returned type in a few specific cases only.
+	(riscv_print_one_register_info): Handle errors reading registers.
+	(riscv_register_reggroup_p): Use tdesc_register_in_reggroup_p for
+	registers that are otherwise unknown to GDB.  Also check the
+	csr_reggroup.
+	(riscv_print_registers_info): Remove assert about upper register
+	number, and use gdbarch_register_reggroup_p instead of
+	short-cutting.
+	(riscv_find_default_target_description): New function.
+	(riscv_check_tdesc_feature): New function.
+	(riscv_add_reggroups): New function.
+	(riscv_setup_register_aliases): New function.
+	(riscv_init_reggroups): New function.
+	(_initialize_riscv_tdep): Add calls to setup CSR aliases, and
+	setup register groups.  Register new riscv debug variable.
+	* riscv-tdep.h: Add 'arch/riscv.h' include.
+	(struct gdbarch_tdep): Remove abi union, and add
+	riscv_gdbarch_features field.  Remove cached quad floating point
+	type, and provide initialisation for double type field.
+	* target-descriptions.c (maint_print_c_tdesc_cmd): Add riscv to
+	the list of targets using the feature based target descriptions.
+	* NEWS: Mention target description support.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* valops.c (find_method_list, value_find_oload_method_list)
+	(find_overload_match, find_oload_champ): Rename parameters and
+	locals.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* valops.c (find_method_list): Replace pointer and length
+	parameters with an gdb::array_view.  Adjust.
+	(value_find_oload_method_list): Likewise.
+	(find_overload_match): Use gdb::array_view for methods list.
+	Adjust to find_oload_champ interface change.
+	(find_oload_champ): 'xm_worker_vec' parameter now a pointer/array.
+	'num_fns' parameter now a size_t.  Eliminate 'fn_count' local.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* gdbtypes.c (compare_badness): Change type of parameters to const
+	reference.  Adjust to badness_vector being a std::vector now.
+	(rank_function): Adjust to badness_vector being a std::vector now.
+	* gdbtypes.h (badness_vector): Now a typedef to std::vector.
+	(LENGTH_MATCH): Delete.
+	(compare_badness): Change type of parameters to const reference.
+	(rank_function): Return a badness_vector by value now.
+	(find_overload_match): Adjust to badness_vector being a
+	std::vector now.  Remove cleanups.
+	(find_oload_champ_namespace): 'oload_champ_bv' parameter now a
+	badness_vector pointer.
+	(find_oload_champ_namespace_loop): 'oload_champ_bv' parameter now
+	a badness_vector pointer.  Adjust to badness_vector being a
+	std::vector now.  Remove cleanups.
+	(find_oload_champ): 'oload_champ_bv' parameter now
+	a badness_vector pointer.  Adjust to badness_vector being a
+	std::vector now.  Remove cleanups.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* cp-support.c (sym_return_val_size, sym_return_val_index)
+	(sym_return_val): Delete.
+	(overload_list_add_symbol): Add std::vector parameter.  Adjust to
+	add to the vector.
+	(make_symbol_overload_list): Adjust to return a std::vector
+	instead of maintaining a global open coded vector.
+	(make_symbol_overload_list_block): Add std::vector parameter.
+	(make_symbol_overload_list_block): Rename to ...
+	(add_symbol_overload_list_block): ... this and add std::vector
+	parameter.
+	(make_symbol_overload_list_namespace): Rename to ...
+	(add_symbol_overload_list_namespace): ... this and add std::vector
+	parameter.
+	(make_symbol_overload_list_adl_namespace): Rename to ...
+	(add_symbol_overload_list_adl_namespace): ... this and add
+	std::vector parameter.
+	(make_symbol_overload_list_adl): Delete.
+	(add_symbol_overload_list_adl): New.
+	(make_symbol_overload_list_using): Rename to ...
+	(add_symbol_overload_list_using): ... this and add std::vector
+	parameter.
+	(make_symbol_overload_list_qualified): Rename to ...
+	(add_symbol_overload_list_qualified): ... this and add std::vector
+	parameter.
+	* cp-support.h: Include "common/array-view.h" and <vector>.
+	(make_symbol_overload_list): Change return type to std::vector.
+	(make_symbol_overload_list_adl): Delete declaration.
+	(add_symbol_overload_list_adl): New declaration.
+	* valops.c (find_overload_match): Local 'oload_syms' now a
+	std::vector.
+	(find_oload_champ_namespace): 'oload_syms' parameter now a
+	std::vector pointer.
+	(find_oload_champ_namespace_loop): 'oload_syms' parameter now a
+	std::vector pointer.  Adjust to new make_symbol_overload_list
+	interface.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* common/array-view.h (array_view::splice(size_type, size_t)): New.
+	(array_view::splice(size_type)): New.
+	* eval.c (eval_call, evaluate_funcall): Adjust to use array_view.
+	* extension.c (xmethod_worker::get_arg_types): Adjust to return an
+	std::vector.
+	(xmethod_worker::get_result_type): Adjust to use gdb::array_view.
+	* extension.h: Include "common/array-view.h".
+	(xmethod_worker::invoke): Adjust to use gdb::array_view.
+	(xmethod_worker::get_arg_types): Adjust to return an std::vector.
+	(xmethod_worker::get_result_type): Adjust to use gdb::array_view.
+	(xmethod_worker::do_get_arg_types): Adjust to use std::vector.
+	(xmethod_worker::do_get_result_type): Adjust to use
+	gdb::array_view.
+	* gdbtypes.c (rank_function): Adjust to use gdb::array_view.
+	* gdbtypes.h: Include "common/array-view.h".
+	(rank_function): Adjust to use gdb::array_view.
+	* python/py-xmethods.c (python_xmethod_worker::invoke)
+	(python_xmethod_worker::do_get_arg_types)
+	(python_xmethod_worker::do_get_result_type)
+	(python_xmethod_worker::invoke): Adjust to new interfaces.
+	* valarith.c (value_user_defined_cpp_op, value_user_defined_op)
+	(value_x_binop, value_x_unop): Adjust to use gdb::array_view.
+	* valops.c (find_overload_match, find_oload_champ_namespace)
+	(find_oload_champ_namespace_loop, find_oload_champ): Adjust to use
+	gdb:array_view and the new xmethod_worker interfaces.
+	* value.c (result_type_of_xmethod, call_xmethod): Adjust to use
+	gdb::array_view.
+	* value.h (find_overload_match, result_type_of_xmethod)
+	(call_xmethod): Adjust to use gdb::array_view.
+	* unittests/array-view-selftests.c: Add slicing tests.
+
+2018-11-21  Pedro Alves  <palves@redhat.com>
+
+	* ada-lang.c (ada_evaluate_subexp): Adjust to pass an array_view.
+	* common/array-view.h (make_array_view): New.
+	* compile/compile-object-run.c (compile_object_run): Adjust to
+	pass an array_view.
+	* elfread.c (elf_gnu_ifunc_resolve_addr): Adjust.
+	* eval.c (eval_call): Adjust to pass an array_view.
+	(evaluate_subexp_standard): Adjust to pass an array_view.
+	* gcore.c (call_target_sbrk): Adjust to pass an array_view.
+	* guile/scm-value.c (gdbscm_value_call): Likewise.
+	* infcall.c (push_dummy_code): Replace pointer + size parameters
+	with an array_view parameter.
+	(call_function_by_hand, call_function_by_hand_dummy): Likewise and
+	adjust.
+	* infcall.h: Include "common/array-view.h".
+	(call_function_by_hand, call_function_by_hand_dummy): Replace
+	pointer + size parameters with an array_view parameter.
+	* linux-fork.c (inferior_call_waitpid): Adjust to use array_view.
+	* linux-tdep.c (linux_infcall_mmap): Likewise.
+	* objc-lang.c (lookup_objc_class, lookup_child_selector)
+	(value_nsstring, print_object_command): Likewise.
+	* python/py-value.c (valpy_call): Likewise.
+	* rust-lang.c (rust_evaluate_funcall): Likewise.
+	* spu-tdep.c (flush_ea_cache): Likewise.
+	* valarith.c (value_x_binop, value_x_unop): Likewise.
+	* valops.c (value_allocate_space_in_inferior): Likewise.
+	* unittests/array-view-selftests.c (run_tests): Add
+	gdb::make_array_view test.
+
+2018-11-20  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* cli-out.c (cli_ui_out::do_field_int): Use string_printf rather
+	than a fixed size buffer.
+
+2018-11-20  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* breakpoint.c (print_one_breakpoint_location): Reduce whitespace,
+	and remove insertion of extra spaces in GDB's output.
+	* cli-out.c (cli_ui_out::do_field_fmt): Update header comment.
+	Layout field into a temporary buffer, and then output it as a
+	string field.
+
+2018-11-20  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* NEWS: Document the language choice done by
+	'info [types|functions|variables]|rbreak'.
+
+2018-11-20  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* symtab.c (treg_matches_sym_type_name): Use
+	scoped_switch_to_sym_language_if_auto instead of local logic.
+	(print_symbol_info): Use scoped_switch_to_sym_language_if_auto
+	to switch to SYM language when language mode is auto.
+
+2018-11-20  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* language.h (scoped_switch_to_sym_language_if_auto): New class.
+
+2018-11-20  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* symtab.c (search_symbols): Properly check absence of type regexp
+	before entering the loop scanning the minimal symbols.
+
+2018-11-20  John Darrington  <john@darrington.wattle.id.au>
+
+	* s12z-tdep.c (s12z_extract_return_value): New function.
+	(inv_reg_perm) New array.
+	(s12z_return_value): Populate readbuf if non-null.
+
+2018-11-20  Eli Zaretskii  <eliz@gnu.org>
+
+	* common/filestuff.c (gdb_fopen_cloexec): Disable use of "e" mode
+	with 'fopen' also if O_CLOEXEC is equal to O_NOINHERIT, to cater
+	to MinGW fixed by Gnulib.
+	(O_NOINHERIT): Define if not defined.
+
+2018-11-19  John Darrington  <john@darrington.wattle.id.au>
+
+	* s12z-tdep.c (s12z_frame_cache): Add an assertion.
+
+2018-11-19  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	* infrun.c (displaced_step_inferior_state) <next>: Remove.
+
+2018-11-19  Tom Tromey  <tom@tromey.com>
+
+	* source.c (get_filename_and_charpos): Return void.
+
+2018-11-19  Simon Marchi  <simon.marchi@polymtl.ca>
+
+	* skip.c (_initialize_step_skip): Fix "info skip" help.
+
+2018-11-16  Tom Tromey  <tom@tromey.com>
+
+	PR rust/23625:
+	* rust-lang.c (rust_internal_print_type): Handle TYPE_CODE_PTR.
+
+2018-11-19  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* infrun.c (displaced_step_inferior_states): Change type to
+	std::forward_list.
+	(get_displaced_stepping_state): Adjust.
+	(displaced_step_in_progress_any_inferior): Adjust.
+	(add_displaced_stepping_state): Adjust.
+	(remove_displaced_stepping_state): Adjust.
+
+2018-11-18  Tom Tromey  <tom@tromey.com>
+
+	PR build/23814:
+	* target-delegates.c: Rebuild.
+	* ia64-linux-nat.c (class ia64_linux_nat_target)
+	<have_steppable_watchpoint>: Use override.  Return true, not 1.
+	(ia64_linux_nat_target::can_use_hw_breakpoint): Rename.  Remove
+	"self" argument.
+	(ia64_linux_nat_target::low_new_thread): Rename.
+	(class ia64_linux_nat_target) <read_description>: Don't declare.
+	* target.h (struct target_ops) <have_steppable_watchpoint>: Return
+	bool.
+
 2018-11-16  Alan Hayward  <alan.hayward@arm.com>
 
 	PR gdb/22736:
@@ -956,6 +1446,12 @@
 	(riscv_is_regnum_a_named_csr): New function.
 	(riscv_register_reggroup_p): Use riscv_is_regnum_a_named_csr.
 
+2018-10-23  John Darrington  <john@darrington.wattle.id.au>
+
+	* configure.tgt: Add configuration for s12z.
+	* s12z-tdep.c:  New file.
+	* NEWS: Mention new target.
+
 2018-10-22  Jim Wilson  <jimw@sifive.com>
 
 	* riscv-tdep.c (riscv_push_dummy_call) <in_reg>: Check for value in
@@ -1213,14 +1709,14 @@
 	(value_struct_elt_for_reference): Use it to get virtual base offset
 	and add it in calculating class member address.
 
-2018-10-08   John Darrington <john@darrington.wattle.id.au>
+2018-10-08  John Darrington  <john@darrington.wattle.id.au>
 
-    * dwarf2read.c (dwarf2_cu) <producer_is_codewarrior>: New field.
-      (check_producer): Check if the producer is codewarrior.
-      (producer_is_codewarrior): New function.
-      (lnp_state_machine::record_line): Ignore is_stmt flag for records
-       produced by codewarrior.
-      (dwarf2_cu::dwarf2_cu): Initialize producer_is_codewarrior.
+	* dwarf2read.c (dwarf2_cu) <producer_is_codewarrior>: New field.
+	(check_producer): Check if the producer is codewarrior.
+	(producer_is_codewarrior): New function.
+	(lnp_state_machine::record_line): Ignore is_stmt flag for records
+	produced by codewarrior.
+	(dwarf2_cu::dwarf2_cu): Initialize producer_is_codewarrior.
 
 2018-10-06  Tom Tromey  <tom@tromey.com>
 
@@ -1621,7 +2117,7 @@
 
 	* aarch64-linux-tdep.c (aarch64_linux_sigframe_init): Use pulongest.
 
-2018-10-02  John Darrington <john@darrington.wattle.id.au>
+2018-10-02  John Darrington  <john@darrington.wattle.id.au>
 
 	* NEWS: Mention changed commands.
 	* ser-uds.c: New file.
@@ -1629,7 +2125,7 @@
 	* configure: Regenerate.
 	* Makefile.in: Add new file.
 	* serial.c (serial_open): Check if filename is a socket
-	  and lookup the appropriate interface accordingly.
+	and lookup the appropriate interface accordingly.
 
 2018-10-01  Alan Hayward  <alan.hayward@arm.com>
 
@@ -4185,14 +4681,16 @@
 	* mips-fbsd-tdep.c (mips_fbsd_iterate_over_regset_sections): Likewise.
 	* mips-linux-tdep.c (mips_linux_iterate_over_regset_sections): Likewise.
 	* mips-nbsd-tdep.c (mipsnbsd_iterate_over_regset_sections): Likewise.
-	* mips64-obsd-tdep.c (mips64obsd_iterate_over_regset_sections): Likewise.
+	* mips64-obsd-tdep.c (mips64obsd_iterate_over_regset_sections):
+	Likewise.
 	* mn10300-linux-tdep.c (am33_iterate_over_regset_sections): Likewise.
 	* nios2-linux-tdep.c (nios2_iterate_over_regset_sections): Likewise.
 	* ppc-fbsd-tdep.c (ppcfbsd_iterate_over_regset_sections): Likewise.
 	* ppc-linux-tdep.c (ppc_linux_iterate_over_regset_sections): Likewise.
 	* ppc-nbsd-tdep.c (ppcnbsd_iterate_over_regset_sections): Likewise.
 	* ppc-obsd-tdep.c (ppcobsd_iterate_over_regset_sections): Likewise.
-	* riscv-linux-tdep.c (riscv_linux_iterate_over_regset_sections): Likewise.
+	* riscv-linux-tdep.c (riscv_linux_iterate_over_regset_sections):
+	Likewise.
 	* rs6000-aix-tdep.c (rs6000_aix_iterate_over_regset_sections): Likewise.
 	* s390-linux-tdep.c (s390_iterate_over_regset_sections): Likewise.
 	* score-tdep.c (score7_linux_iterate_over_regset_sections): Likewise.
@@ -4597,8 +5095,8 @@
 2018-08-02  Xavier Roirand  <roirand@adacore.com>
 
 	PR gdb/22629:
-        * darwin-nat.c (darwin_kill_inferior): Fix handling of
-        kill inferior.
+	* darwin-nat.c (darwin_kill_inferior): Fix handling of
+	kill inferior.
 
 2018-08-02  Tom Tromey  <tom@tromey.com>
 
@@ -6563,7 +7061,8 @@
 2018-06-27  Omair Javaid  <omair.javaid@linaro.org>
 
 	PR gdb/21695
-	* dwarf2read.c (lnp_state_machine::check_line_address): Update declaration.
+	* dwarf2read.c (lnp_state_machine::check_line_address): Update
+	declaration.
 	(dwarf_decode_lines_1): Adjust.
 
 2018-06-27  Simon Marchi  <simon.marchi@ericsson.com>
@@ -6965,13 +7464,13 @@
 
 2018-06-21  Alan Hayward  <alan.hayward@arm.com>
 
-        * regcache.c (readable_regcache::read_part): Avoid memcpy when
-        possible.
-        (regcache::write_part): Likewise.
-        (readable_regcache::cooked_read_part): Update comment.
-        (readable_regcache::cooked_write_part): Likewise.
-        * regcache.h: (readable_regcache::read_part): Likewise.
-        (regcache::write_part): Likewise.
+	* regcache.c (readable_regcache::read_part): Avoid memcpy when
+	possible.
+	(regcache::write_part): Likewise.
+	(readable_regcache::cooked_read_part): Update comment.
+	(readable_regcache::cooked_write_part): Likewise.
+	* regcache.h: (readable_regcache::read_part): Likewise.
+	(regcache::write_part): Likewise.
 
 2018-06-21  Richard Bunt  <richard.bunt@arm.com>
 	    Dirk Schubert  <dirk.schubert@arm.com>
@@ -7267,7 +7766,7 @@
 
 2018-06-11  John David Anglin  <danglin@gcc.gnu.org>
 
-	* gdb/hppa-linux-nat.c
+	* hppa-linux-nat.c
 	(hppa_linux_nat_target::fetch_inferior_registers): Rename to
 	hppa_linux_nat_target::fetch_registers.
 
