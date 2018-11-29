@@ -32,6 +32,10 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+/* For strchr.  */
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
 #include "bfd.h"
 
   typedef int (*fprintf_ftype) (void *, const char*, ...) ATTRIBUTE_FPTR_PRINTF_2;
