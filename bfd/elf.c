@@ -1177,11 +1177,12 @@ _bfd_elf_make_section_from_shdr (bfd *abfd,
       enum { nothing, compress, decompress } action = nothing;
       int compression_header_size;
       bfd_size_type uncompressed_size;
+      unsigned int uncompressed_align_power;
       bfd_boolean compressed
 	= bfd_is_section_compressed_with_header (abfd, newsect,
 						 &compression_header_size,
-						 &uncompressed_size);
-
+						 &uncompressed_size,
+						 &uncompressed_align_power);
       if (compressed)
 	{
 	  /* Compressed section.  Check if we should decompress.  */
@@ -6643,6 +6644,7 @@ rewrite_elf_program_header (bfd *ibfd, bfd *obfd)
      the given segment.  LMA addresses are compared.  */
 #define IS_CONTAINED_BY_LMA(section, segment, base)			\
   (section->lma >= base							\
+   && (section->lma + SECTION_SIZE (section, segment) >= section->lma)	\
    && (section->lma + SECTION_SIZE (section, segment)			\
        <= SEGMENT_END (segment, base)))
 
@@ -7166,7 +7168,15 @@ rewrite_elf_program_header (bfd *ibfd, bfd *obfd)
 		suggested_lma = output_section;
 	    }
 
-	  BFD_ASSERT (map->count > 0);
+	  /* PR 23932.  A corrupt input file may contain sections that cannot
+	     be assigned to any segment - because for example they have a
+	     negative size - or segments that do not contain any sections.  */
+	  if (map->count == 0)
+	    {
+	      bfd_set_error (bfd_error_bad_value);
+	      free (sections);
+	      return FALSE;
+	    }
 
 	  /* Add the current segment to the list of built segments.  */
 	  *pointer_to_map = map;

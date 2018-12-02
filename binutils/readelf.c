@@ -7597,14 +7597,14 @@ slurp_ia64_unwind_table (Filedata *                  filedata,
 
       for (rp = rela; rp < rela + nrelas; ++rp)
 	{
-	  relname = elf_ia64_reloc_type (get_reloc_type (filedata, rp->r_info));
-	  sym = aux->symtab + get_reloc_symindex (rp->r_info);
+	  unsigned int sym_ndx;
+	  unsigned int r_type = get_reloc_type (filedata, rp->r_info);
+	  relname = elf_ia64_reloc_type (r_type);
 
 	  /* PR 17531: file: 9fa67536.  */
 	  if (relname == NULL)
 	    {
-	      warn (_("Skipping unknown relocation type: %u\n"),
-		    get_reloc_type (filedata, rp->r_info));
+	      warn (_("Skipping unknown relocation type: %u\n"), r_type);
 	      continue;
 	    }
 
@@ -7622,6 +7622,15 @@ slurp_ia64_unwind_table (Filedata *                  filedata,
 	      warn (_("Skipping reloc with overlarge offset: %lx\n"), i);
 	      continue;
 	    }
+
+	  sym_ndx = get_reloc_symindex (rp->r_info);
+	  if (sym_ndx >= aux->nsyms)
+	    {
+	      warn (_("Skipping reloc with invalid symbol index: %u\n"),
+		    sym_ndx);
+	      continue;
+	    }
+	  sym = aux->symtab + sym_ndx;
 
 	  switch (rp->r_offset / eh_addr_size % 3)
 	    {
@@ -8053,17 +8062,38 @@ slurp_hppa_unwind_table (Filedata *                  filedata,
 
       for (rp = rela; rp < rela + nrelas; ++rp)
 	{
-	  relname = elf_hppa_reloc_type (get_reloc_type (filedata, rp->r_info));
-	  sym = aux->symtab + get_reloc_symindex (rp->r_info);
+	  unsigned int sym_ndx;
+	  unsigned int r_type = get_reloc_type (filedata, rp->r_info);
+	  relname = elf_hppa_reloc_type (r_type);
+
+	  if (relname == NULL)
+	    {
+	      warn (_("Skipping unknown relocation type: %u\n"), r_type);
+	      continue;
+	    }
 
 	  /* R_PARISC_SEGREL32 or R_PARISC_SEGREL64.  */
 	  if (! const_strneq (relname, "R_PARISC_SEGREL"))
 	    {
-	      warn (_("Skipping unexpected relocation type %s\n"), relname);
+	      warn (_("Skipping unexpected relocation type: %s\n"), relname);
 	      continue;
 	    }
 
 	  i = rp->r_offset / unw_ent_size;
+	  if (i >= aux->table_len)
+	    {
+	      warn (_("Skipping reloc with overlarge offset: %lx\n"), i);
+	      continue;
+	    }
+
+	  sym_ndx = get_reloc_symindex (rp->r_info);
+	  if (sym_ndx >= aux->nsyms)
+	    {
+	      warn (_("Skipping reloc with invalid symbol index: %u\n"),
+		    sym_ndx);
+	      continue;
+	    }
+	  sym = aux->symtab + sym_ndx;
 
 	  switch ((rp->r_offset % unw_ent_size) / 4)
 	    {
@@ -13397,12 +13427,6 @@ dump_section_as_strings (Elf_Internal_Shdr * section, Filedata * filedata)
 		    printable_section_name (filedata, section), chdr.ch_type);
 	      return FALSE;
 	    }
-	  else if (chdr.ch_addralign != section->sh_addralign)
-	    {
-	      warn (_("compressed section '%s' is corrupted\n"),
-		    printable_section_name (filedata, section));
-	      return FALSE;
-	    }
 	  uncompressed_size = chdr.ch_size;
 	  start += compression_header_size;
 	  new_size -= compression_header_size;
@@ -13542,12 +13566,6 @@ dump_section_as_bytes (Elf_Internal_Shdr *  section,
 	    {
 	      warn (_("section '%s' has unsupported compress type: %d\n"),
 		    printable_section_name (filedata, section), chdr.ch_type);
-	      return FALSE;
-	    }
-	  else if (chdr.ch_addralign != section->sh_addralign)
-	    {
-	      warn (_("compressed section '%s' is corrupted\n"),
-		    printable_section_name (filedata, section));
 	      return FALSE;
 	    }
 	  uncompressed_size = chdr.ch_size;
@@ -13717,12 +13735,6 @@ load_specific_debug_section (enum dwarf_section_display_enum  debug,
 	    {
 	      warn (_("section '%s' has unsupported compress type: %d\n"),
 		    section->name, chdr.ch_type);
-	      return FALSE;
-	    }
-	  else if (chdr.ch_addralign != sec->sh_addralign)
-	    {
-	      warn (_("compressed section '%s' is corrupted\n"),
-		    section->name);
 	      return FALSE;
 	    }
 	  uncompressed_size = chdr.ch_size;

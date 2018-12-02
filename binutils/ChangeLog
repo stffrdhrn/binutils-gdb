@@ -1,3 +1,35 @@
+2018-12-01  Alan Modra  <amodra@gmail.com>
+
+	PR 23946
+	* readelf.c (slurp_ia64_unwind_table): Bounds check symbol index
+	on reloc.
+	(slurp_hppa_unwind_table): Likewise.
+
+2018-12-01  Alan Modra  <amodra@gmail.com>
+
+	PR 23945
+	* readelf.c (slurp_ia64_unwind_table): Don't call elf_ia64_reloc_type
+	needlessly.
+	(slurp_hppa_unwind_table): Use same range checks and error messages
+	as slurp_ia64_unwind_table.
+
+2018-11-29  Nick Clifton  <nickc@redhat.com>
+
+	PR 23931
+	* objdump.c (dump_relocs_in_section): When checking for an
+	unreasonable amount of relocs in a bfd, allow for the fact that
+	the internal representation of a reloc may be bigger than the
+	external representation.
+
+2018-11-27  Mark Wielaard  <mark@klomp.org>
+
+	PR binutils/23919
+	* readelf.c (dump_sections_as_strings): Remove bogus addralign check.
+	(dump_sections_as_bytes): Likewise.
+	(load_specific_debug_sections): Likewise.
+	* testsuite/binutils-all/dw2-3.rS: Adjust alignment.
+	* testsuite/binutils-all/dw2-3.rt: Likewise.
+
 2018-11-20  H.J. Lu  <hongjiu.lu@intel.com>
 
 	PR binutils/23898

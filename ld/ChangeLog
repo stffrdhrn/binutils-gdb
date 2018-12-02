@@ -1,3 +1,65 @@
+2018-12-01  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/23930
+	* testsuite/ld-i386/i386.exp: Run pr23930.
+	* testsuite/ld-i386/pr23930.d: New file.
+	* testsuite/ld-x86-64/pr23930-32.t: Likewise.
+	* testsuite/ld-x86-64/pr23930-x32.d: Likewise.
+	* testsuite/ld-x86-64/pr23930.d: Likewise.
+	* testsuite/ld-x86-64/pr23930.t: Likewise.
+	* testsuite/ld-x86-64/pr23930a.s: Likewise.
+	* testsuite/ld-x86-64/pr23930b.s: Likewise.
+	* testsuite/ld-x86-64/x86-64.exp: Run pr23930 and pr23930-x32.
+---
+2018-11-30  Alan Modra  <amodra@gmail.com>
+
+	* testsuite/ld-powerpc/pr23937.d,
+	* testsuite/ld-powerpc/pr23937.s: New test.
+	* testsuite/ld-powerpc/powerpc.exp: Run it.
+
+2018-11-29  Thomas Preud'homme  <thomas.preudhomme@linaro.org>
+
+	* ldlang.c (statement_list): Document purpose and what next field it
+	uses.
+	(file_chain): Likewise.
+	(input_file_chain): Likewise.
+	* ldlang.h (lang_statement_header_type): Document statement list header
+	the next pointer correspond to.
+	(lang_statement_header_type): Replace comment for next and
+	next_real_file field to refer the reader to their corresponding
+	statement list header.
+
+2018-11-27  Maciej W. Rozycki  <macro@linux-mips.org>
+
+	* testsuite/ld-mips-elf/pic-reloc-0.d: New test.
+	* testsuite/ld-mips-elf/pic-reloc-1.d: New test.
+	* testsuite/ld-mips-elf/pic-reloc-2.d: New test.
+	* testsuite/ld-mips-elf/pic-reloc-3.d: New test.
+	* testsuite/ld-mips-elf/pic-reloc-4.d: New test.
+	* testsuite/ld-mips-elf/pic-reloc-absolute-hi.ld: New test
+	linker script.
+	* testsuite/ld-mips-elf/pic-reloc-absolute-lo.ld: New test
+	linker script.
+	* testsuite/ld-mips-elf/pic-reloc-ordinary.ld: New test linker
+	script.
+	* testsuite/ld-mips-elf/pic-reloc-j.s: New test source.
+	* testsuite/ld-mips-elf/pic-reloc-lui.s: New test source.
+	* testsuite/ld-mips-elf/mips-elf.exp: Run the new tests.
+
+2018-11-27  Maciej W. Rozycki  <macro@linux-mips.org>
+
+	* ldmain.c (reloc_overflow): Use `%H:' rather than `%P: %H:'
+	with `einfo'.
+	(reloc_dangerous): Likewise.
+	(unattached_reloc): Likewise.
+
+2018-11-27  Tamar Christina  <tamar.christina@arm.com>
+
+	PR ld/23904
+	* testsuite/ld-aarch64/aarch64-elf.exp: Add erratum843419_tls_ie.
+	* testsuite/ld-aarch64/erratum843419_tls_ie.d: New test.
+	* testsuite/ld-aarch64/erratum843419_tls_ie.s: New test.
+
 2018-11-16  Nick Clifton  <nickc@redhat.com>
 
 	* po/es.po: Updated Spanish translation.
