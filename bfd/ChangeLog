@@ -1,3 +1,74 @@
+2018-12-07  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/23958
+	* elflink.c (_bfd_elf_add_default_symbol): Override the previous
+	definition from IR object.
+
+2018-12-08  Stafford Horne  <shorne@gmail.com>
+
+	* elf32-or1k.c (or1k_grok_prstatus): New function.
+	(or1k_grok_psinfo): Likewise.
+
+2018-12-07  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* elf-properties.c (elf_find_and_remove_property): Add a
+	bfd_boolean argument to indicate if the property should be
+	removed.
+	(elf_merge_gnu_property_list): Updated.  Report
+	property change in linker map file.
+	(elf_get_gnu_property_section_size): Skip property_remove
+	properties.
+	(elf_write_gnu_properties): Likewise.
+	(_bfd_elf_link_setup_gnu_properties): Report property merge
+	in linker map file.  Pass abfd to elf_merge_gnu_property_list.
+
+2018-12-07  Alan Modra  <amodra@gmail.com>
+
+	PR 23952
+	* syms.c (_bfd_generic_read_minisymbols): Free syms before
+	returning with zero symcount.
+
+2018-12-06  Alan Modra  <amodra@gmail.com>
+
+	* elf32-ppc.c (ppc_elf_howto_raw <R_PPC_VLE_ADDR20>): Correct
+	mask and shift value.
+	(ppc_elf_vle_split16): Use E_OPCODE_MASK.  Handle e_li
+	specially.
+
+2018-12-05  Sam Tebbs  <sam.tebbs@arm.com>
+
+	* elf-eh-frame.c (_bfd_elf_parse_eh_frame): Add check for 'B'.
+
+2018-12-04  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR ld/23372
+	* elfxx-x86.c (_bfd_x86_elf_merge_gnu_properties): Don't remove
+	empty properties for GNU_PROPERTY_X86_COMPAT_ISA_1_USED and
+	GNU_PROPERTY_X86_UINT32_OR_AND.
+	(_bfd_x86_elf_link_fixup_gnu_properties): Likewise.
+
+2018-12-03  Kito Cheng  <kito@andestech.com>
+
+	* elfxx-riscv.h (RISCV_DONT_CARE_VERSION): New macro.
+	(struct riscv_subset_t): New structure.
+	(riscv_subset_t): New typedef.
+	(riscv_subset_list_t): New structure.
+	(riscv_release_subset_list): New prototype.
+	(riscv_add_subset): Likewise.
+	(riscv_lookup_subset): Likewise.
+	(riscv_lookup_subset_version): Likewise.
+	(riscv_release_subset_list): Likewise.
+	* elfxx-riscv.c: Include safe-ctype.h.
+	(riscv_parsing_subset_version): New function.
+	(riscv_supported_std_ext): Likewise.
+	(riscv_parse_std_ext): Likewise.
+	(riscv_parse_sv_or_non_std_ext): Likewise.
+	(riscv_parse_subset): Likewise.
+	(riscv_add_subset): Likewise.
+	(riscv_lookup_subset): Likewise.
+	(riscv_lookup_subset_version): Likewise.
+	(riscv_release_subset_list): Likewise.
+
 2018-12-01  H.J. Lu  <hongjiu.lu@intel.com>
 
 	PR ld/23930

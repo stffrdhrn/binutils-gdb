@@ -1,3 +1,46 @@
+2018-12-08  Alan Modra  <amodra@gmail.com>
+
+	PR 21128
+	* testsuite/icf_safe_so_test.sh (check_fold): Rewrite to check
+	multiple symbols at once.
+	(arch_specific_safe_fold): Likewise, and call with the four foo*
+	symbols expected to fold.
+
+2018-12-06  H.J. Lu  <hongjiu.lu@intel.com>
+
+	* archive.cc (Archive::get_elf_object_for_member): Also print
+	archive member and non-ELF/non-IR info on error.
+
+2018-12-05  Alan Modra  <amodra@gmail.com>
+
+	* symtab.h (Symbol::Symbol): Avoid -Wclass-memaccess warning.
+
+2018-12-03  Alexey Neyman  <stilor@att.net>
+
+	PR gold/23594
+	* configure.ac: Add checks for link, mkdtemp.
+	* configure: Regenerate.
+	* config.in: Regenerate.
+	* plugin.cc (Plugin_recorder::init): Fall back to mktemp
+	if mkdtemp is not available.
+	(link_or_copy_file): Fall back to copy if link() is not available.
+
+2018-12-02  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR binutils/23919
+	* merge.cc (Output_merge_string<Char_type>::do_add_input_section):
+	Get addralign from decompressed_section_contents.
+	* object.cc (build_compressed_section_map): Set info.addralign.
+	(Object::decompressed_section_contents): Add a palign
+	argument and store p->second.addralign in *palign if it isn't
+	NULL.
+	* object.h (Compressed_section_info): Add addralign.
+	(section_is_compressed): Add a palign argument, default it
+	to NULL, store p->second.addralign in *palign if it isn't NULL.
+	(Object::decompressed_section_contents): Likewise.
+	* output.cc (Output_section::add_input_section): Get addralign
+	from section_is_compressed.
+
 2018-11-26  Alan Modra  <amodra@gmail.com>
 
 	* testsuite/Makefile.am (justsyms_lib): Link with -z norelro.

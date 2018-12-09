@@ -1,3 +1,67 @@
+2018-12-08  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* linux-thread-db.c (struct thread_db_info): Add td_ta_delete_p.
+	(thread_db_err_str): Forward declare.
+	(delete_thread_db_info): Call td_ta_delete_p if available.
+	(try_thread_db_load_1): Acquire td_ta_delete address.
+	* nat/gdb_thread_db.h (td_ta_delete_ftype): Declare.
+
+2018-12-08  Pedro Alves  <palves@redhat.com>
+
+	* source.c (forward_search_command): Rename to ...
+	(search_command_helper): ... this.  Add 'forward' parameter.
+	Tweak to use a gdb::def_vector<char> instead of a xrealloc'ed
+	buffer.  Handle backward searches too.
+	(forward_search_command, reverse_search_command): Reimplement by
+	calling search_command_helper.
+
+2018-12-07  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* .dir-locals.el: Copy most of the settings from c-mode over to
+	c++-mode.
+
+2018-12-08  Stafford Horne  <shorne@gmail.com>
+
+	* Makefile.in (ALL_TARGET_OBS): Add or1k-linux-tdep.o.
+	* configure.tgt: Add or1k*-*-linux*.
+	* or1k-linux-tdep.c: New file.
+	* or1k-tdep.c (or1k_gdbarch_init): Call gdbarch_init_osabi.
+
+2018-12-07  Pedro Alves  <palves@redhat.com>
+
+	* dwarf2read.c (get_gdb_index_contents_from_section): Use
+	gdb::make_array_view.
+
+2018-12-05  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* language.c (_initialize_language): Fix leak by assigning
+	a static string to language.  Same for range and case_sensitive,
+	even if no leak is detected for these variables.
+
+2018-12-05  John Baldwin  <jhb@FreeBSD.org>
+
+	* configure: Re-generate.
+	* configure.ac: Use separate sed expressions to escape variables
+	in auto-load directories.
+
+2018-12-05  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-tdep.c (riscv_features_from_gdbarch_info): New function.
+	(riscv_find_default_target_description): Use new function to
+	extract feature from gdbarch_info.
+	(riscv_gdbarch_init): Add error checks for xlen and flen between
+	target description and bfd headers.  Be smarter about when we
+	think the hardware floating point abi should be used.
+
+2018-12-05  Alan Hayward  <alan.hayward@arm.com>
+
+	* nat/aarch64-linux-hw-point.c
+	(aarch64_linux_any_set_debug_regs_state): New function.
+	* nat/aarch64-linux-hw-point.h
+	(aarch64_linux_any_set_debug_regs_state): New declaration.
+	* nat/aarch64-linux.c (aarch64_linux_new_thread): Check if any
+	BPs or WPs are set.
+
 2018-11-30  John Baldwin  <jhb@FreeBSD.org>
 
 	* common/filestuff.c [HAVE_KINFO_GETFILE]: Include headers.
