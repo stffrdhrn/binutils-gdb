@@ -431,12 +431,8 @@ JOINSIDI (SI x0, SI x1)
 SEMOPS_INLINE DF
 JOINSIDF (SI x0, SI x1)
 {
-  union { SI in[2]; DF out; } x;
-  if (CURRENT_TARGET_BYTE_ORDER == BFD_ENDIAN_BIG)
-    x.in[0] = x0, x.in[1] = x1;
-  else
-    x.in[1] = x0, x.in[0] = x1;
-  return x.out;
+  /* Making doubles is the same as making long longs.  */
+  return MAKEDI (x0, x1);
 }
 
 SEMOPS_INLINE XF
