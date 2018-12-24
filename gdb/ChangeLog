@@ -1,3 +1,122 @@
+2018-12-23  Joel Brobecker  <brobecker@adacore.com>
+
+	GDB 8.2.1 released.
+
+2018-12-22  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-tdep.c (riscv_call_arg_struct): Don't adjust size before
+	assigning locations.
+	(riscv_return_value): Take more care not to read/write outside of
+	argument buffer.  Cast return value between the declared type and
+	the abi type.
+
+2018-12-22  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-tdep.c (riscv_register_reggroup_p): Save and restore fcsr,
+	fflags, and frm registers.
+
+2018-12-22  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-tdep.c (riscv_dwarf_reg_to_regnum): New function.
+	(riscv_gdbarch_init): Register new function with gdbarch.
+	* riscv-tdep.h: New enum to define RISC-V DWARF register numbers.
+
+2018-12-21  Simon Marchi  <simon.marchi@ericsson.com>
+
+	* minsyms.c (mst_str): New.
+	(minimal_symbol_reader::record_full): Add debug output.
+
+2018-12-21  John Baldwin  <jhb@FreeBSD.org>
+
+	* fbsd-nat.c (fbsd_handle_debug_trap): Require pl.pl_flags to
+	equal PL_FLAG_SI.
+	(fbsd_nat_target::stopped_by_sw_breakpoint): Likewise.
+
+2018-12-21  Paul Marechal  <paul.marechal@ericsson.com>
+
+	PR gdb/23974
+	* target.c (target_read_stralloc): Check for empty vector.
+
+2018-12-21  Дилян Палаузов  <dilyan.palauzov@aegee.org>
+
+	* top.c (print_gdb_configuration): Print "--without-python"
+	if GDB was configured without Python.
+
+2018-12-21  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* riscv-tdep.c (riscv_scan_prologue): Use plongest to format
+	a signed offset as a string.
+
+2018-12-21  Dave Murphy  <davem@devkitpro.org>
+
+	* dtrace-probe.c (dtrace_static_probe_ops): Explicit zero
+	initialise.
+	* probe.c (any_static_probe_ops): Ditto.
+	* record-btrace.c (record_btrace_thread_observer_token): Ditto.
+	* stap-probe.c (stap_static_probe_ops): Ditto.
+	* tui/tui-hooks.c (tui_observers_token): Ditto.
+	* unittests/observable-selftests.c (token1, token2, token3): Ditto.
+
+2018-12-19  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* gdb/dummy-frame.c (default_dummy_id): Defined new function.
+	* gdb/dummy-frame.h (default_dummy_id): Declare new function.
+	* gdb/frame-unwind.c (default_unwind_pc): Define new function.
+	(default_unwind_sp): Define new function.
+	* gdb/frame-unwind.h (default_unwind_pc): Declare new function.
+	(default_unwind_sp): Declare new function.
+	* gdb/frame.c (frame_unwind_pc): Assume gdbarch_unwind_pc is
+	available.
+	(get_frame_sp): Assume that gdbarch_unwind_sp is available.
+	* gdb/gdbarch.c: Regenerate.
+	* gdb/gdbarch.h: Regenerate.
+	* gdb/gdbarch.sh: Update definition of dummy_id, unwind_pc, and
+	unwind_sp.  Add additional header files to be included in
+	generated file.
+
+2018-12-19  Dimitar Dimitrov  <dimitar@dinux.eu>
+
+	* nat/linux-ptrace.c (linux_ptrace_test_ret_to_nx): Remove
+	sp clobbers.
+
+2018-12-17  Andrew Burgess  <andrew.burgess@embecosm.com>
+
+	* dwarf2read.c (struct dwarf2_cu): Convert the fields 'mark',
+	'has_loclist', 'checked_producer', 'producer_is_gxx_lt_4_6',
+	'producer_is_gcc_lt_4_3', 'producer_is_icc_lt_14',
+	'processing_has_namespace_info' from unsigned int to bool.  Update
+	comments.
+	(producer_is_icc_lt_14): Update return type.
+	(producer_is_gcc_lt_4_3): Likewise.
+	(producer_is_gxx_lt_4_6): Likewise.
+	(process_die): Write true instead of 1 into predicate fields.
+	(dwarf2_start_symtab): Likewise.
+	(var_decode_location): Likewise.
+	(dwarf2_mark_helper): Likewise.
+	(dwarf2_mark): Likewise.
+	(dwarf2_clear_marks): Write false instead of 0 into predicate
+	field.
+	(dwarf2_cu::dwarf2_cu): Initialise predicate fields to false, not
+	0.
+
+2018-12-17  Szabolcs Nagy  <szabolcs.nagy@arm.com>
+
+	* nat/aarch64-sve-linux-ptrace.h: Include signal.h instead of
+	asm/sigcontext.h.
+
+2018-12-17  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* nat/linux-ptrace.c (kill_child): Fix ARI warning by removing
+	warning trailing new line.
+
+2018-12-16  Philippe Waroquiers  <philippe.waroquiers@skynet.be>
+
+	* nat/linux-ptrace.c (kill_child): New function.
+	(linux_ptrace_test_ret_to_nx): Use kill_child instead of local code.
+	Add a call to kill_child in case of early return after fork.
+	(linux_check_ptrace_features): Use kill_child instead of local code.
+	(linux_test_for_tracefork): Likewise.
+
 2018-12-14  Tom Tromey  <tom@tromey.com>
 
 	* Makefile.in: Remove "alloca" comment.

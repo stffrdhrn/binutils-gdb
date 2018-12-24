@@ -2389,7 +2389,11 @@ elf_x86_64_relocate_section (bfd *output_bfd,
   if (htab == NULL)
     return FALSE;
 
-  BFD_ASSERT (is_x86_elf (input_bfd, htab));
+  if (!is_x86_elf (input_bfd, htab))
+    {
+      bfd_set_error (bfd_error_wrong_format);
+      return FALSE;
+    }
 
   plt_entry_size = htab->plt.plt_entry_size;
   symtab_hdr = &elf_symtab_hdr (input_bfd);
@@ -2439,15 +2443,10 @@ elf_x86_64_relocate_section (bfd *output_bfd,
 	  rel->r_info = htab->r_info (r_symndx, r_type);
 	}
 
-      if (r_type >= (int) R_X86_64_standard)
+      howto = elf_x86_64_rtype_to_howto (input_bfd, r_type);
+      if (howto == NULL)
 	return _bfd_unrecognized_reloc (input_bfd, input_section, r_type);
 
-      if (r_type != (int) R_X86_64_32
-	  || ABI_64_P (output_bfd))
-	howto = x86_64_elf_howto_table + r_type;
-      else
-	howto = (x86_64_elf_howto_table
-		 + ARRAY_SIZE (x86_64_elf_howto_table) - 1);
       h = NULL;
       sym = NULL;
       sec = NULL;
