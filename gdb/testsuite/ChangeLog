@@ -1,3 +1,52 @@
+2018-12-28  Tom Tromey  <tom@tromey.com>
+	    Simon Marchi <simark@simark.ca>
+
+	* gdb.base/jit-exec.exp: New file.
+	* gdb.base/jit-exec.c: New file.
+	* gdb.base/jit-execd.c: New file.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Update test to check for address styling.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Add test for styling of "Reading symbols"
+	message.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Add test for version number styling.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Add test for print_address_symbolic.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Add test for breakpoint setting.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: Add test for variable names.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* gdb.base/style.exp: New file.
+	* gdb.base/style.c: New file.
+
+2018-12-28  Tom Tromey  <tom@tromey.com>
+
+	* lib/gdb.exp (gdb_init): Set the TERM environment variable to
+	"dumb".
+	* gdb.base/readline.exp (operate_and_get_next): Save and restore
+	the TERM environment variable.
+
+2018-12-27  Tom Tromey  <tom@tromey.com>
+
+	* gdb.python/py-cmd.exp (test_python_inline_or_multiline): Add
+	pagination test.
+
 2018-12-24  Andrew Burgess  <andrew.burgess@embecosm.com>
 
 	* gdb.dwarf2/dw2-unusual-field-names.c: New file.
