@@ -1,6 +1,6 @@
 /* Convenience functions implemented in Python.
 
-   Copyright (C) 2008-2018 Free Software Foundation, Inc.
+   Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -109,7 +109,8 @@ fnpy_init (PyObject *self, PyObject *args, PyObject *kwds)
 
   if (! PyArg_ParseTuple (args, "s", &name))
     return -1;
-  Py_INCREF (self);
+
+  gdbpy_ref<> self_ref = gdbpy_ref<>::new_reference (self);
 
   if (PyObject_HasAttrString (self, "__doc__"))
     {
@@ -120,17 +121,15 @@ fnpy_init (PyObject *self, PyObject *args, PyObject *kwds)
 	    {
 	      docstring = python_string_to_host_string (ds_obj.get ());
 	      if (docstring == NULL)
-		{
-		  Py_DECREF (self);
-		  return -1;
-		}
+		return -1;
 	    }
 	}
     }
   if (! docstring)
     docstring.reset (xstrdup (_("This function is not documented.")));
 
-  add_internal_function (name, docstring.release (), fnpy_call, self);
+  add_internal_function (name, docstring.release (), fnpy_call,
+			 self_ref.release ());
   return 0;
 }
 

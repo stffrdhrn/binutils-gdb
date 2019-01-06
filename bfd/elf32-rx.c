@@ -1,5 +1,5 @@
 /* Renesas RX specific support for 32-bit ELF.
-   Copyright (C) 2008-2018 Free Software Foundation, Inc.
+   Copyright (C) 2008-2019 Free Software Foundation, Inc.
 
    This file is part of BFD, the Binary File Descriptor library.
 
@@ -3212,7 +3212,12 @@ elf32_rx_machine (bfd * abfd ATTRIBUTE_UNUSED)
 	 For now we assume that the flags are OK.  */
   if ((elf_elfheader (abfd)->e_flags & EF_RX_CPU_MASK) == EF_RX_CPU_RX)
 #endif
-    return bfd_mach_rx;
+    if ((elf_elfheader (abfd)->e_flags & E_FLAG_RX_V2))
+      return bfd_mach_rx_v2;
+    else if ((elf_elfheader (abfd)->e_flags & E_FLAG_RX_V3))
+      return bfd_mach_rx_v3;
+    else
+      return bfd_mach_rx;
 
   return 0;
 }

@@ -1,5 +1,5 @@
 /* objcopy.c -- copy object file from input to output, optionally massaging it.
-   Copyright (C) 1991-2018 Free Software Foundation, Inc.
+   Copyright (C) 1991-2019 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -3087,7 +3087,14 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
 
   if (convert_debugging && dhandle != NULL)
     {
-      if (! write_debugging_info (obfd, dhandle, &symcount, &osympp))
+      bfd_boolean res;
+
+      res = write_debugging_info (obfd, dhandle, &symcount, &osympp);
+
+      free (dhandle);
+      dhandle = NULL; /* Paranoia...  */
+
+      if (! res)
 	{
 	  status = 1;
 	  return FALSE;

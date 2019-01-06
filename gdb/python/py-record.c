@@ -1,6 +1,6 @@
 /* Python interface to record targets.
 
-   Copyright 2016-2018 Free Software Foundation, Inc.
+   Copyright 2016-2019 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -638,19 +638,15 @@ gdbpy_current_recording (PyObject *self, PyObject *args)
 PyObject *
 gdbpy_stop_recording (PyObject *self, PyObject *args)
 {
-  PyObject *ret = NULL;
-
   TRY
     {
       record_stop (0);
-      ret = Py_None;
-      Py_INCREF (Py_None);
     }
   CATCH (except, RETURN_MASK_ALL)
     {
-      gdbpy_convert_exception (except);
+      GDB_PY_HANDLE_EXCEPTION (except);
     }
   END_CATCH
 
-  return ret;
+  Py_RETURN_NONE;
 }

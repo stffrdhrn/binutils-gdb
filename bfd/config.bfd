@@ -1,6 +1,6 @@
 # config.bfd
 #
-#   Copyright (C) 2012-2018 Free Software Foundation, Inc.
+#   Copyright (C) 2012-2019 Free Software Foundation, Inc.
 #
 # This file is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -463,7 +463,7 @@ case "${targ}" in
     ;;
 
   csky-*-elf* | csky-*-linux* )
-    targ_defvec=csky_elf32_be_vec
+    targ_defvec=csky_elf32_le_vec
     targ_selvecs="csky_elf32_be_vec csky_elf32_le_vec"
     ;;
 

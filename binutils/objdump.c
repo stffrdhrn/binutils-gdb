@@ -1,5 +1,5 @@
 /* objdump.c -- dump information about an object file.
-   Copyright (C) 1990-2018 Free Software Foundation, Inc.
+   Copyright (C) 1990-2019 Free Software Foundation, Inc.
 
    This file is part of GNU Binutils.
 
@@ -2539,12 +2539,19 @@ load_specific_debug_section (enum dwarf_section_display_enum debug,
   section->reloc_info = NULL;
   section->num_relocs = 0;
   section->address = bfd_get_section_vma (abfd, sec);
+  section->user_data = sec;
   section->size = bfd_get_section_size (sec);
   amt = section->size + 1;
+  if (amt == 0 || amt > bfd_get_file_size (abfd))
+    {
+      section->start = NULL;
+      free_debug_section (debug);
+      printf (_("\nSection '%s' has an invalid size: %#llx.\n"),
+	      section->name, (unsigned long long) section->size);
+      return FALSE;
+    }
   section->start = contents = malloc (amt);
-  section->user_data = sec;
-  if (amt == 0
-      || section->start == NULL
+  if (section->start == NULL
       || !bfd_get_full_section_contents (abfd, sec, &contents))
     {
       free_debug_section (debug);
@@ -3692,6 +3699,8 @@ dump_bfd (bfd *abfd)
 			 bfd_get_filename (abfd));
 	      exit_status = 1;
 	    }
+
+	  free (dhandle);
 	}
       /* PR 6483: If there was no STABS debug info in the file, try
 	 DWARF instead.  */

@@ -1,5 +1,5 @@
 /* readelf.c -- display contents of an ELF format file
-   Copyright (C) 1998-2018 Free Software Foundation, Inc.
+   Copyright (C) 1998-2019 Free Software Foundation, Inc.
 
    Originally developed by Eric Youngdale <eric@andante.jic.com>
    Modifications by Nick Clifton <nickc@redhat.com>
@@ -3689,6 +3689,8 @@ get_machine_flags (Filedata * filedata, unsigned e_flags, unsigned e_machine)
 		    ? ", uses String instructions" : ", bans String instructions");
 	  if (e_flags & E_FLAG_RX_V2)
 	    strcat (buf, ", V2");
+	  if (e_flags & E_FLAG_RX_V3)
+	    strcat (buf, ", V3");
 	  break;
 
 	case EM_S390:
