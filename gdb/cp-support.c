@@ -1373,18 +1373,16 @@ static void
 add_symbol_overload_list_qualified (const char *func_name,
 				    std::vector<symbol *> *overload_list)
 {
-  struct compunit_symtab *cust;
-  struct objfile *objfile;
   const struct block *b, *surrounding_static_block = 0;
 
   /* Look through the partial symtabs for all symbols which begin by
      matching FUNC_NAME.  Make sure we read that symbol table in.  */
 
-  ALL_OBJFILES (objfile)
-  {
-    if (objfile->sf)
-      objfile->sf->qf->expand_symtabs_for_function (objfile, func_name);
-  }
+  for (objfile *objf : all_objfiles (current_program_space))
+    {
+      if (objf->sf)
+	objf->sf->qf->expand_symtabs_for_function (objf, func_name);
+    }
 
   /* Search upwards from currently selected frame (so that we can
      complete on local vars.  */
@@ -1397,22 +1395,28 @@ add_symbol_overload_list_qualified (const char *func_name,
   /* Go through the symtabs and check the externs and statics for
      symbols which match.  */
 
-  ALL_COMPUNITS (objfile, cust)
-  {
-    QUIT;
-    b = BLOCKVECTOR_BLOCK (COMPUNIT_BLOCKVECTOR (cust), GLOBAL_BLOCK);
-    add_symbol_overload_list_block (func_name, b, overload_list);
-  }
+  for (objfile *objfile : all_objfiles (current_program_space))
+    {
+      for (compunit_symtab *cust : objfile_compunits (objfile))
+	{
+	  QUIT;
+	  b = BLOCKVECTOR_BLOCK (COMPUNIT_BLOCKVECTOR (cust), GLOBAL_BLOCK);
+	  add_symbol_overload_list_block (func_name, b, overload_list);
+	}
+    }
 
-  ALL_COMPUNITS (objfile, cust)
-  {
-    QUIT;
-    b = BLOCKVECTOR_BLOCK (COMPUNIT_BLOCKVECTOR (cust), STATIC_BLOCK);
-    /* Don't do this block twice.  */
-    if (b == surrounding_static_block)
-      continue;
-    add_symbol_overload_list_block (func_name, b, overload_list);
-  }
+  for (objfile *objfile : all_objfiles (current_program_space))
+    {
+      for (compunit_symtab *cust : objfile_compunits (objfile))
+	{
+	  QUIT;
+	  b = BLOCKVECTOR_BLOCK (COMPUNIT_BLOCKVECTOR (cust), STATIC_BLOCK);
+	  /* Don't do this block twice.  */
+	  if (b == surrounding_static_block)
+	    continue;
+	  add_symbol_overload_list_block (func_name, b, overload_list);
+	}
+    }
 }
 
 /* Lookup the rtti type for a class name.  */
