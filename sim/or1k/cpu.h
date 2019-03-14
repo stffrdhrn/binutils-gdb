@@ -73,15 +73,31 @@ SET_H_SPR ((((index)) + (ORSI (SLLSI (SPR_GROUP_SYS, 11), SPR_INDEX_SYS_GPR0))),
 
 /* Virtual regs.  */
 
+#define GET_H_SPR(index) or1k32bf_h_spr_get_raw (current_cpu, index)
+#define SET_H_SPR(index, x) \
+do { \
+or1k32bf_h_spr_set_raw (current_cpu, (index), (x));\
+;} while (0)
 #define GET_H_FSR(index) SUBWORDSISF (TRUNCSISI (GET_H_GPR (index)))
 #define SET_H_FSR(index, x) \
 do { \
 SET_H_GPR ((index), ZEXTSISI (SUBWORDSFSI ((x))));\
 ;} while (0)
-#define GET_H_SPR(index) or1k32bf_h_spr_get_raw (current_cpu, index)
-#define SET_H_SPR(index, x) \
+#define GET_H_FD32R(index) JOINSIDF (GET_H_GPR (index), GET_H_GPR (((index) + (((((index) > (15))) ? (2) : (1))))))
+#define SET_H_FD32R(index, x) \
 do { \
-or1k32bf_h_spr_set_raw (current_cpu, (index), (x));\
+{\
+SET_H_GPR ((index), SUBWORDDFSI ((x), 0));\
+SET_H_GPR ((((index)) + ((((((index)) > (15))) ? (2) : (1)))), SUBWORDDFSI ((x), 1));\
+}\
+;} while (0)
+#define GET_H_I64R(index) JOINSIDI (GET_H_GPR (index), GET_H_GPR (((index) + (((((index) > (15))) ? (2) : (1))))))
+#define SET_H_I64R(index, x) \
+do { \
+{\
+SET_H_GPR ((index), SUBWORDDISI ((x), 0));\
+SET_H_GPR ((((index)) + ((((((index)) > (15))) ? (2) : (1)))), SUBWORDDISI ((x), 1));\
+}\
 ;} while (0)
 #define GET_H_SYS_VR() GET_H_SPR (ORSI (SLLSI (SPR_GROUP_SYS, 11), SPR_INDEX_SYS_VR))
 #define SET_H_SYS_VR(x) \
@@ -3227,12 +3243,16 @@ or1k32bf_h_spr_field_set_raw (current_cpu, ORSI (SLLSI (SPR_GROUP_SYS, 11), SPR_
 /* Cover fns for register access.  */
 USI or1k32bf_h_pc_get (SIM_CPU *);
 void or1k32bf_h_pc_set (SIM_CPU *, USI);
-SF or1k32bf_h_fsr_get (SIM_CPU *, UINT);
-void or1k32bf_h_fsr_set (SIM_CPU *, UINT, SF);
 USI or1k32bf_h_spr_get (SIM_CPU *, UINT);
 void or1k32bf_h_spr_set (SIM_CPU *, UINT, USI);
 USI or1k32bf_h_gpr_get (SIM_CPU *, UINT);
 void or1k32bf_h_gpr_set (SIM_CPU *, UINT, USI);
+SF or1k32bf_h_fsr_get (SIM_CPU *, UINT);
+void or1k32bf_h_fsr_set (SIM_CPU *, UINT, SF);
+DF or1k32bf_h_fd32r_get (SIM_CPU *, UINT);
+void or1k32bf_h_fd32r_set (SIM_CPU *, UINT, DF);
+DI or1k32bf_h_i64r_get (SIM_CPU *, UINT);
+void or1k32bf_h_i64r_set (SIM_CPU *, UINT, DI);
 USI or1k32bf_h_sys_vr_get (SIM_CPU *);
 void or1k32bf_h_sys_vr_set (SIM_CPU *, USI);
 USI or1k32bf_h_sys_upr_get (SIM_CPU *);
@@ -4978,6 +4998,23 @@ struct scache {
   f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
   f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
 
+#define EXTRACT_IFMT_LF_ADD_D32_VARS \
+  UINT f_opcode; \
+  UINT f_r1; \
+  UINT f_r2; \
+  UINT f_r3; \
+  UINT f_resv_10_3; \
+  UINT f_op_7_8; \
+  unsigned int length;
+#define EXTRACT_IFMT_LF_ADD_D32_CODE \
+  length = 4; \
+  f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
+  f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
+  f_r2 = EXTRACT_LSB0_UINT (insn, 32, 20, 5); \
+  f_r3 = EXTRACT_LSB0_UINT (insn, 32, 15, 5); \
+  f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
+  f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
+
 #define EXTRACT_IFMT_LF_ITOF_S_VARS \
   UINT f_opcode; \
   UINT f_r1; \
@@ -4987,6 +5024,23 @@ struct scache {
   UINT f_op_7_8; \
   unsigned int length;
 #define EXTRACT_IFMT_LF_ITOF_S_CODE \
+  length = 4; \
+  f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
+  f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
+  f_r2 = EXTRACT_LSB0_UINT (insn, 32, 20, 5); \
+  f_r3 = EXTRACT_LSB0_UINT (insn, 32, 15, 5); \
+  f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
+  f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
+
+#define EXTRACT_IFMT_LF_ITOF_D32_VARS \
+  UINT f_opcode; \
+  UINT f_r1; \
+  UINT f_r2; \
+  UINT f_r3; \
+  UINT f_resv_10_3; \
+  UINT f_op_7_8; \
+  unsigned int length;
+#define EXTRACT_IFMT_LF_ITOF_D32_CODE \
   length = 4; \
   f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
   f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
@@ -5012,6 +5066,23 @@ struct scache {
   f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
   f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
 
+#define EXTRACT_IFMT_LF_FTOI_D32_VARS \
+  UINT f_opcode; \
+  UINT f_r1; \
+  UINT f_r2; \
+  UINT f_r3; \
+  UINT f_resv_10_3; \
+  UINT f_op_7_8; \
+  unsigned int length;
+#define EXTRACT_IFMT_LF_FTOI_D32_CODE \
+  length = 4; \
+  f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
+  f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
+  f_r2 = EXTRACT_LSB0_UINT (insn, 32, 20, 5); \
+  f_r3 = EXTRACT_LSB0_UINT (insn, 32, 15, 5); \
+  f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
+  f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
+
 #define EXTRACT_IFMT_LF_EQ_S_VARS \
   UINT f_opcode; \
   UINT f_r1; \
@@ -5029,6 +5100,23 @@ struct scache {
   f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
   f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
 
+#define EXTRACT_IFMT_LF_EQ_D32_VARS \
+  UINT f_opcode; \
+  UINT f_r1; \
+  UINT f_r2; \
+  UINT f_r3; \
+  UINT f_resv_10_3; \
+  UINT f_op_7_8; \
+  unsigned int length;
+#define EXTRACT_IFMT_LF_EQ_D32_CODE \
+  length = 4; \
+  f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
+  f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
+  f_r2 = EXTRACT_LSB0_UINT (insn, 32, 20, 5); \
+  f_r3 = EXTRACT_LSB0_UINT (insn, 32, 15, 5); \
+  f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
+  f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
+
 #define EXTRACT_IFMT_LF_CUST1_S_VARS \
   UINT f_opcode; \
   UINT f_resv_25_5; \
@@ -5038,6 +5126,23 @@ struct scache {
   UINT f_op_7_8; \
   unsigned int length;
 #define EXTRACT_IFMT_LF_CUST1_S_CODE \
+  length = 4; \
+  f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
+  f_resv_25_5 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
+  f_r2 = EXTRACT_LSB0_UINT (insn, 32, 20, 5); \
+  f_r3 = EXTRACT_LSB0_UINT (insn, 32, 15, 5); \
+  f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
+  f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
+
+#define EXTRACT_IFMT_LF_CUST1_D32_VARS \
+  UINT f_opcode; \
+  UINT f_resv_25_5; \
+  UINT f_r2; \
+  UINT f_r3; \
+  UINT f_resv_10_3; \
+  UINT f_op_7_8; \
+  unsigned int length;
+#define EXTRACT_IFMT_LF_CUST1_D32_CODE \
   length = 4; \
   f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
   f_resv_25_5 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \

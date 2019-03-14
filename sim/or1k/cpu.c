@@ -44,22 +44,6 @@ or1k32bf_h_pc_set (SIM_CPU *current_cpu, USI newval)
   SET_H_PC (newval);
 }
 
-/* Get the value of h-fsr.  */
-
-SF
-or1k32bf_h_fsr_get (SIM_CPU *current_cpu, UINT regno)
-{
-  return GET_H_FSR (regno);
-}
-
-/* Set a value for h-fsr.  */
-
-void
-or1k32bf_h_fsr_set (SIM_CPU *current_cpu, UINT regno, SF newval)
-{
-  SET_H_FSR (regno, newval);
-}
-
 /* Get the value of h-spr.  */
 
 USI
@@ -90,6 +74,54 @@ void
 or1k32bf_h_gpr_set (SIM_CPU *current_cpu, UINT regno, USI newval)
 {
   SET_H_GPR (regno, newval);
+}
+
+/* Get the value of h-fsr.  */
+
+SF
+or1k32bf_h_fsr_get (SIM_CPU *current_cpu, UINT regno)
+{
+  return GET_H_FSR (regno);
+}
+
+/* Set a value for h-fsr.  */
+
+void
+or1k32bf_h_fsr_set (SIM_CPU *current_cpu, UINT regno, SF newval)
+{
+  SET_H_FSR (regno, newval);
+}
+
+/* Get the value of h-fd32r.  */
+
+DF
+or1k32bf_h_fd32r_get (SIM_CPU *current_cpu, UINT regno)
+{
+  return GET_H_FD32R (regno);
+}
+
+/* Set a value for h-fd32r.  */
+
+void
+or1k32bf_h_fd32r_set (SIM_CPU *current_cpu, UINT regno, DF newval)
+{
+  SET_H_FD32R (regno, newval);
+}
+
+/* Get the value of h-i64r.  */
+
+DI
+or1k32bf_h_i64r_get (SIM_CPU *current_cpu, UINT regno)
+{
+  return GET_H_I64R (regno);
+}
+
+/* Set a value for h-i64r.  */
+
+void
+or1k32bf_h_i64r_set (SIM_CPU *current_cpu, UINT regno, DI newval)
+{
+  SET_H_I64R (regno, newval);
 }
 
 /* Get the value of h-sys-vr.  */
