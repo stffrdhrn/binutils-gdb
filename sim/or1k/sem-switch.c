@@ -2,7 +2,7 @@
 
 THIS FILE IS MACHINE GENERATED WITH CGEN.
 
-Copyright 1996-2019 Free Software Foundation, Inc.
+Copyright (C) 1996-2019 Free Software Foundation, Inc.
 
 This file is part of the GNU simulators.
 
@@ -136,20 +136,35 @@ This file is part of the GNU simulators.
     { OR1K32BF_INSN_L_CUST7, && case_sem_INSN_L_CUST7 },
     { OR1K32BF_INSN_L_CUST8, && case_sem_INSN_L_CUST8 },
     { OR1K32BF_INSN_LF_ADD_S, && case_sem_INSN_LF_ADD_S },
+    { OR1K32BF_INSN_LF_ADD_D32, && case_sem_INSN_LF_ADD_D32 },
     { OR1K32BF_INSN_LF_SUB_S, && case_sem_INSN_LF_SUB_S },
+    { OR1K32BF_INSN_LF_SUB_D32, && case_sem_INSN_LF_SUB_D32 },
     { OR1K32BF_INSN_LF_MUL_S, && case_sem_INSN_LF_MUL_S },
+    { OR1K32BF_INSN_LF_MUL_D32, && case_sem_INSN_LF_MUL_D32 },
     { OR1K32BF_INSN_LF_DIV_S, && case_sem_INSN_LF_DIV_S },
+    { OR1K32BF_INSN_LF_DIV_D32, && case_sem_INSN_LF_DIV_D32 },
     { OR1K32BF_INSN_LF_REM_S, && case_sem_INSN_LF_REM_S },
+    { OR1K32BF_INSN_LF_REM_D32, && case_sem_INSN_LF_REM_D32 },
     { OR1K32BF_INSN_LF_ITOF_S, && case_sem_INSN_LF_ITOF_S },
+    { OR1K32BF_INSN_LF_ITOF_D32, && case_sem_INSN_LF_ITOF_D32 },
     { OR1K32BF_INSN_LF_FTOI_S, && case_sem_INSN_LF_FTOI_S },
+    { OR1K32BF_INSN_LF_FTOI_D32, && case_sem_INSN_LF_FTOI_D32 },
     { OR1K32BF_INSN_LF_EQ_S, && case_sem_INSN_LF_EQ_S },
+    { OR1K32BF_INSN_LF_EQ_D32, && case_sem_INSN_LF_EQ_D32 },
     { OR1K32BF_INSN_LF_NE_S, && case_sem_INSN_LF_NE_S },
+    { OR1K32BF_INSN_LF_NE_D32, && case_sem_INSN_LF_NE_D32 },
     { OR1K32BF_INSN_LF_GE_S, && case_sem_INSN_LF_GE_S },
+    { OR1K32BF_INSN_LF_GE_D32, && case_sem_INSN_LF_GE_D32 },
     { OR1K32BF_INSN_LF_GT_S, && case_sem_INSN_LF_GT_S },
+    { OR1K32BF_INSN_LF_GT_D32, && case_sem_INSN_LF_GT_D32 },
     { OR1K32BF_INSN_LF_LT_S, && case_sem_INSN_LF_LT_S },
+    { OR1K32BF_INSN_LF_LT_D32, && case_sem_INSN_LF_LT_D32 },
     { OR1K32BF_INSN_LF_LE_S, && case_sem_INSN_LF_LE_S },
+    { OR1K32BF_INSN_LF_LE_D32, && case_sem_INSN_LF_LE_D32 },
     { OR1K32BF_INSN_LF_MADD_S, && case_sem_INSN_LF_MADD_S },
+    { OR1K32BF_INSN_LF_MADD_D32, && case_sem_INSN_LF_MADD_D32 },
     { OR1K32BF_INSN_LF_CUST1_S, && case_sem_INSN_LF_CUST1_S },
+    { OR1K32BF_INSN_LF_CUST1_D32, && case_sem_INSN_LF_CUST1_D32 },
     { 0, 0 }
   };
   int i;
@@ -2650,6 +2665,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_ADD_D32) : /* lf.add.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->adddf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_SUB_S) : /* lf.sub.s $rDSF,$rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2663,6 +2697,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
     SF opval = CGEN_CPU_FPU (current_cpu)->ops->subsf (CGEN_CPU_FPU (current_cpu), GET_H_FSR (FLD (f_r2)), GET_H_FSR (FLD (f_r3)));
     SET_H_FSR (FLD (f_r1), opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "fsr", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_SUB_D32) : /* lf.sub.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->subdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
   }
 
 #undef FLD
@@ -2688,6 +2741,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_MUL_D32) : /* lf.mul.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->muldf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_DIV_S) : /* lf.div.s $rDSF,$rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2701,6 +2773,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
     SF opval = CGEN_CPU_FPU (current_cpu)->ops->divsf (CGEN_CPU_FPU (current_cpu), GET_H_FSR (FLD (f_r2)), GET_H_FSR (FLD (f_r3)));
     SET_H_FSR (FLD (f_r1), opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "fsr", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_DIV_D32) : /* lf.div.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->divdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
   }
 
 #undef FLD
@@ -2726,6 +2817,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_REM_D32) : /* lf.rem.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->remdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_ITOF_S) : /* lf.itof.s $rDSF,$rA */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2739,6 +2849,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
     SF opval = CGEN_CPU_FPU (current_cpu)->ops->floatsisf (CGEN_CPU_FPU (current_cpu), (GET_H_SYS_FPCSR_RM () == 0) ? (1) : (GET_H_SYS_FPCSR_RM () == 1) ? (3) : (GET_H_SYS_FPCSR_RM () == 2) ? (4) : (5), TRUNCSISI (GET_H_GPR (FLD (f_r2))));
     SET_H_FSR (FLD (f_r1), opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "fsr", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_ITOF_D32) : /* lf.itof.d $rDD32F,$rADI */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->floatdidf (CGEN_CPU_FPU (current_cpu), (GET_H_SYS_FPCSR_RM () == 0) ? (1) : (GET_H_SYS_FPCSR_RM () == 1) ? (3) : (GET_H_SYS_FPCSR_RM () == 2) ? (4) : (5), GET_H_I64R (FLD (f_rad32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
   }
 
 #undef FLD
@@ -2764,6 +2893,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_FTOI_D32) : /* lf.ftoi.d $rDDI,$rAD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DI opval = CGEN_CPU_FPU (current_cpu)->ops->fixdfdi (CGEN_CPU_FPU (current_cpu), (GET_H_SYS_FPCSR_RM () == 0) ? (1) : (GET_H_SYS_FPCSR_RM () == 1) ? (3) : (GET_H_SYS_FPCSR_RM () == 2) ? (4) : (5), GET_H_FD32R (FLD (f_rad32)));
+    SET_H_I64R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "i64r", 'D', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_EQ_S) : /* lf.sfeq.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2775,6 +2923,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 
   {
     BI opval = CGEN_CPU_FPU (current_cpu)->ops->eqsf (CGEN_CPU_FPU (current_cpu), GET_H_FSR (FLD (f_r2)), GET_H_FSR (FLD (f_r3)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_EQ_D32) : /* lf.sfeq.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->eqdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
     SET_H_SYS_SR_F (opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
   }
@@ -2802,6 +2969,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_NE_D32) : /* lf.sfne.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->nedf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_GE_S) : /* lf.sfge.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2813,6 +2999,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 
   {
     BI opval = CGEN_CPU_FPU (current_cpu)->ops->gesf (CGEN_CPU_FPU (current_cpu), GET_H_FSR (FLD (f_r2)), GET_H_FSR (FLD (f_r3)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_GE_D32) : /* lf.sfge.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->gedf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
     SET_H_SYS_SR_F (opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
   }
@@ -2840,6 +3045,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_GT_D32) : /* lf.sfgt.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->gtdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_LT_S) : /* lf.sflt.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2851,6 +3075,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 
   {
     BI opval = CGEN_CPU_FPU (current_cpu)->ops->ltsf (CGEN_CPU_FPU (current_cpu), GET_H_FSR (FLD (f_r2)), GET_H_FSR (FLD (f_r3)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_LT_D32) : /* lf.sflt.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->ltdf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
     SET_H_SYS_SR_F (opval);
     CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
   }
@@ -2878,6 +3121,25 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_LE_D32) : /* lf.sfle.d $rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    BI opval = CGEN_CPU_FPU (current_cpu)->ops->ledf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32)));
+    SET_H_SYS_SR_F (opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "sys-sr-f", 'x', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_MADD_S) : /* lf.madd.s $rDSF,$rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
@@ -2897,7 +3159,41 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
+  CASE (sem, INSN_LF_MADD_D32) : /* lf.madd.d $rDD32F,$rAD32F,$rBD32F */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_lf_add_d32.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+  {
+    DF opval = CGEN_CPU_FPU (current_cpu)->ops->adddf (CGEN_CPU_FPU (current_cpu), CGEN_CPU_FPU (current_cpu)->ops->muldf (CGEN_CPU_FPU (current_cpu), GET_H_FD32R (FLD (f_rad32)), GET_H_FD32R (FLD (f_rbd32))), GET_H_FD32R (FLD (f_rdd32)));
+    SET_H_FD32R (FLD (f_rdd32), opval);
+    CGEN_TRACE_RESULT (current_cpu, abuf, "fd32r", 'f', opval);
+  }
+
+#undef FLD
+}
+  NEXT (vpc);
+
   CASE (sem, INSN_LF_CUST1_S) : /* lf.cust1.s $rASF,$rBSF */
+{
+  SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
+  ARGBUF *abuf = SEM_ARGBUF (sem_arg);
+#define FLD(f) abuf->fields.sfmt_empty.f
+  int UNUSED written = 0;
+  IADDR UNUSED pc = abuf->addr;
+  vpc = SEM_NEXT_VPC (sem_arg, pc, 4);
+
+((void) 0); /*nop*/
+
+#undef FLD
+}
+  NEXT (vpc);
+
+  CASE (sem, INSN_LF_CUST1_D32) : /* lf.cust1.d */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
