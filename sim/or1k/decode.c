@@ -169,6 +169,20 @@ static const struct insn_sem or1k32bf_insn_sem[] =
   { OR1K_INSN_LF_LT_D32, OR1K32BF_INSN_LF_LT_D32, OR1K32BF_SFMT_LF_EQ_D32 },
   { OR1K_INSN_LF_LE_S, OR1K32BF_INSN_LF_LE_S, OR1K32BF_SFMT_LF_EQ_S },
   { OR1K_INSN_LF_LE_D32, OR1K32BF_INSN_LF_LE_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_UEQ_S, OR1K32BF_INSN_LF_UEQ_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_UEQ_D32, OR1K32BF_INSN_LF_UEQ_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_UNE_S, OR1K32BF_INSN_LF_UNE_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_UNE_D32, OR1K32BF_INSN_LF_UNE_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_UGT_S, OR1K32BF_INSN_LF_UGT_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_UGT_D32, OR1K32BF_INSN_LF_UGT_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_UGE_S, OR1K32BF_INSN_LF_UGE_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_UGE_D32, OR1K32BF_INSN_LF_UGE_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_ULT_S, OR1K32BF_INSN_LF_ULT_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_ULT_D32, OR1K32BF_INSN_LF_ULT_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_ULE_S, OR1K32BF_INSN_LF_ULE_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_ULE_D32, OR1K32BF_INSN_LF_ULE_D32, OR1K32BF_SFMT_LF_EQ_D32 },
+  { OR1K_INSN_LF_UN_S, OR1K32BF_INSN_LF_UN_S, OR1K32BF_SFMT_LF_EQ_S },
+  { OR1K_INSN_LF_UN_D32, OR1K32BF_INSN_LF_UN_D32, OR1K32BF_SFMT_LF_EQ_D32 },
   { OR1K_INSN_LF_MADD_S, OR1K32BF_INSN_LF_MADD_S, OR1K32BF_SFMT_LF_MADD_S },
   { OR1K_INSN_LF_MADD_D32, OR1K32BF_INSN_LF_MADD_D32, OR1K32BF_SFMT_LF_MADD_D32 },
   { OR1K_INSN_LF_CUST1_S, OR1K32BF_INSN_LF_CUST1_S, OR1K32BF_SFMT_L_MSYNC },
@@ -1310,28 +1324,104 @@ or1k32bf_decode (SIM_CPU *current_cpu, IADDR pc,
           { itype = OR1K32BF_INSN_LF_MADD_S; goto extract_sfmt_lf_madd_s; }
         itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
       case 1608 :
-        if ((entire_insn & 0xffe007ff) == 0xc8000008)
-          { itype = OR1K32BF_INSN_LF_EQ_S; goto extract_sfmt_lf_eq_s; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc8000008)
+              { itype = OR1K32BF_INSN_LF_EQ_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc8000028)
+              { itype = OR1K32BF_INSN_LF_UEQ_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1609 :
-        if ((entire_insn & 0xffe007ff) == 0xc8000009)
-          { itype = OR1K32BF_INSN_LF_NE_S; goto extract_sfmt_lf_eq_s; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc8000009)
+              { itype = OR1K32BF_INSN_LF_NE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc8000029)
+              { itype = OR1K32BF_INSN_LF_UNE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1610 :
-        if ((entire_insn & 0xffe007ff) == 0xc800000a)
-          { itype = OR1K32BF_INSN_LF_GT_S; goto extract_sfmt_lf_eq_s; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc800000a)
+              { itype = OR1K32BF_INSN_LF_GT_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc800002a)
+              { itype = OR1K32BF_INSN_LF_UGT_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1611 :
-        if ((entire_insn & 0xffe007ff) == 0xc800000b)
-          { itype = OR1K32BF_INSN_LF_GE_S; goto extract_sfmt_lf_eq_s; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc800000b)
+              { itype = OR1K32BF_INSN_LF_GE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc800002b)
+              { itype = OR1K32BF_INSN_LF_UGE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1612 :
-        if ((entire_insn & 0xffe007ff) == 0xc800000c)
-          { itype = OR1K32BF_INSN_LF_LT_S; goto extract_sfmt_lf_eq_s; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc800000c)
+              { itype = OR1K32BF_INSN_LF_LT_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc800002c)
+              { itype = OR1K32BF_INSN_LF_ULT_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1613 :
-        if ((entire_insn & 0xffe007ff) == 0xc800000d)
-          { itype = OR1K32BF_INSN_LF_LE_S; goto extract_sfmt_lf_eq_s; }
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe007ff) == 0xc800000d)
+              { itype = OR1K32BF_INSN_LF_LE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe007ff) == 0xc800002d)
+              { itype = OR1K32BF_INSN_LF_ULE_S; goto extract_sfmt_lf_eq_s; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
+      case 1614 :
+        if ((entire_insn & 0xffe007ff) == 0xc800002e)
+          { itype = OR1K32BF_INSN_LF_UN_S; goto extract_sfmt_lf_eq_s; }
         itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
       case 1616 :
         {
@@ -1378,28 +1468,104 @@ or1k32bf_decode (SIM_CPU *current_cpu, IADDR pc,
           { itype = OR1K32BF_INSN_LF_MADD_D32; goto extract_sfmt_lf_madd_d32; }
         itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
       case 1624 :
-        if ((entire_insn & 0xffe004ff) == 0xc8000018)
-          { itype = OR1K32BF_INSN_LF_EQ_D32; goto extract_sfmt_lf_eq_d32; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc8000018)
+              { itype = OR1K32BF_INSN_LF_EQ_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc8000038)
+              { itype = OR1K32BF_INSN_LF_UEQ_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1625 :
-        if ((entire_insn & 0xffe004ff) == 0xc8000019)
-          { itype = OR1K32BF_INSN_LF_NE_D32; goto extract_sfmt_lf_eq_d32; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc8000019)
+              { itype = OR1K32BF_INSN_LF_NE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc8000039)
+              { itype = OR1K32BF_INSN_LF_UNE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1626 :
-        if ((entire_insn & 0xffe004ff) == 0xc800001a)
-          { itype = OR1K32BF_INSN_LF_GT_D32; goto extract_sfmt_lf_eq_d32; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc800001a)
+              { itype = OR1K32BF_INSN_LF_GT_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc800003a)
+              { itype = OR1K32BF_INSN_LF_UGT_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1627 :
-        if ((entire_insn & 0xffe004ff) == 0xc800001b)
-          { itype = OR1K32BF_INSN_LF_GE_D32; goto extract_sfmt_lf_eq_d32; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc800001b)
+              { itype = OR1K32BF_INSN_LF_GE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc800003b)
+              { itype = OR1K32BF_INSN_LF_UGE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1628 :
-        if ((entire_insn & 0xffe004ff) == 0xc800001c)
-          { itype = OR1K32BF_INSN_LF_LT_D32; goto extract_sfmt_lf_eq_d32; }
-        itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc800001c)
+              { itype = OR1K32BF_INSN_LF_LT_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc800003c)
+              { itype = OR1K32BF_INSN_LF_ULT_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
       case 1629 :
-        if ((entire_insn & 0xffe004ff) == 0xc800001d)
-          { itype = OR1K32BF_INSN_LF_LE_D32; goto extract_sfmt_lf_eq_d32; }
+        {
+          unsigned int val = (((insn >> 5) & (1 << 0)));
+          switch (val)
+          {
+          case 0 :
+            if ((entire_insn & 0xffe004ff) == 0xc800001d)
+              { itype = OR1K32BF_INSN_LF_LE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          case 1 :
+            if ((entire_insn & 0xffe004ff) == 0xc800003d)
+              { itype = OR1K32BF_INSN_LF_ULE_D32; goto extract_sfmt_lf_eq_d32; }
+            itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          default : itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
+          }
+        }
+      case 1630 :
+        if ((entire_insn & 0xffe004ff) == 0xc800003e)
+          { itype = OR1K32BF_INSN_LF_UN_D32; goto extract_sfmt_lf_eq_d32; }
         itype = OR1K32BF_INSN_X_INVALID; goto extract_sfmt_empty;
       case 1632 : /* fall through */
       case 1633 : /* fall through */
