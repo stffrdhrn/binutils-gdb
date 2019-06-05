@@ -149,32 +149,32 @@ This file is part of the GNU simulators.
     { OR1K32BF_INSN_LF_ITOF_D32, && case_sem_INSN_LF_ITOF_D32 },
     { OR1K32BF_INSN_LF_FTOI_S, && case_sem_INSN_LF_FTOI_S },
     { OR1K32BF_INSN_LF_FTOI_D32, && case_sem_INSN_LF_FTOI_D32 },
-    { OR1K32BF_INSN_LF_EQ_S, && case_sem_INSN_LF_EQ_S },
-    { OR1K32BF_INSN_LF_EQ_D32, && case_sem_INSN_LF_EQ_D32 },
-    { OR1K32BF_INSN_LF_NE_S, && case_sem_INSN_LF_NE_S },
-    { OR1K32BF_INSN_LF_NE_D32, && case_sem_INSN_LF_NE_D32 },
-    { OR1K32BF_INSN_LF_GE_S, && case_sem_INSN_LF_GE_S },
-    { OR1K32BF_INSN_LF_GE_D32, && case_sem_INSN_LF_GE_D32 },
-    { OR1K32BF_INSN_LF_GT_S, && case_sem_INSN_LF_GT_S },
-    { OR1K32BF_INSN_LF_GT_D32, && case_sem_INSN_LF_GT_D32 },
-    { OR1K32BF_INSN_LF_LT_S, && case_sem_INSN_LF_LT_S },
-    { OR1K32BF_INSN_LF_LT_D32, && case_sem_INSN_LF_LT_D32 },
-    { OR1K32BF_INSN_LF_LE_S, && case_sem_INSN_LF_LE_S },
-    { OR1K32BF_INSN_LF_LE_D32, && case_sem_INSN_LF_LE_D32 },
-    { OR1K32BF_INSN_LF_UEQ_S, && case_sem_INSN_LF_UEQ_S },
-    { OR1K32BF_INSN_LF_UEQ_D32, && case_sem_INSN_LF_UEQ_D32 },
-    { OR1K32BF_INSN_LF_UNE_S, && case_sem_INSN_LF_UNE_S },
-    { OR1K32BF_INSN_LF_UNE_D32, && case_sem_INSN_LF_UNE_D32 },
-    { OR1K32BF_INSN_LF_UGT_S, && case_sem_INSN_LF_UGT_S },
-    { OR1K32BF_INSN_LF_UGT_D32, && case_sem_INSN_LF_UGT_D32 },
-    { OR1K32BF_INSN_LF_UGE_S, && case_sem_INSN_LF_UGE_S },
-    { OR1K32BF_INSN_LF_UGE_D32, && case_sem_INSN_LF_UGE_D32 },
-    { OR1K32BF_INSN_LF_ULT_S, && case_sem_INSN_LF_ULT_S },
-    { OR1K32BF_INSN_LF_ULT_D32, && case_sem_INSN_LF_ULT_D32 },
-    { OR1K32BF_INSN_LF_ULE_S, && case_sem_INSN_LF_ULE_S },
-    { OR1K32BF_INSN_LF_ULE_D32, && case_sem_INSN_LF_ULE_D32 },
-    { OR1K32BF_INSN_LF_UN_S, && case_sem_INSN_LF_UN_S },
-    { OR1K32BF_INSN_LF_UN_D32, && case_sem_INSN_LF_UN_D32 },
+    { OR1K32BF_INSN_LF_SFEQ_S, && case_sem_INSN_LF_SFEQ_S },
+    { OR1K32BF_INSN_LF_SFEQ_D32, && case_sem_INSN_LF_SFEQ_D32 },
+    { OR1K32BF_INSN_LF_SFNE_S, && case_sem_INSN_LF_SFNE_S },
+    { OR1K32BF_INSN_LF_SFNE_D32, && case_sem_INSN_LF_SFNE_D32 },
+    { OR1K32BF_INSN_LF_SFGE_S, && case_sem_INSN_LF_SFGE_S },
+    { OR1K32BF_INSN_LF_SFGE_D32, && case_sem_INSN_LF_SFGE_D32 },
+    { OR1K32BF_INSN_LF_SFGT_S, && case_sem_INSN_LF_SFGT_S },
+    { OR1K32BF_INSN_LF_SFGT_D32, && case_sem_INSN_LF_SFGT_D32 },
+    { OR1K32BF_INSN_LF_SFLT_S, && case_sem_INSN_LF_SFLT_S },
+    { OR1K32BF_INSN_LF_SFLT_D32, && case_sem_INSN_LF_SFLT_D32 },
+    { OR1K32BF_INSN_LF_SFLE_S, && case_sem_INSN_LF_SFLE_S },
+    { OR1K32BF_INSN_LF_SFLE_D32, && case_sem_INSN_LF_SFLE_D32 },
+    { OR1K32BF_INSN_LF_SFUEQ_S, && case_sem_INSN_LF_SFUEQ_S },
+    { OR1K32BF_INSN_LF_SFUEQ_D32, && case_sem_INSN_LF_SFUEQ_D32 },
+    { OR1K32BF_INSN_LF_SFUNE_S, && case_sem_INSN_LF_SFUNE_S },
+    { OR1K32BF_INSN_LF_SFUNE_D32, && case_sem_INSN_LF_SFUNE_D32 },
+    { OR1K32BF_INSN_LF_SFUGT_S, && case_sem_INSN_LF_SFUGT_S },
+    { OR1K32BF_INSN_LF_SFUGT_D32, && case_sem_INSN_LF_SFUGT_D32 },
+    { OR1K32BF_INSN_LF_SFUGE_S, && case_sem_INSN_LF_SFUGE_S },
+    { OR1K32BF_INSN_LF_SFUGE_D32, && case_sem_INSN_LF_SFUGE_D32 },
+    { OR1K32BF_INSN_LF_SFULT_S, && case_sem_INSN_LF_SFULT_S },
+    { OR1K32BF_INSN_LF_SFULT_D32, && case_sem_INSN_LF_SFULT_D32 },
+    { OR1K32BF_INSN_LF_SFULE_S, && case_sem_INSN_LF_SFULE_S },
+    { OR1K32BF_INSN_LF_SFULE_D32, && case_sem_INSN_LF_SFULE_D32 },
+    { OR1K32BF_INSN_LF_SFUN_S, && case_sem_INSN_LF_SFUN_S },
+    { OR1K32BF_INSN_LF_SFUN_D32, && case_sem_INSN_LF_SFUN_D32 },
     { OR1K32BF_INSN_LF_MADD_S, && case_sem_INSN_LF_MADD_S },
     { OR1K32BF_INSN_LF_MADD_D32, && case_sem_INSN_LF_MADD_D32 },
     { OR1K32BF_INSN_LF_CUST1_S, && case_sem_INSN_LF_CUST1_S },
@@ -2926,7 +2926,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_EQ_S) : /* lf.sfeq.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFEQ_S) : /* lf.sfeq.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -2945,7 +2945,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_EQ_D32) : /* lf.sfeq.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFEQ_D32) : /* lf.sfeq.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -2964,7 +2964,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_NE_S) : /* lf.sfne.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFNE_S) : /* lf.sfne.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -2983,7 +2983,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_NE_D32) : /* lf.sfne.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFNE_D32) : /* lf.sfne.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3002,7 +3002,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_GE_S) : /* lf.sfge.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFGE_S) : /* lf.sfge.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3021,7 +3021,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_GE_D32) : /* lf.sfge.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFGE_D32) : /* lf.sfge.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3040,7 +3040,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_GT_S) : /* lf.sfgt.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFGT_S) : /* lf.sfgt.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3059,7 +3059,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_GT_D32) : /* lf.sfgt.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFGT_D32) : /* lf.sfgt.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3078,7 +3078,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_LT_S) : /* lf.sflt.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFLT_S) : /* lf.sflt.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3097,7 +3097,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_LT_D32) : /* lf.sflt.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFLT_D32) : /* lf.sflt.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3116,7 +3116,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_LE_S) : /* lf.sfle.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFLE_S) : /* lf.sfle.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3135,7 +3135,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_LE_D32) : /* lf.sfle.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFLE_D32) : /* lf.sfle.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3154,7 +3154,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UEQ_S) : /* lf.sfueq.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFUEQ_S) : /* lf.sfueq.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3173,7 +3173,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UEQ_D32) : /* lf.sfueq.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFUEQ_D32) : /* lf.sfueq.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3192,7 +3192,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UNE_S) : /* lf.sfune.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFUNE_S) : /* lf.sfune.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3211,7 +3211,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UNE_D32) : /* lf.sfune.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFUNE_D32) : /* lf.sfune.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3230,7 +3230,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UGT_S) : /* lf.sfugt.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFUGT_S) : /* lf.sfugt.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3249,7 +3249,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UGT_D32) : /* lf.sfugt.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFUGT_D32) : /* lf.sfugt.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3268,7 +3268,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UGE_S) : /* lf.sfuge.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFUGE_S) : /* lf.sfuge.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3287,7 +3287,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UGE_D32) : /* lf.sfuge.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFUGE_D32) : /* lf.sfuge.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3306,7 +3306,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_ULT_S) : /* lf.sfult.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFULT_S) : /* lf.sfult.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3325,7 +3325,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_ULT_D32) : /* lf.sfult.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFULT_D32) : /* lf.sfult.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3344,7 +3344,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_ULE_S) : /* lf.sfule.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFULE_S) : /* lf.sfule.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3363,7 +3363,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_ULE_D32) : /* lf.sfule.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFULE_D32) : /* lf.sfule.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3382,7 +3382,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UN_S) : /* lf.sfun.s $rASF,$rBSF */
+  CASE (sem, INSN_LF_SFUN_S) : /* lf.sfun.s $rASF,$rBSF */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3401,7 +3401,7 @@ or1k32bf_exception (current_cpu, pc, EXCEPT_RANGE);
 }
   NEXT (vpc);
 
-  CASE (sem, INSN_LF_UN_D32) : /* lf.sfun.d $rAD32F,$rBD32F */
+  CASE (sem, INSN_LF_SFUN_D32) : /* lf.sfun.d $rAD32F,$rBD32F */
 {
   SEM_ARG sem_arg = SEM_SEM_ARG (vpc, sc);
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);

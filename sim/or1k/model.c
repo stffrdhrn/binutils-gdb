@@ -1811,7 +1811,7 @@ model_or1200_lf_ftoi_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_eq_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfeq_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1827,7 +1827,7 @@ model_or1200_lf_eq_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_eq_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfeq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1843,7 +1843,7 @@ model_or1200_lf_eq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ne_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfne_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1859,7 +1859,7 @@ model_or1200_lf_ne_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ne_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfne_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1875,7 +1875,7 @@ model_or1200_lf_ne_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ge_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfge_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1891,7 +1891,7 @@ model_or1200_lf_ge_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ge_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1907,7 +1907,7 @@ model_or1200_lf_ge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_gt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfgt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1923,7 +1923,7 @@ model_or1200_lf_gt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_gt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfgt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1939,7 +1939,7 @@ model_or1200_lf_gt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_lt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sflt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1955,7 +1955,7 @@ model_or1200_lf_lt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_lt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sflt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1971,7 +1971,7 @@ model_or1200_lf_lt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_le_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfle_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -1987,7 +1987,7 @@ model_or1200_lf_le_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_le_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfle_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2003,7 +2003,7 @@ model_or1200_lf_le_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ueq_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfueq_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2019,7 +2019,7 @@ model_or1200_lf_ueq_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2035,7 +2035,7 @@ model_or1200_lf_ueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_une_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfune_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2051,7 +2051,7 @@ model_or1200_lf_une_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_une_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfune_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2067,7 +2067,7 @@ model_or1200_lf_une_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ugt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfugt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2083,7 +2083,7 @@ model_or1200_lf_ugt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2099,7 +2099,7 @@ model_or1200_lf_ugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_uge_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfuge_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2115,7 +2115,7 @@ model_or1200_lf_uge_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_uge_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfuge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2131,7 +2131,7 @@ model_or1200_lf_uge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ult_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfult_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2147,7 +2147,7 @@ model_or1200_lf_ult_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ult_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfult_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2163,7 +2163,7 @@ model_or1200_lf_ult_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ule_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfule_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2179,7 +2179,7 @@ model_or1200_lf_ule_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_ule_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfule_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2195,7 +2195,7 @@ model_or1200_lf_ule_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_un_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfun_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -2211,7 +2211,7 @@ model_or1200_lf_un_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200_lf_un_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200_lf_sfun_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4067,7 +4067,7 @@ model_or1200nd_lf_ftoi_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_eq_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfeq_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4083,7 +4083,7 @@ model_or1200nd_lf_eq_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_eq_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfeq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4099,7 +4099,7 @@ model_or1200nd_lf_eq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ne_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfne_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4115,7 +4115,7 @@ model_or1200nd_lf_ne_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ne_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfne_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4131,7 +4131,7 @@ model_or1200nd_lf_ne_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ge_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfge_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4147,7 +4147,7 @@ model_or1200nd_lf_ge_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ge_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4163,7 +4163,7 @@ model_or1200nd_lf_ge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_gt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfgt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4179,7 +4179,7 @@ model_or1200nd_lf_gt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_gt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfgt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4195,7 +4195,7 @@ model_or1200nd_lf_gt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_lt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sflt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4211,7 +4211,7 @@ model_or1200nd_lf_lt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_lt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sflt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4227,7 +4227,7 @@ model_or1200nd_lf_lt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_le_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfle_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4243,7 +4243,7 @@ model_or1200nd_lf_le_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_le_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfle_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4259,7 +4259,7 @@ model_or1200nd_lf_le_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ueq_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfueq_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4275,7 +4275,7 @@ model_or1200nd_lf_ueq_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4291,7 +4291,7 @@ model_or1200nd_lf_ueq_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_une_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfune_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4307,7 +4307,7 @@ model_or1200nd_lf_une_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_une_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfune_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4323,7 +4323,7 @@ model_or1200nd_lf_une_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ugt_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfugt_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4339,7 +4339,7 @@ model_or1200nd_lf_ugt_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4355,7 +4355,7 @@ model_or1200nd_lf_ugt_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_uge_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfuge_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4371,7 +4371,7 @@ model_or1200nd_lf_uge_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_uge_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfuge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4387,7 +4387,7 @@ model_or1200nd_lf_uge_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ult_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfult_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4403,7 +4403,7 @@ model_or1200nd_lf_ult_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ult_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfult_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4419,7 +4419,7 @@ model_or1200nd_lf_ult_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ule_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfule_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4435,7 +4435,7 @@ model_or1200nd_lf_ule_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_ule_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfule_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4451,7 +4451,7 @@ model_or1200nd_lf_ule_d32 (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_un_s (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfun_s (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4467,7 +4467,7 @@ model_or1200nd_lf_un_s (SIM_CPU *current_cpu, void *sem_arg)
 }
 
 static int
-model_or1200nd_lf_un_d32 (SIM_CPU *current_cpu, void *sem_arg)
+model_or1200nd_lf_sfun_d32 (SIM_CPU *current_cpu, void *sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   const ARGBUF * UNUSED abuf = SEM_ARGBUF ((SEM_ARG) sem_arg);
@@ -4669,32 +4669,32 @@ static const INSN_TIMING or1200_timing[] = {
   { OR1K32BF_INSN_LF_ITOF_D32, model_or1200_lf_itof_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_FTOI_S, model_or1200_lf_ftoi_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_FTOI_D32, model_or1200_lf_ftoi_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_EQ_S, model_or1200_lf_eq_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_EQ_D32, model_or1200_lf_eq_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_NE_S, model_or1200_lf_ne_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_NE_D32, model_or1200_lf_ne_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GE_S, model_or1200_lf_ge_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GE_D32, model_or1200_lf_ge_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GT_S, model_or1200_lf_gt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GT_D32, model_or1200_lf_gt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LT_S, model_or1200_lf_lt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LT_D32, model_or1200_lf_lt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LE_S, model_or1200_lf_le_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LE_D32, model_or1200_lf_le_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UEQ_S, model_or1200_lf_ueq_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UEQ_D32, model_or1200_lf_ueq_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UNE_S, model_or1200_lf_une_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UNE_D32, model_or1200_lf_une_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGT_S, model_or1200_lf_ugt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGT_D32, model_or1200_lf_ugt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGE_S, model_or1200_lf_uge_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGE_D32, model_or1200_lf_uge_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULT_S, model_or1200_lf_ult_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULT_D32, model_or1200_lf_ult_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULE_S, model_or1200_lf_ule_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULE_D32, model_or1200_lf_ule_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UN_S, model_or1200_lf_un_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UN_D32, model_or1200_lf_un_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFEQ_S, model_or1200_lf_sfeq_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFEQ_D32, model_or1200_lf_sfeq_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFNE_S, model_or1200_lf_sfne_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFNE_D32, model_or1200_lf_sfne_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGE_S, model_or1200_lf_sfge_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGE_D32, model_or1200_lf_sfge_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGT_S, model_or1200_lf_sfgt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGT_D32, model_or1200_lf_sfgt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLT_S, model_or1200_lf_sflt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLT_D32, model_or1200_lf_sflt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLE_S, model_or1200_lf_sfle_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLE_D32, model_or1200_lf_sfle_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUEQ_S, model_or1200_lf_sfueq_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUEQ_D32, model_or1200_lf_sfueq_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUNE_S, model_or1200_lf_sfune_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUNE_D32, model_or1200_lf_sfune_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGT_S, model_or1200_lf_sfugt_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGT_D32, model_or1200_lf_sfugt_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGE_S, model_or1200_lf_sfuge_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGE_D32, model_or1200_lf_sfuge_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULT_S, model_or1200_lf_sfult_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULT_D32, model_or1200_lf_sfult_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULE_S, model_or1200_lf_sfule_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULE_D32, model_or1200_lf_sfule_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUN_S, model_or1200_lf_sfun_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUN_D32, model_or1200_lf_sfun_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_MADD_S, model_or1200_lf_madd_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_MADD_D32, model_or1200_lf_madd_d32, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_CUST1_S, model_or1200_lf_cust1_s, { { (int) UNIT_OR1200_U_EXEC, 1, 1 } } },
@@ -4821,32 +4821,32 @@ static const INSN_TIMING or1200nd_timing[] = {
   { OR1K32BF_INSN_LF_ITOF_D32, model_or1200nd_lf_itof_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_FTOI_S, model_or1200nd_lf_ftoi_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_FTOI_D32, model_or1200nd_lf_ftoi_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_EQ_S, model_or1200nd_lf_eq_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_EQ_D32, model_or1200nd_lf_eq_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_NE_S, model_or1200nd_lf_ne_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_NE_D32, model_or1200nd_lf_ne_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GE_S, model_or1200nd_lf_ge_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GE_D32, model_or1200nd_lf_ge_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GT_S, model_or1200nd_lf_gt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_GT_D32, model_or1200nd_lf_gt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LT_S, model_or1200nd_lf_lt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LT_D32, model_or1200nd_lf_lt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LE_S, model_or1200nd_lf_le_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_LE_D32, model_or1200nd_lf_le_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UEQ_S, model_or1200nd_lf_ueq_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UEQ_D32, model_or1200nd_lf_ueq_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UNE_S, model_or1200nd_lf_une_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UNE_D32, model_or1200nd_lf_une_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGT_S, model_or1200nd_lf_ugt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGT_D32, model_or1200nd_lf_ugt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGE_S, model_or1200nd_lf_uge_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UGE_D32, model_or1200nd_lf_uge_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULT_S, model_or1200nd_lf_ult_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULT_D32, model_or1200nd_lf_ult_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULE_S, model_or1200nd_lf_ule_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_ULE_D32, model_or1200nd_lf_ule_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UN_S, model_or1200nd_lf_un_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
-  { OR1K32BF_INSN_LF_UN_D32, model_or1200nd_lf_un_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFEQ_S, model_or1200nd_lf_sfeq_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFEQ_D32, model_or1200nd_lf_sfeq_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFNE_S, model_or1200nd_lf_sfne_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFNE_D32, model_or1200nd_lf_sfne_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGE_S, model_or1200nd_lf_sfge_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGE_D32, model_or1200nd_lf_sfge_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGT_S, model_or1200nd_lf_sfgt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFGT_D32, model_or1200nd_lf_sfgt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLT_S, model_or1200nd_lf_sflt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLT_D32, model_or1200nd_lf_sflt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLE_S, model_or1200nd_lf_sfle_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFLE_D32, model_or1200nd_lf_sfle_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUEQ_S, model_or1200nd_lf_sfueq_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUEQ_D32, model_or1200nd_lf_sfueq_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUNE_S, model_or1200nd_lf_sfune_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUNE_D32, model_or1200nd_lf_sfune_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGT_S, model_or1200nd_lf_sfugt_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGT_D32, model_or1200nd_lf_sfugt_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGE_S, model_or1200nd_lf_sfuge_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUGE_D32, model_or1200nd_lf_sfuge_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULT_S, model_or1200nd_lf_sfult_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULT_D32, model_or1200nd_lf_sfult_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULE_S, model_or1200nd_lf_sfule_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFULE_D32, model_or1200nd_lf_sfule_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUN_S, model_or1200nd_lf_sfun_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
+  { OR1K32BF_INSN_LF_SFUN_D32, model_or1200nd_lf_sfun_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_MADD_S, model_or1200nd_lf_madd_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_MADD_D32, model_or1200nd_lf_madd_d32, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },
   { OR1K32BF_INSN_LF_CUST1_S, model_or1200nd_lf_cust1_s, { { (int) UNIT_OR1200ND_U_EXEC, 1, 1 } } },

@@ -2967,10 +2967,10 @@ SEM_FN_NAME (or1k32bf,lf_ftoi_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-eq-s: lf.sfeq.s $rASF,$rBSF */
+/* lf-sfeq-s: lf.sfeq.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_eq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfeq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -2988,10 +2988,10 @@ SEM_FN_NAME (or1k32bf,lf_eq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-eq-d32: lf.sfeq.d $rAD32F,$rBD32F */
+/* lf-sfeq-d32: lf.sfeq.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_eq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfeq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3009,10 +3009,10 @@ SEM_FN_NAME (or1k32bf,lf_eq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ne-s: lf.sfne.s $rASF,$rBSF */
+/* lf-sfne-s: lf.sfne.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ne_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfne_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3030,10 +3030,10 @@ SEM_FN_NAME (or1k32bf,lf_ne_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ne-d32: lf.sfne.d $rAD32F,$rBD32F */
+/* lf-sfne-d32: lf.sfne.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ne_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfne_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3051,10 +3051,10 @@ SEM_FN_NAME (or1k32bf,lf_ne_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ge-s: lf.sfge.s $rASF,$rBSF */
+/* lf-sfge-s: lf.sfge.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3072,10 +3072,10 @@ SEM_FN_NAME (or1k32bf,lf_ge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ge-d32: lf.sfge.d $rAD32F,$rBD32F */
+/* lf-sfge-d32: lf.sfge.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3093,10 +3093,10 @@ SEM_FN_NAME (or1k32bf,lf_ge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-gt-s: lf.sfgt.s $rASF,$rBSF */
+/* lf-sfgt-s: lf.sfgt.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_gt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfgt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3114,10 +3114,10 @@ SEM_FN_NAME (or1k32bf,lf_gt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-gt-d32: lf.sfgt.d $rAD32F,$rBD32F */
+/* lf-sfgt-d32: lf.sfgt.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_gt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfgt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3135,10 +3135,10 @@ SEM_FN_NAME (or1k32bf,lf_gt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-lt-s: lf.sflt.s $rASF,$rBSF */
+/* lf-sflt-s: lf.sflt.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_lt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sflt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3156,10 +3156,10 @@ SEM_FN_NAME (or1k32bf,lf_lt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-lt-d32: lf.sflt.d $rAD32F,$rBD32F */
+/* lf-sflt-d32: lf.sflt.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_lt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sflt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3177,10 +3177,10 @@ SEM_FN_NAME (or1k32bf,lf_lt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-le-s: lf.sfle.s $rASF,$rBSF */
+/* lf-sfle-s: lf.sfle.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_le_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfle_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3198,10 +3198,10 @@ SEM_FN_NAME (or1k32bf,lf_le_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-le-d32: lf.sfle.d $rAD32F,$rBD32F */
+/* lf-sfle-d32: lf.sfle.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_le_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfle_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3219,10 +3219,10 @@ SEM_FN_NAME (or1k32bf,lf_le_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ueq-s: lf.sfueq.s $rASF,$rBSF */
+/* lf-sfueq-s: lf.sfueq.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ueq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfueq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3240,10 +3240,10 @@ SEM_FN_NAME (or1k32bf,lf_ueq_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ueq-d32: lf.sfueq.d $rAD32F,$rBD32F */
+/* lf-sfueq-d32: lf.sfueq.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ueq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfueq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3261,10 +3261,10 @@ SEM_FN_NAME (or1k32bf,lf_ueq_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-une-s: lf.sfune.s $rASF,$rBSF */
+/* lf-sfune-s: lf.sfune.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_une_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfune_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3282,10 +3282,10 @@ SEM_FN_NAME (or1k32bf,lf_une_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-une-d32: lf.sfune.d $rAD32F,$rBD32F */
+/* lf-sfune-d32: lf.sfune.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_une_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfune_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3303,10 +3303,10 @@ SEM_FN_NAME (or1k32bf,lf_une_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ugt-s: lf.sfugt.s $rASF,$rBSF */
+/* lf-sfugt-s: lf.sfugt.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ugt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfugt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3324,10 +3324,10 @@ SEM_FN_NAME (or1k32bf,lf_ugt_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ugt-d32: lf.sfugt.d $rAD32F,$rBD32F */
+/* lf-sfugt-d32: lf.sfugt.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ugt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfugt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3345,10 +3345,10 @@ SEM_FN_NAME (or1k32bf,lf_ugt_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-uge-s: lf.sfuge.s $rASF,$rBSF */
+/* lf-sfuge-s: lf.sfuge.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_uge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfuge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3366,10 +3366,10 @@ SEM_FN_NAME (or1k32bf,lf_uge_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-uge-d32: lf.sfuge.d $rAD32F,$rBD32F */
+/* lf-sfuge-d32: lf.sfuge.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_uge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfuge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3387,10 +3387,10 @@ SEM_FN_NAME (or1k32bf,lf_uge_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ult-s: lf.sfult.s $rASF,$rBSF */
+/* lf-sfult-s: lf.sfult.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ult_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfult_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3408,10 +3408,10 @@ SEM_FN_NAME (or1k32bf,lf_ult_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ult-d32: lf.sfult.d $rAD32F,$rBD32F */
+/* lf-sfult-d32: lf.sfult.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ult_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfult_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3429,10 +3429,10 @@ SEM_FN_NAME (or1k32bf,lf_ult_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ule-s: lf.sfule.s $rASF,$rBSF */
+/* lf-sfule-s: lf.sfule.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ule_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfule_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3450,10 +3450,10 @@ SEM_FN_NAME (or1k32bf,lf_ule_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-ule-d32: lf.sfule.d $rAD32F,$rBD32F */
+/* lf-sfule-d32: lf.sfule.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_ule_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfule_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3471,10 +3471,10 @@ SEM_FN_NAME (or1k32bf,lf_ule_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-un-s: lf.sfun.s $rASF,$rBSF */
+/* lf-sfun-s: lf.sfun.s $rASF,$rBSF */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_un_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfun_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_l_sll.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3492,10 +3492,10 @@ SEM_FN_NAME (or1k32bf,lf_un_s) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 #undef FLD
 }
 
-/* lf-un-d32: lf.sfun.d $rAD32F,$rBD32F */
+/* lf-sfun-d32: lf.sfun.d $rAD32F,$rBD32F */
 
 static SEM_PC
-SEM_FN_NAME (or1k32bf,lf_un_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
+SEM_FN_NAME (or1k32bf,lf_sfun_d32) (SIM_CPU *current_cpu, SEM_ARG sem_arg)
 {
 #define FLD(f) abuf->fields.sfmt_lf_add_d32.f
   ARGBUF *abuf = SEM_ARGBUF (sem_arg);
@@ -3709,32 +3709,32 @@ static const struct sem_fn_desc sem_fns[] = {
   { OR1K32BF_INSN_LF_ITOF_D32, SEM_FN_NAME (or1k32bf,lf_itof_d32) },
   { OR1K32BF_INSN_LF_FTOI_S, SEM_FN_NAME (or1k32bf,lf_ftoi_s) },
   { OR1K32BF_INSN_LF_FTOI_D32, SEM_FN_NAME (or1k32bf,lf_ftoi_d32) },
-  { OR1K32BF_INSN_LF_EQ_S, SEM_FN_NAME (or1k32bf,lf_eq_s) },
-  { OR1K32BF_INSN_LF_EQ_D32, SEM_FN_NAME (or1k32bf,lf_eq_d32) },
-  { OR1K32BF_INSN_LF_NE_S, SEM_FN_NAME (or1k32bf,lf_ne_s) },
-  { OR1K32BF_INSN_LF_NE_D32, SEM_FN_NAME (or1k32bf,lf_ne_d32) },
-  { OR1K32BF_INSN_LF_GE_S, SEM_FN_NAME (or1k32bf,lf_ge_s) },
-  { OR1K32BF_INSN_LF_GE_D32, SEM_FN_NAME (or1k32bf,lf_ge_d32) },
-  { OR1K32BF_INSN_LF_GT_S, SEM_FN_NAME (or1k32bf,lf_gt_s) },
-  { OR1K32BF_INSN_LF_GT_D32, SEM_FN_NAME (or1k32bf,lf_gt_d32) },
-  { OR1K32BF_INSN_LF_LT_S, SEM_FN_NAME (or1k32bf,lf_lt_s) },
-  { OR1K32BF_INSN_LF_LT_D32, SEM_FN_NAME (or1k32bf,lf_lt_d32) },
-  { OR1K32BF_INSN_LF_LE_S, SEM_FN_NAME (or1k32bf,lf_le_s) },
-  { OR1K32BF_INSN_LF_LE_D32, SEM_FN_NAME (or1k32bf,lf_le_d32) },
-  { OR1K32BF_INSN_LF_UEQ_S, SEM_FN_NAME (or1k32bf,lf_ueq_s) },
-  { OR1K32BF_INSN_LF_UEQ_D32, SEM_FN_NAME (or1k32bf,lf_ueq_d32) },
-  { OR1K32BF_INSN_LF_UNE_S, SEM_FN_NAME (or1k32bf,lf_une_s) },
-  { OR1K32BF_INSN_LF_UNE_D32, SEM_FN_NAME (or1k32bf,lf_une_d32) },
-  { OR1K32BF_INSN_LF_UGT_S, SEM_FN_NAME (or1k32bf,lf_ugt_s) },
-  { OR1K32BF_INSN_LF_UGT_D32, SEM_FN_NAME (or1k32bf,lf_ugt_d32) },
-  { OR1K32BF_INSN_LF_UGE_S, SEM_FN_NAME (or1k32bf,lf_uge_s) },
-  { OR1K32BF_INSN_LF_UGE_D32, SEM_FN_NAME (or1k32bf,lf_uge_d32) },
-  { OR1K32BF_INSN_LF_ULT_S, SEM_FN_NAME (or1k32bf,lf_ult_s) },
-  { OR1K32BF_INSN_LF_ULT_D32, SEM_FN_NAME (or1k32bf,lf_ult_d32) },
-  { OR1K32BF_INSN_LF_ULE_S, SEM_FN_NAME (or1k32bf,lf_ule_s) },
-  { OR1K32BF_INSN_LF_ULE_D32, SEM_FN_NAME (or1k32bf,lf_ule_d32) },
-  { OR1K32BF_INSN_LF_UN_S, SEM_FN_NAME (or1k32bf,lf_un_s) },
-  { OR1K32BF_INSN_LF_UN_D32, SEM_FN_NAME (or1k32bf,lf_un_d32) },
+  { OR1K32BF_INSN_LF_SFEQ_S, SEM_FN_NAME (or1k32bf,lf_sfeq_s) },
+  { OR1K32BF_INSN_LF_SFEQ_D32, SEM_FN_NAME (or1k32bf,lf_sfeq_d32) },
+  { OR1K32BF_INSN_LF_SFNE_S, SEM_FN_NAME (or1k32bf,lf_sfne_s) },
+  { OR1K32BF_INSN_LF_SFNE_D32, SEM_FN_NAME (or1k32bf,lf_sfne_d32) },
+  { OR1K32BF_INSN_LF_SFGE_S, SEM_FN_NAME (or1k32bf,lf_sfge_s) },
+  { OR1K32BF_INSN_LF_SFGE_D32, SEM_FN_NAME (or1k32bf,lf_sfge_d32) },
+  { OR1K32BF_INSN_LF_SFGT_S, SEM_FN_NAME (or1k32bf,lf_sfgt_s) },
+  { OR1K32BF_INSN_LF_SFGT_D32, SEM_FN_NAME (or1k32bf,lf_sfgt_d32) },
+  { OR1K32BF_INSN_LF_SFLT_S, SEM_FN_NAME (or1k32bf,lf_sflt_s) },
+  { OR1K32BF_INSN_LF_SFLT_D32, SEM_FN_NAME (or1k32bf,lf_sflt_d32) },
+  { OR1K32BF_INSN_LF_SFLE_S, SEM_FN_NAME (or1k32bf,lf_sfle_s) },
+  { OR1K32BF_INSN_LF_SFLE_D32, SEM_FN_NAME (or1k32bf,lf_sfle_d32) },
+  { OR1K32BF_INSN_LF_SFUEQ_S, SEM_FN_NAME (or1k32bf,lf_sfueq_s) },
+  { OR1K32BF_INSN_LF_SFUEQ_D32, SEM_FN_NAME (or1k32bf,lf_sfueq_d32) },
+  { OR1K32BF_INSN_LF_SFUNE_S, SEM_FN_NAME (or1k32bf,lf_sfune_s) },
+  { OR1K32BF_INSN_LF_SFUNE_D32, SEM_FN_NAME (or1k32bf,lf_sfune_d32) },
+  { OR1K32BF_INSN_LF_SFUGT_S, SEM_FN_NAME (or1k32bf,lf_sfugt_s) },
+  { OR1K32BF_INSN_LF_SFUGT_D32, SEM_FN_NAME (or1k32bf,lf_sfugt_d32) },
+  { OR1K32BF_INSN_LF_SFUGE_S, SEM_FN_NAME (or1k32bf,lf_sfuge_s) },
+  { OR1K32BF_INSN_LF_SFUGE_D32, SEM_FN_NAME (or1k32bf,lf_sfuge_d32) },
+  { OR1K32BF_INSN_LF_SFULT_S, SEM_FN_NAME (or1k32bf,lf_sfult_s) },
+  { OR1K32BF_INSN_LF_SFULT_D32, SEM_FN_NAME (or1k32bf,lf_sfult_d32) },
+  { OR1K32BF_INSN_LF_SFULE_S, SEM_FN_NAME (or1k32bf,lf_sfule_s) },
+  { OR1K32BF_INSN_LF_SFULE_D32, SEM_FN_NAME (or1k32bf,lf_sfule_d32) },
+  { OR1K32BF_INSN_LF_SFUN_S, SEM_FN_NAME (or1k32bf,lf_sfun_s) },
+  { OR1K32BF_INSN_LF_SFUN_D32, SEM_FN_NAME (or1k32bf,lf_sfun_d32) },
   { OR1K32BF_INSN_LF_MADD_S, SEM_FN_NAME (or1k32bf,lf_madd_s) },
   { OR1K32BF_INSN_LF_MADD_D32, SEM_FN_NAME (or1k32bf,lf_madd_d32) },
   { OR1K32BF_INSN_LF_CUST1_S, SEM_FN_NAME (or1k32bf,lf_cust1_s) },

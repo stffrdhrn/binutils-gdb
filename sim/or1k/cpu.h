@@ -5120,7 +5120,7 @@ struct scache {
   f_resv_8_1 = EXTRACT_LSB0_UINT (insn, 32, 8, 1); \
   f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
 
-#define EXTRACT_IFMT_LF_EQ_S_VARS \
+#define EXTRACT_IFMT_LF_SFEQ_S_VARS \
   UINT f_opcode; \
   UINT f_r1; \
   UINT f_r2; \
@@ -5128,7 +5128,7 @@ struct scache {
   UINT f_resv_10_3; \
   UINT f_op_7_8; \
   unsigned int length;
-#define EXTRACT_IFMT_LF_EQ_S_CODE \
+#define EXTRACT_IFMT_LF_SFEQ_S_CODE \
   length = 4; \
   f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
   f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
@@ -5137,7 +5137,7 @@ struct scache {
   f_resv_10_3 = EXTRACT_LSB0_UINT (insn, 32, 10, 3); \
   f_op_7_8 = EXTRACT_LSB0_UINT (insn, 32, 7, 8); \
 
-#define EXTRACT_IFMT_LF_EQ_D32_VARS \
+#define EXTRACT_IFMT_LF_SFEQ_D32_VARS \
   UINT f_opcode; \
   UINT f_r1; \
   UINT f_resv_10_1; \
@@ -5149,7 +5149,7 @@ struct scache {
   SI f_rbd32; \
   UINT f_op_7_8; \
   unsigned int length;
-#define EXTRACT_IFMT_LF_EQ_D32_CODE \
+#define EXTRACT_IFMT_LF_SFEQ_D32_CODE \
   length = 4; \
   f_opcode = EXTRACT_LSB0_UINT (insn, 32, 31, 6); \
   f_r1 = EXTRACT_LSB0_UINT (insn, 32, 25, 5); \
