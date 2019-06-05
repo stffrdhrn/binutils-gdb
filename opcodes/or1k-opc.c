@@ -195,15 +195,15 @@ static const CGEN_IFMT ifmt_lf_ftoi_d32 ATTRIBUTE_UNUSED = {
   32, 32, 0xfc00f9ff, { { F (F_OPCODE) }, { F (F_R3) }, { F (F_RDD32) }, { F (F_RAD32) }, { F (F_RESV_8_1) }, { F (F_OP_7_8) }, { 0 } }
 };
 
-static const CGEN_IFMT ifmt_lf_eq_s ATTRIBUTE_UNUSED = {
+static const CGEN_IFMT ifmt_lf_sfeq_s ATTRIBUTE_UNUSED = {
   32, 32, 0xffe007ff, { { F (F_OPCODE) }, { F (F_R1) }, { F (F_R2) }, { F (F_R3) }, { F (F_RESV_10_3) }, { F (F_OP_7_8) }, { 0 } }
 };
 
-static const CGEN_IFMT ifmt_lf_eq_d ATTRIBUTE_UNUSED = {
+static const CGEN_IFMT ifmt_lf_sfeq_d ATTRIBUTE_UNUSED = {
   32, 32, 0xffe007ff, { { F (F_OPCODE) }, { F (F_R1) }, { F (F_R2) }, { F (F_R3) }, { F (F_RESV_10_3) }, { F (F_OP_7_8) }, { 0 } }
 };
 
-static const CGEN_IFMT ifmt_lf_eq_d32 ATTRIBUTE_UNUSED = {
+static const CGEN_IFMT ifmt_lf_sfeq_d32 ATTRIBUTE_UNUSED = {
   32, 32, 0xffe004ff, { { F (F_OPCODE) }, { F (F_R1) }, { F (F_RESV_10_1) }, { F (F_RAD32) }, { F (F_RBD32) }, { F (F_OP_7_8) }, { 0 } }
 };
 
@@ -952,235 +952,235 @@ static const CGEN_OPCODE or1k_cgen_insn_opcode_table[MAX_INSNS] =
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc8000008 }
+    & ifmt_lf_sfeq_s, { 0xc8000008 }
   },
 /* lf.sfeq.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc8000018 }
+    & ifmt_lf_sfeq_d, { 0xc8000018 }
   },
 /* lf.sfeq.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc8000018 }
+    & ifmt_lf_sfeq_d32, { 0xc8000018 }
   },
 /* lf.sfne.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc8000009 }
+    & ifmt_lf_sfeq_s, { 0xc8000009 }
   },
 /* lf.sfne.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc8000019 }
+    & ifmt_lf_sfeq_d, { 0xc8000019 }
   },
 /* lf.sfne.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc8000019 }
+    & ifmt_lf_sfeq_d32, { 0xc8000019 }
   },
 /* lf.sfge.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800000b }
+    & ifmt_lf_sfeq_s, { 0xc800000b }
   },
 /* lf.sfge.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800001b }
+    & ifmt_lf_sfeq_d, { 0xc800001b }
   },
 /* lf.sfge.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800001b }
+    & ifmt_lf_sfeq_d32, { 0xc800001b }
   },
 /* lf.sfgt.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800000a }
+    & ifmt_lf_sfeq_s, { 0xc800000a }
   },
 /* lf.sfgt.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800001a }
+    & ifmt_lf_sfeq_d, { 0xc800001a }
   },
 /* lf.sfgt.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800001a }
+    & ifmt_lf_sfeq_d32, { 0xc800001a }
   },
 /* lf.sflt.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800000c }
+    & ifmt_lf_sfeq_s, { 0xc800000c }
   },
 /* lf.sflt.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800001c }
+    & ifmt_lf_sfeq_d, { 0xc800001c }
   },
 /* lf.sflt.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800001c }
+    & ifmt_lf_sfeq_d32, { 0xc800001c }
   },
 /* lf.sfle.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800000d }
+    & ifmt_lf_sfeq_s, { 0xc800000d }
   },
 /* lf.sfle.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800001d }
+    & ifmt_lf_sfeq_d, { 0xc800001d }
   },
 /* lf.sfle.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800001d }
+    & ifmt_lf_sfeq_d32, { 0xc800001d }
   },
 /* lf.sfueq.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc8000028 }
+    & ifmt_lf_sfeq_s, { 0xc8000028 }
   },
 /* lf.sfueq.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc8000038 }
+    & ifmt_lf_sfeq_d, { 0xc8000038 }
   },
 /* lf.sfueq.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc8000038 }
+    & ifmt_lf_sfeq_d32, { 0xc8000038 }
   },
 /* lf.sfune.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc8000029 }
+    & ifmt_lf_sfeq_s, { 0xc8000029 }
   },
 /* lf.sfune.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc8000039 }
+    & ifmt_lf_sfeq_d, { 0xc8000039 }
   },
 /* lf.sfune.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc8000039 }
+    & ifmt_lf_sfeq_d32, { 0xc8000039 }
   },
 /* lf.sfugt.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800002a }
+    & ifmt_lf_sfeq_s, { 0xc800002a }
   },
 /* lf.sfugt.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800003a }
+    & ifmt_lf_sfeq_d, { 0xc800003a }
   },
 /* lf.sfugt.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800003a }
+    & ifmt_lf_sfeq_d32, { 0xc800003a }
   },
 /* lf.sfuge.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800002b }
+    & ifmt_lf_sfeq_s, { 0xc800002b }
   },
 /* lf.sfuge.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800003b }
+    & ifmt_lf_sfeq_d, { 0xc800003b }
   },
 /* lf.sfuge.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800003b }
+    & ifmt_lf_sfeq_d32, { 0xc800003b }
   },
 /* lf.sfult.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800002c }
+    & ifmt_lf_sfeq_s, { 0xc800002c }
   },
 /* lf.sfult.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800003c }
+    & ifmt_lf_sfeq_d, { 0xc800003c }
   },
 /* lf.sfult.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800003c }
+    & ifmt_lf_sfeq_d32, { 0xc800003c }
   },
 /* lf.sfule.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800002d }
+    & ifmt_lf_sfeq_s, { 0xc800002d }
   },
 /* lf.sfule.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800003d }
+    & ifmt_lf_sfeq_d, { 0xc800003d }
   },
 /* lf.sfule.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800003d }
+    & ifmt_lf_sfeq_d32, { 0xc800003d }
   },
 /* lf.sfun.s $rASF,$rBSF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RASF), ',', OP (RBSF), 0 } },
-    & ifmt_lf_eq_s, { 0xc800002e }
+    & ifmt_lf_sfeq_s, { 0xc800002e }
   },
 /* lf.sfun.d $rADF,$rBDF */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RADF), ',', OP (RBDF), 0 } },
-    & ifmt_lf_eq_d, { 0xc800003e }
+    & ifmt_lf_sfeq_d, { 0xc800003e }
   },
 /* lf.sfun.d $rAD32F,$rBD32F */
   {
     { 0, 0, 0, 0 },
     { { MNEM, ' ', OP (RAD32F), ',', OP (RBD32F), 0 } },
-    & ifmt_lf_eq_d32, { 0xc800003e }
+    & ifmt_lf_sfeq_d32, { 0xc800003e }
   },
 /* lf.madd.s $rDSF,$rASF,$rBSF */
   {
