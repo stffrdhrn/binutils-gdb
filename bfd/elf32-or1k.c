@@ -1074,7 +1074,7 @@ or1k_initial_exec_offset (reloc_howto_type *howto, unsigned char tls_type_mask)
      case R_OR1K_TLS_IE_PG21:
      case R_OR1K_TLS_IE_LO13:
      case R_OR1K_TLS_IE_AHI16:
-       return (tls_type_mask & TLS_GD) != 0 ? 4 : 0;
+       return (tls_type_mask & TLS_GD) != 0 ? 8 : 0;
      default:
        return 0;
      }
@@ -1537,7 +1537,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		: (h != NULL
 		    && h->dynindx != -1
 		    && !h->non_got_ref
-		   && ((h->def_dynamic && !h->def_regular)
+		    && ((h->def_dynamic && !h->def_regular)
 			|| h->root.type == bfd_link_hash_undefweak
 			|| h->root.type == bfd_link_hash_undefined)))
 	      {
@@ -1614,6 +1614,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    asection *srelgot;
 	    bfd_byte *loc;
 	    int dynamic;
+	    int indx = 0;
 	    unsigned char tls_type;
 
 	    srelgot = htab->root.srelgot;
@@ -1637,10 +1638,9 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		local_got_offsets[r_symndx] |= 3;
 	      }
 
-//fprintf (stderr, "Processing %s relocation for: %s gotoff: %08lx tls_type: %d, rel_addend: %08lx, ie_offset: %lx\n",
+//fprintf (stderr, "Processing %s relocation for: %s gotoff: %08lx tls_type: %d, ie_offset: %lx\n",
 //howto->name,
 //h->root.root.string, (gotoff & ~3), tls_type,
-//rel->r_addend,
 //or1k_initial_exec_offset (howto, tls_type));
 
 	    /* Only process the relocation once.  */
@@ -1659,16 +1659,26 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    BFD_ASSERT (elf_hash_table (info)->hgot == NULL
 			|| elf_hash_table (info)->hgot->root.u.def.value == 0);
 
+	    if (h != NULL)
+	      {
+		bfd_boolean dyn = htab->root.dynamic_sections_created;
+		bfd_boolean pic = bfd_link_pic (info);
+
+		if (WILL_CALL_FINISH_DYNAMIC_SYMBOL (dyn, pic, h)
+		    && (!pic || !SYMBOL_REFERENCES_LOCAL (info, h)))
+		  indx = h->dynindx;
+	      }
+
 	    /* Dynamic entries will require relocations.  If we do not need
 	       them we will just use the default R_OR1K_NONE and
 	       not set anything.  */
-	    dynamic = bfd_link_pic (info)
-		  && (h == NULL
-		      || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
-		      || h->root.type == bfd_link_hash_defweak);
+	    dynamic = (bfd_link_pic (info) || indx != 0)
+		       && (h == NULL
+			   || ELF_ST_VISIBILITY (h->other) == STV_DEFAULT
+			   || h->root.type != bfd_link_hash_undefweak);
 
 	    /* Shared GD.  */
-	    if (dynamic && (tls_type & TLS_GD) != 0)
+	    if (dynamic && ((tls_type & TLS_GD) != 0))
 	      {
 		int i;
 
@@ -1695,6 +1705,8 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		    loc += srelgot->reloc_count++ *
 		      sizeof (Elf32_External_Rela);
 
+//fprintf (stderr, "  writing dynamic GD got entry: %ld: 0 + rela: %lx\n", got_base + gotoff - got_sym_value + i*4, (unsigned long) loc);
+
 		    bfd_elf32_swap_reloca_out (output_bfd, &rela, loc);
 		    bfd_put_32 (output_bfd, 0, sgot->contents + gotoff + i*4);
 		  }
@@ -1708,13 +1720,19 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		bfd_put_32 (output_bfd, tpoff (info, relocation),
 		    sgot->contents + gotoff + 4);
 	      }
+
 	    /* Shared IE.  */
-	    else if (dynamic)
+	    if (dynamic && ((tls_type & TLS_IE) != 0))
 	      {
+		bfd_vma ie_gotoff = gotoff;
+
 		BFD_ASSERT (srelgot->contents != NULL);
 
+		if ((tls_type & TLS_GD) != 0)
+		  ie_gotoff += 8;
+
 		/* Add TPOFF GOT and rela entries.  */
-		rela.r_offset = got_base + gotoff;
+		rela.r_offset = got_base + ie_gotoff;
 		if (h != NULL && h->dynindx != -1)
 		  {
 		    rela.r_info = ELF32_R_INFO (h->dynindx, R_OR1K_TLS_TPOFF);
@@ -1729,15 +1747,20 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		loc = srelgot->contents;
 		loc += srelgot->reloc_count++ * sizeof (Elf32_External_Rela);
 
+//fprintf (stderr, "  writing dynamic IE got entry: %ld: 0 + rela: %lx\n", got_base + ie_gotoff - got_sym_value, (unsigned long) loc);
 		bfd_elf32_swap_reloca_out (output_bfd, &rela, loc);
-		bfd_put_32 (output_bfd, 0, sgot->contents + gotoff);
+		bfd_put_32 (output_bfd, 0, sgot->contents + ie_gotoff);
 	      }
 	    /* Static IE.  */
-	    else
+	    else if ((tls_type && TLS_IE) != 0)
 	      {
-//fprintf (stderr, "  writing static IE got entry: %ld: %lx\n", got_base + gotoff - got_sym_value, tpoff (info, relocation));
+		bfd_vma ie_gotoff = gotoff;
+
+		if ((tls_type & TLS_GD) != 0)
+		  ie_gotoff += 8;
+//fprintf (stderr, "  writing static IE got entry: %ld: %lx\n", got_base + ie_gotoff - got_sym_value, tpoff (info, relocation));
 		bfd_put_32 (output_bfd, tpoff (info, relocation),
-			    sgot->contents + gotoff);
+			    sgot->contents + ie_gotoff);
 	      }
 
 	    /* The PG21 and LO13 relocs are pc-relative, while the
@@ -1756,6 +1779,11 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	case R_OR1K_TLS_LE_LO16:
 	case R_OR1K_TLS_LE_AHI16:
 	case R_OR1K_TLS_LE_SLO16:
+//fprintf (stderr, "Processing %s relocation for: %s reloc: %lx\n",
+//howto->name,
+//h->root.root.string,
+//tpoff (info, relocation));
+
 	  /* Relocation is offset from TP.  */
 	  relocation = tpoff (info, relocation);
 	  break;
@@ -2676,6 +2704,44 @@ or1k_elf_adjust_dynamic_symbol (struct bfd_link_info *info,
   return _bfd_elf_adjust_dynamic_copy (info, h, s);
 }
 
+static void
+or1k_set_got_and_rela_sizes (const unsigned char tls_type,
+			     const bfd_boolean dynamic,
+			     bfd_vma *got_size,
+			     bfd_vma *rela_size)
+{
+  bfd_boolean is_tls_entry = FALSE;
+
+  /* TLS GD requires two GOT and two relocs.  */
+  if ((tls_type & TLS_GD) != 0)
+    {
+      *got_size += 8;
+      is_tls_entry = TRUE;
+    }
+
+  if ((tls_type & TLS_IE) != 0)
+    {
+      *got_size += 4;
+      is_tls_entry = TRUE;
+    }
+
+  if (is_tls_entry == FALSE)
+    *got_size += 4;
+    
+  if (dynamic)
+    {
+      if ((tls_type & TLS_GD) != 0)
+	*rela_size += 2 * sizeof (Elf32_External_Rela);
+
+      if ((tls_type & TLS_IE) != 0)
+	*rela_size += sizeof (Elf32_External_Rela);
+
+      if (is_tls_entry == FALSE)
+	*rela_size += sizeof (Elf32_External_Rela);
+    }
+}
+
+
 /* Allocate space in .plt, .got and associated reloc sections for
    dynamic relocs.  */
 
@@ -2775,24 +2841,10 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 
       tls_type = ((struct elf_or1k_link_hash_entry *) h)->tls_type;
 
-//if ((tls_type & TLS_GD) != 0)
-//  fprintf (stderr, "sizing for symbol: %s : TLS_TYPE = GD\n", h->root.root.string);
-//if ((tls_type & TLS_IE) != 0)
-//  fprintf (stderr, "sizing for symbol: %s : TLS_TYPE = IE\n", h->root.root.string);
-
-      /* TLS GD requires two GOT and two relocs.  */
-      if ((tls_type & TLS_GD) != 0)
-	s->size += 8;
-      else
-	s->size += 4;
       dyn = htab->root.dynamic_sections_created;
-      if (WILL_CALL_FINISH_DYNAMIC_SYMBOL (dyn, bfd_link_pic (info), h))
-	{
-	  if ((tls_type & TLS_GD) != 0)
-	    htab->root.srelgot->size += 2 * sizeof (Elf32_External_Rela);
-	  else
-	    htab->root.srelgot->size += sizeof (Elf32_External_Rela);
-	}
+      dyn = WILL_CALL_FINISH_DYNAMIC_SYMBOL (dyn, bfd_link_pic (info), h);
+      or1k_set_got_and_rela_sizes (tls_type, dyn,
+				   &s->size, &htab->root.srelgot->size);
     }
   else
     h->got.offset = (bfd_vma) -1;
@@ -2997,20 +3049,13 @@ or1k_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
 	{
 	  if (*local_got > 0)
 	    {
-	      *local_got = s->size;
+	      unsigned char tls_type = (local_tls_type == NULL)
+					? TLS_UNKNOWN
+					: *local_tls_type;
 
-	      /* TLS GD requires two GOT and two relocs.  */
-	      if (local_tls_type != NULL && (*local_tls_type & TLS_GD) != 0)
-		s->size += 8;
-	      else
-		s->size += 4;
-	      if (bfd_link_pic (info))
-		{
-		  if (local_tls_type != NULL && (*local_tls_type & TLS_GD) != 0)
-		    srel->size += 2 * sizeof (Elf32_External_Rela);
-		  else
-		    srel->size += sizeof (Elf32_External_Rela);
-		}
+	      *local_got = s->size;
+	      or1k_set_got_and_rela_sizes (tls_type, bfd_link_pic (info),
+					   &s->size, &srel->size);
 	    }
 	  else
 
