@@ -884,6 +884,9 @@ static const struct or1k_reloc_map or1k_reloc_map[] =
 #define TLS_IE	       8
 #define TLS_LE	      16
 
+/* The size of the TLS thread control block, used to offset LE access.  */
+#define TCB_SIZE       4
+
 /* ELF linker hash entry.  */
 struct elf_or1k_link_hash_entry
 {
@@ -1052,14 +1055,22 @@ or1k_info_to_howto_rela (bfd * abfd,
 static bfd_vma
 tpoff (struct bfd_link_info *info, bfd_vma address)
 {
+  struct elf_link_hash_table *htab = elf_hash_table (info);
+  bfd_vma base;
+
   /* If tls_sec is NULL, we should have signalled an error already.  */
-  if (elf_hash_table (info)->tls_sec == NULL)
+  if (htab->tls_sec == NULL)
     return 0;
+
+  /* On or1k, the tp points to just after the tcb, if we have an alignment
+     greater than the tcb size we need to offset by the alignment difference.  */
+  base = align_power ((bfd_vma) TCB_SIZE, htab->tls_sec->alignment_power)
+	 - TCB_SIZE;
 
   /* The thread pointer on or1k stores the address after the TCB where
      the data is, just compute the difference. No need to compensate
      for the size of TCB.  */
-  return (address - elf_hash_table (info)->tls_sec->vma);
+  return address - htab->tls_sec->vma + base;
 }
 
 /* If we have both IE and GD accesses to a symbol the IE relocations should be
@@ -1781,7 +1792,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	case R_OR1K_TLS_LE_SLO16:
 //fprintf (stderr, "Processing %s relocation for: %s reloc: %lx\n",
 //howto->name,
-//h->root.root.string,
+//h == NULL ? "" : h->root.root.string,
 //tpoff (info, relocation));
 
 	  /* Relocation is offset from TP.  */
