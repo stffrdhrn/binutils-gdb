@@ -885,7 +885,7 @@ static const struct or1k_reloc_map or1k_reloc_map[] =
 #define TLS_LE	      16
 
 /* The size of the TLS thread control block, used to offset LE access.  */
-#define TCB_SIZE       4
+#define TCB_SIZE      16
 
 /* ELF linker hash entry.  */
 struct elf_or1k_link_hash_entry
