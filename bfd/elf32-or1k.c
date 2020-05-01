@@ -2777,14 +2777,14 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 
       if (WILL_CALL_FINISH_DYNAMIC_SYMBOL (1, bfd_link_pic (info), h))
 	{
-	  asection *s = htab->root.splt;
+	  asection *splt = htab->root.splt;
 
 	  /* If this is the first .plt entry, make room for the special
 	     first entry.  */
-	  if (s->size == 0)
-	    s->size = PLT_ENTRY_SIZE;
+	  if (splt->size == 0)
+	    splt->size = PLT_ENTRY_SIZE;
 
-	  h->plt.offset = s->size;
+	  h->plt.offset = splt->size;
 
 	  /* If this symbol is not defined in a regular file, and we are
 	     not generating a shared library, then set the symbol to this
@@ -2794,12 +2794,12 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 	  if (! bfd_link_pic (info)
 	      && !h->def_regular)
 	    {
-	      h->root.u.def.section = s;
+	      h->root.u.def.section = splt;
 	      h->root.u.def.value = h->plt.offset;
 	    }
 
 	  /* Make room for this entry.  */
-	  s->size += PLT_ENTRY_SIZE;
+	  splt->size += PLT_ENTRY_SIZE;
 
 	  /* We also need to make an entry in the .got.plt section, which
 	     will be placed in the .got section by the linker script.  */
@@ -2822,7 +2822,7 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 
   if (h->got.refcount > 0)
     {
-      asection *s;
+      asection *sgot;
       bfd_boolean dyn;
       unsigned char tls_type;
 
@@ -2835,16 +2835,16 @@ allocate_dynrelocs (struct elf_link_hash_entry *h, void * inf)
 	    return FALSE;
 	}
 
-      s = htab->root.sgot;
+      sgot = htab->root.sgot;
 
-      h->got.offset = s->size;
+      h->got.offset = sgot->size;
 
       tls_type = ((struct elf_or1k_link_hash_entry *) h)->tls_type;
 
       dyn = htab->root.dynamic_sections_created;
       dyn = WILL_CALL_FINISH_DYNAMIC_SYMBOL (dyn, bfd_link_pic (info), h);
       or1k_set_got_and_rela_sizes (tls_type, dyn,
-				   &s->size, &htab->root.srelgot->size);
+				   &sgot->size, &htab->root.srelgot->size);
     }
   else
     h->got.offset = (bfd_vma) -1;
