@@ -1050,10 +1050,9 @@ or1k_info_to_howto_rela (bfd * abfd,
   return TRUE;
 }
 
-
 /* Return the relocation value for @tpoff relocations..  */
 static bfd_vma
-tpoff (struct bfd_link_info *info, bfd_vma address)
+tpoff (struct bfd_link_info *info, bfd_vma address, bfd_boolean dynamic)
 {
   struct elf_link_hash_table *htab = elf_hash_table (info);
   bfd_vma base;
@@ -1062,19 +1061,24 @@ tpoff (struct bfd_link_info *info, bfd_vma address)
   if (htab->tls_sec == NULL)
     return 0;
 
-  /* On or1k, the tp points to just after the tcb, if we have an alignment
-     greater than the tcb size we need to offset by the alignment difference.  */
-  base = align_power ((bfd_vma) TCB_SIZE, htab->tls_sec->alignment_power)
-	 - TCB_SIZE;
+  if (dynamic)
+    return address - htab->tls_sec->vma;
+  else
+    {
+      /* On or1k, the tp points to just after the tcb, if we have an alignment
+	 greater than the tcb size we need to offset by the alignment difference.  */
+      base = align_power ((bfd_vma) TCB_SIZE, htab->tls_sec->alignment_power)
+	     - TCB_SIZE;
 
-  /* The thread pointer on or1k stores the address after the TCB where
-     the data is, just compute the difference. No need to compensate
-     for the size of TCB.  */
-  return address - htab->tls_sec->vma + base;
+      /* The thread pointer on or1k stores the address after the TCB where
+	 the data is, just compute the difference. No need to compensate
+	 for the size of TCB.  */
+      return address - htab->tls_sec->vma + base;
+    }
 }
 
 /* If we have both IE and GD accesses to a symbol the IE relocations should be
-   offset by 4 bytes because the got entry contains a ti struct.  */
+   offset by 8 bytes because the got contains both GD and IE entries.  */
 static bfd_vma
 or1k_initial_exec_offset (reloc_howto_type *howto, unsigned char tls_type_mask)
 {
@@ -1624,7 +1628,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    Elf_Internal_Rela rela;
 	    asection *srelgot;
 	    bfd_byte *loc;
-	    int dynamic;
+	    bfd_boolean dynamic;
 	    int indx = 0;
 	    unsigned char tls_type;
 
@@ -1652,8 +1656,8 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    /* Only process the relocation once.  */
 	    if ((gotoff & 1) != 0)
 	      {
+		gotoff += or1k_initial_exec_offset (howto, tls_type);
 		relocation = got_base + (gotoff & ~3);
-		relocation += or1k_initial_exec_offset (howto, tls_type);
 		if (!(r_type == R_OR1K_TLS_GD_PG21
 		    || r_type == R_OR1K_TLS_GD_LO13
 		    || r_type == R_OR1K_TLS_IE_PG21
@@ -1704,7 +1708,8 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		      {
 			rela.r_info = ELF32_R_INFO (0,
 			    (i == 0 ? R_OR1K_TLS_DTPMOD : R_OR1K_TLS_DTPOFF));
-			rela.r_addend = tpoff (info, relocation);
+			rela.r_addend =
+			    (i == 0 ? 0 : tpoff (info, relocation, dynamic));
 		      }
 
 		    loc = srelgot->contents;
@@ -1719,22 +1724,19 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	    else if ((tls_type & TLS_GD) != 0)
 	      {
 		bfd_put_32 (output_bfd, 1, sgot->contents + gotoff);
-		bfd_put_32 (output_bfd, tpoff (info, relocation),
+		bfd_put_32 (output_bfd, tpoff (info, relocation, dynamic),
 		    sgot->contents + gotoff + 4);
 	      }
+
+	    gotoff += or1k_initial_exec_offset (howto, tls_type);
 
 	    /* Shared IE.  */
 	    if (dynamic && ((tls_type & TLS_IE) != 0))
 	      {
-		bfd_vma ie_gotoff = gotoff;
-
 		BFD_ASSERT (srelgot->contents != NULL);
 
-		if ((tls_type & TLS_GD) != 0)
-		  ie_gotoff += 8;
-
 		/* Add TPOFF GOT and rela entries.  */
-		rela.r_offset = got_base + ie_gotoff;
+		rela.r_offset = got_base + gotoff;
 		if (h != NULL && h->dynindx != -1)
 		  {
 		    rela.r_info = ELF32_R_INFO (h->dynindx, R_OR1K_TLS_TPOFF);
@@ -1743,31 +1745,23 @@ or1k_elf_relocate_section (bfd *output_bfd,
 		else
 		  {
 		    rela.r_info = ELF32_R_INFO (0, R_OR1K_TLS_TPOFF);
-		    rela.r_addend = tpoff (info, relocation);
+		    rela.r_addend = tpoff (info, relocation, dynamic);
 		  }
 
 		loc = srelgot->contents;
 		loc += srelgot->reloc_count++ * sizeof (Elf32_External_Rela);
 
 		bfd_elf32_swap_reloca_out (output_bfd, &rela, loc);
-		bfd_put_32 (output_bfd, 0, sgot->contents + ie_gotoff);
+		bfd_put_32 (output_bfd, 0, sgot->contents + gotoff);
 	      }
 	    /* Static IE.  */
-	    else if ((tls_type && TLS_IE) != 0)
-	      {
-		bfd_vma ie_gotoff = gotoff;
-
-		if ((tls_type & TLS_GD) != 0)
-		  ie_gotoff += 8;
-
-		bfd_put_32 (output_bfd, tpoff (info, relocation),
-			    sgot->contents + ie_gotoff);
-	      }
+	    else if ((tls_type & TLS_IE) != 0)
+	      bfd_put_32 (output_bfd, tpoff (info, relocation, dynamic),
+			  sgot->contents + gotoff);
 
 	    /* The PG21 and LO13 relocs are pc-relative, while the
 	       rest are GOT relative.  */
 	    relocation = got_base + gotoff;
-	    relocation += or1k_initial_exec_offset (howto, tls_type);
 	    if (!(r_type == R_OR1K_TLS_GD_PG21
 		  || r_type == R_OR1K_TLS_GD_LO13
 		  || r_type == R_OR1K_TLS_IE_PG21
@@ -1782,7 +1776,7 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	case R_OR1K_TLS_LE_SLO16:
 
 	  /* Relocation is offset from TP.  */
-	  relocation = tpoff (info, relocation);
+	  relocation = tpoff (info, relocation, 0);
 	  break;
 
 	case R_OR1K_TLS_DTPMOD:
@@ -2712,7 +2706,7 @@ or1k_set_got_and_rela_sizes (const unsigned char tls_type,
 {
   bfd_boolean is_tls_entry = FALSE;
 
-  /* TLS GD requires two GOT and two relocs.  */
+  /* TLS GD requires two GOT entries and two relocs.  */
   if ((tls_type & TLS_GD) != 0)
     {
       *got_size += 8;
