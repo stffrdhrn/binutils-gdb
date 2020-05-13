@@ -1639,9 +1639,18 @@ or1k_elf_relocate_section (bfd *output_bfd,
 	      }
 
 	    /* Only process the relocation once.  */
-	    if (gotoff & 1)
+	    if ((gotoff & 1) != 0)
 	      {
-		relocation = sgot->output_offset + (gotoff  & ~3);
+		gotoff += or1k_initial_exec_offset (howto, tls_type);
+
+		/* The PG21 and LO13 relocs are pc-relative, while the
+		   rest are GOT relative.  */
+		relocation = got_base + (gotoff & ~3);
+		if (!(r_type == R_OR1K_TLS_GD_PG21
+		    || r_type == R_OR1K_TLS_GD_LO13
+		    || r_type == R_OR1K_TLS_IE_PG21
+		    || r_type == R_OR1K_TLS_IE_LO13))
+		  relocation -= got_sym_value;
 		break;
 	      }
 
