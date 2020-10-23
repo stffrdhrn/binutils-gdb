@@ -9,14 +9,14 @@ struct target_desc *tdesc_or1k_linux;
 static void
 initialize_tdesc_or1k_linux (void)
 {
-  struct target_desc *result = allocate_target_description ();
-  set_tdesc_architecture (result, bfd_scan_arch ("or1k"));
+  target_desc_up result = allocate_target_description ();
+  set_tdesc_architecture (result.get (), bfd_scan_arch ("or1k"));
 
-  set_tdesc_osabi (result, osabi_from_tdesc_string ("GNU/Linux"));
+  set_tdesc_osabi (result.get (), osabi_from_tdesc_string ("GNU/Linux"));
 
   struct tdesc_feature *feature;
 
-  feature = tdesc_create_feature (result, "org.gnu.gdb.or1k.group0");
+  feature = tdesc_create_feature (result.get (), "org.gnu.gdb.or1k.group0");
   tdesc_type_with_fields *type_with_fields;
   type_with_fields = tdesc_create_flags (feature, "sr_flags", 4);
   tdesc_add_flag (type_with_fields, 0, "SM");
@@ -74,5 +74,5 @@ initialize_tdesc_or1k_linux (void)
   tdesc_create_reg (feature, "npc", 33, 1, NULL, 32, "code_ptr");
   tdesc_create_reg (feature, "sr", 34, 1, NULL, 32, "sr_flags");
 
-  tdesc_or1k_linux = result;
+  tdesc_or1k_linux = result.release ();
 }
